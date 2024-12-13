@@ -1,0 +1,29 @@
+/* src/components/Admin/ManageMenu.css */
+.manage-menu {
+  margin-bottom: 20px;
+}
+
+.manage-menu form {
+  margin-bottom: 20px;
+}
+
+.manage-menu input, .manage-menu textarea, .manage-menu button {
+  display: block;
+  margin: 10px auto;
+  padding: 10px;
+  width: 80%;
+  max-width: 400px;
+}
+
+.manage-menu ul {
+  list-style: none;
+  padding: 0;
+}
+
+.manage-menu li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #ccc;
+}

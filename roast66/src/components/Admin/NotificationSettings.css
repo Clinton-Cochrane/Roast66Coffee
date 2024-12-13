@@ -1,0 +1,13 @@
+/* src/components/Admin/NotificationSettings.css */
+.notification-settings {
+    padding: 20px;
+}
+
+.notification-settings input,
+.notification-settings button {
+    display: block;
+    margin: 10px auto;
+    padding: 10px;
+    width: 80%;
+    max-width: 400px;
+}

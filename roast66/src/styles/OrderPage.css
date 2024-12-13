@@ -1,0 +1,35 @@
+/* src/pages/OrderPage.css */
+.order-page {
+    padding: 20px;
+}
+
+.order-page select,
+.order-page input,
+.order-page button {
+    display: block;
+    margin: 10px auto;
+    padding: 10px;
+    width: 80%;
+    max-width: 400px;
+}
+
+.order-page ul {
+    list-style: none;
+    padding: 0;
+}
+
+.order-page li {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+}
+
+.order-page li input {
+    width: 50px;
+}
+
+.order-page li button {
+    margin-left: 10px;
+}

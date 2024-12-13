@@ -1,0 +1,14 @@
+/* src/components/Admin/ViewOrders.css */
+.view-orders {
+    margin-top: 20px;
+}
+
+.view-orders ul {
+    list-style: none;
+    padding: 0;
+}
+
+.view-orders li {
+    padding: 10px;
+    border-bottom: 1px solid #ccc;
+}

@@ -1,0 +1,60 @@
+/* src/styles/Customer.css */
+
+.welcome, .menu, .order, .order-confirmation {
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 600px;
+    text-align: center;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+  }
+  
+  h2 {
+    color: #444;
+  }
+  
+  form input, form button {
+    display: block;
+    margin: 10px auto;
+    padding: 10px;
+    width: 80%;
+    max-width: 300px;
+  }
+  
+  form button {
+    background-color: #444;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+  }
+
+.about {
+  padding: 20px;
+  margin: 20px auto;
+  max-width: 600px;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.about h2 {
+  color: #444;
+}
+
+.location {
+  padding: 20px;
+  margin: 20px auto;
+  max-width: 600px;
+  text-align: center;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.location h2 {
+  color: #444;
+}
+
+  
