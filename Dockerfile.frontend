@@ -1,22 +1,14 @@
-# Stage 1: Build the React frontend
+# Stage 1: Build the frontend
 FROM node:18 AS build
 WORKDIR /app
-
-# Copy frontend dependencies
-COPY roast66/package.json ./package.json
-COPY roast66/package-lock.json ./package-lock.json
+COPY roast66/package.json .
+COPY roast66/package-lock.json .
 RUN npm install
-
-# Copy the entire frontend source code
-COPY roast66/ ./
+COPY roast66/ .
 RUN npm run build
 
-# Stage 2: Serve the frontend using Nginx
+# Stage 2: Serve with Nginx
 FROM nginx:alpine
 COPY --from=build /app/build /usr/share/nginx/html
-
-# Expose port 80
 EXPOSE 80
-
-# Start Nginx
 CMD ["nginx", "-g", "daemon off;"]
