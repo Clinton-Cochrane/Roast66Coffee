@@ -1,11 +1,13 @@
 # Stage 1: Build the React frontend
 FROM node:18 AS build
 WORKDIR /app
-RUN ls -la roast66/
-# Copy frontend code
-COPY roast66/package.json roast66/package-lock.json ./
+
+# Copy frontend dependencies
+COPY roast66/package.json ./package.json
+COPY roast66/package-lock.json ./package-lock.json
 RUN npm install
 
+# Copy the entire frontend source code
 COPY roast66/ ./
 RUN npm run build
 
