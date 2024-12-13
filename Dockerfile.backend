@@ -1,4 +1,4 @@
-# Use the official .NET SDK image to build the application
+# Stage 1: Build the .NET Core application
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
@@ -10,12 +10,11 @@ RUN dotnet restore "CoffeeShopApi/CoffeeShopApi.csproj"
 COPY ./CoffeeShopApi ./CoffeeShopApi/
 RUN dotnet publish "CoffeeShopApi/CoffeeShopApi.csproj" -c Release -o /app
 
-# Use the official ASP.NET Core runtime image
-# Use the official ASP.NET Core runtime image
+# Stage 2: Use the ASP.NET Core runtime image to serve the app
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
-# Install debugging tools
+# Install debugging tools (optional, for troubleshooting purposes)
 RUN apt-get update && apt-get install -y \
     netcat-openbsd \
     iputils-ping \
@@ -27,6 +26,3 @@ COPY --from=build /app .
 # Expose the port and run the application
 EXPOSE 80
 ENTRYPOINT ["dotnet", "CoffeeShopApi.dll"]
-
-
-
