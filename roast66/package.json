@@ -1,14 +1,15 @@
 {
   "name": "roast66",
   "version": "1.0.0",
-  "main": "index.js",
+  "main": "src/index.js",
   "dependencies": {
     "axios": "^1.7.9",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-scripts": "^5.0.0"
   },
   "scripts": {
-    "test": "react-scripts-test",
+    "test": "react-scripts test",
     "build": "react-scripts build",
     "start": "react-scripts start"
   },
