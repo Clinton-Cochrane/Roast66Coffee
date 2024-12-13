@@ -136,7 +136,16 @@ namespace CoffeeShopApi.Controllers
             await _notificationSettingsService.SaveNotificationSettingsAsync(settings);
             return Ok();
         }
+
+        [HttpGet("/ping")]
+        [HttpGet("ping")]
+        public IActionResult Ping()
+        {
+            Console.WriteLine("Ping endpoint was called");
+            return Ok("pong");
+        }
     }
+
 
 
     public class NotificationSettingsModel

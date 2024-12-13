@@ -13,30 +13,43 @@ namespace CoffeeShopApi
     {
         public static void Main(string[] args)
         {
+            Console.WriteLine("Starting the application...");
             var host = CreateHostBuilder(args).Build();
             using (var scope = host.Services.CreateScope())
-        {
-            var services = scope.ServiceProvider;
-            try
             {
-                var context = services.GetRequiredService<ApplicationDbContext>();
-                context.Database.Migrate(); // Ensure the database is up-to-date
-                DbInitializer.Initialize(context);
+                var services = scope.ServiceProvider;
+                try
+                {
+                    var context = services.GetRequiredService<ApplicationDbContext>();
+                    context.Database.Migrate(); // Ensure the database is up-to-date
+                    DbInitializer.Initialize(context);
+                    Console.WriteLine("Database migration successful.");
+
+                }
+                catch (Exception ex)
+                {
+                    var logger = services.GetRequiredService<ILogger<Program>>();
+                    logger.LogError(ex, "An error occurred seeding the DB.");
+                    Console.WriteLine($"Error during database migration: {ex.Message}");
+
+                }
             }
-            catch (Exception ex)
-            {
-                var logger = services.GetRequiredService<ILogger<Program>>();
-                logger.LogError(ex, "An error occurred seeding the DB.");
-            }
-        }
             host.Run();
         }
 
-                public static IHostBuilder CreateHostBuilder(string[] args) =>
-            Host.CreateDefaultBuilder(args)
-                .ConfigureWebHostDefaults(webBuilder =>
-                {
-                    webBuilder.UseStartup<Startup>();
-                });
+        public static IHostBuilder CreateHostBuilder(string[] args) =>
+    Host.CreateDefaultBuilder(args)
+     .ConfigureLogging(logging =>
+        {
+            logging.ClearProviders();
+            logging.AddConsole();
+            logging.SetMinimumLevel(LogLevel.Debug);
+        })
+        .ConfigureWebHostDefaults(webBuilder =>
+        {
+            webBuilder.UseStartup<Startup>();
+            webBuilder.UseUrls("http://0.0.0.0:80"); // Explicitly listen on port 80
+
+        });
     }
 }

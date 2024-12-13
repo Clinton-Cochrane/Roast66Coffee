@@ -52,7 +52,7 @@ namespace CoffeeShopApi
                 app.UseHsts();
             }
 
-            app.UseHttpsRedirection();
+            // app.UseHttpsRedirection();
             app.UseStaticFiles();
 
             app.UseRouting();
@@ -64,6 +64,10 @@ namespace CoffeeShopApi
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+                endpoints.MapGet("/", async context =>
+                {
+                    await context.Response.WriteAsync("Welcome to the Coffee Shop API!");
+                });
             });
         }
     }
