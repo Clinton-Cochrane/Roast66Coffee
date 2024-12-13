@@ -5,7 +5,7 @@
 namespace CoffeeShopApi.Migrations
 {
     /// <inheritdoc />
-    public partial class help : Migration
+    public partial class HelpMigration : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

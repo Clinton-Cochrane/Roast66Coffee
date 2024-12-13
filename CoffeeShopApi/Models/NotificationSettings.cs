@@ -12,6 +12,6 @@ namespace CoffeeShopApi.Models
 
         [Required]
         [Column("phonenumber")]
-        public string PhoneNumber { get; set; }
+        public string PhoneNumber { get; set; } = string.Empty;
     }
 }

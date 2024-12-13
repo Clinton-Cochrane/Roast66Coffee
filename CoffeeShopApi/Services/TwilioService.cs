@@ -11,9 +11,10 @@ public class TwilioService
 
     public TwilioService(IConfiguration configuration)
     {
-        _accountSid = configuration["Twilio:AccountSID"];
-        _authToken = configuration["Twilio:AuthToken"];
-        _twilioPhoneNumber = configuration["Twilio:PhoneNumber"];
+        _accountSid = configuration["Twilio:AccountSID"] ?? throw new ArgumentNullException("Twilio:AccountSID");
+        _authToken = configuration["Twilio:AuthToken"] ?? throw new ArgumentNullException("Twilio:AuthToken");
+        _twilioPhoneNumber = configuration["Twilio:FromPhoneNumber"] ?? throw new ArgumentNullException("Twilio:FromPhoneNumber");
+
         TwilioClient.Init(_accountSid, _authToken);
     }
 

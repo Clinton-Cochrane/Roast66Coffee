@@ -110,3 +110,5 @@ C:\Users\clint\code\Roast66\CoffeeShopApi\bin\Debug\net8.0\Microsoft.IdentityMod
 C:\Users\clint\code\Roast66\CoffeeShopApi\bin\Debug\net8.0\Newtonsoft.Json.dll
 C:\Users\clint\code\Roast66\CoffeeShopApi\bin\Debug\net8.0\System.IdentityModel.Tokens.Jwt.dll
 C:\Users\clint\code\Roast66\CoffeeShopApi\bin\Debug\net8.0\Twilio.dll
+C:\Users\clint\code\Roast66\CoffeeShopApi\obj\Debug\net8.0\CoffeeShopApi.sourcelink.json
+C:\Users\clint\code\Roast66\CoffeeShopApi\bin\Debug\net8.0\CoffeeShopApi.staticwebassets.runtime.json

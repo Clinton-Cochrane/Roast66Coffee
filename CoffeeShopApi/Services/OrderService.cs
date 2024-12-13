@@ -18,7 +18,7 @@ public class OrderService
     public async Task<IEnumerable<Order>> GetOrdersAsync()
 {
     return await _context.Orders
-        .Include(o => (IEnumerable<OrderItem>) o.OrderItems)
+        .Include(o => o.OrderItems)
         .ThenInclude(oi => oi.MenuItem)
         .ToListAsync();
 }
@@ -26,7 +26,7 @@ public class OrderService
 
     public async Task<Order?> GetOrderByIdAsync(int id)
     {
-        return await _context.Orders.Include(o => o.OrderItems).ThenInclude(oi => oi.MenuItem).FirstOrDefaultAsync(o => o.Id == id);
+        return await _context.Orders.Include(o => o.OrderItems).ThenInclude(oi => oi.MenuItem).OrderBy(o =>o.OrderDate).FirstOrDefaultAsync(o => o.Id == id);
     }
 
     public async Task<Order> CreateOrderAsync(Order order)

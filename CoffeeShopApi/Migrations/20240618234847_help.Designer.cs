@@ -13,7 +13,7 @@ namespace CoffeeShopApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20240618234847_help")]
-    partial class help
+    partial class HelpMigration
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

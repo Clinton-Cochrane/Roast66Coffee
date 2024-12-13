@@ -10,9 +10,9 @@ namespace CoffeeShopApi.Services
     {
         private readonly ApplicationDbContext _context = context;
 
-        public async Task<NotificationSettings> GetNotificationSettingsAsync()
+        public async Task<NotificationSettings?> GetNotificationSettingsAsync()
         {
-            return await _context.NotificationSettings.FirstOrDefaultAsync();
+            return await _context.NotificationSettings.OrderBy(ns =>ns.Id).FirstOrDefaultAsync();
         }
 
         public async Task SaveNotificationSettingsAsync(NotificationSettings settings)
