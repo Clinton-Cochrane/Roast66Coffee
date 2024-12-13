@@ -8,7 +8,9 @@
     "react-dom": "^18.2.0"
   },
   "scripts": {
-    "test": "jest"
+    "test": "react-scripts-test",
+    "build": "react-scripts build",
+    "start": "react-scripts start"
   },
   "jest": {
     "testEnvironment": "jsdom"
