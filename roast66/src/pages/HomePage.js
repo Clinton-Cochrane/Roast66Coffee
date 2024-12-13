@@ -1,3 +1,4 @@
+import React from 'react';
 import About from "../components/Customer/About";
 import Welcome from "../components/Customer/Welcome";
 import Location from "../components/Customer/Location";
