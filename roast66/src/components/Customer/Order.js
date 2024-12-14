@@ -1,5 +1,9 @@
+// src/components/Customer/Order.jsx
 import React, { useState } from "react";
 import axios from "../../axiosConfig";
+import FormInput from "../common/FormInput";
+import Button from "../common/Button";
+import Card from "../common/Card";
 
 function Order() {
   const [order, setOrder] = useState({
@@ -17,39 +21,46 @@ function Order() {
     e.preventDefault();
     axios
       .post("/orders", order)
-      .then((response) => setMessage("Order placed successfully!"))
-      .catch((error) => setMessage("Failed to place order."));
+      .then(() => setMessage("Order placed successfully!"))
+      .catch(() => setMessage("Failed to place order."));
   };
 
   return (
-    <div className="order">
-      <h2>Place Order</h2>
-      <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          name="customerName"
-          placeholder="Your Name"
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="number"
-          name="menuItemId"
-          placeholder="Menu Item ID"
-          onChange={handleChange}
-          required
-        />
-        <input
-          type="number"
-          name="quantity"
-          placeholder="Quantity"
-          onChange={handleChange}
-          min="1"
-          required
-        />
-        <button type="submit">Order</button>
-      </form>
-      {message && <p>{message}</p>}
+    <div className="min-h-screen bg-gray-100 p-6">
+      <Card title="Place Order">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <FormInput
+            type="text"
+            name="customerName"
+            placeholder="Your Name"
+            onChange={handleChange}
+            required
+          />
+          <FormInput
+            type="number"
+            name="menuItemId"
+            placeholder="Menu Item ID"
+            onChange={handleChange}
+            required
+          />
+          <FormInput
+            type="number"
+            name="quantity"
+            placeholder="Quantity"
+            onChange={handleChange}
+            min="1"
+            required
+          />
+          <Button type="submit" color="green">
+            Place Order
+          </Button>
+        </form>
+        {message && (
+          <p className={`mt-4 text-center ${message.includes("successfully") ? "text-green-500" : "text-red-500"}`}>
+            {message}
+          </p>
+        )}
+      </Card>
     </div>
   );
 }

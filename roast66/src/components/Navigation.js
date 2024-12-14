@@ -1,20 +1,57 @@
-import React from 'react';
-import { Link } from "react-router-dom";
-import "../styles/Navigation.css";
+// src/components/layout/Navigation.jsx
+import React from "react";
+import { NavLink } from "react-router-dom";
 
 function Navigation() {
   return (
-    <nav className="navigation">
-      <div className="nav-brand">
-        <Link to="/">Roast 66</Link>
-      </div>
+    <nav className="bg-brown text-white p-4 shadow-md">
+      <div className="container mx-auto flex items-center justify-between">
+        {/* Brand */}
+        <div className="text-2xl font-bold">
+          <NavLink to="/" title= "Roast 66 Coffee Home">
+            <img src="/path/to/logo.png" alt="Roast 66" className="h-8" />
+          </NavLink>
+        </div>
 
-      <ul className="nav-links">
-        <li><Link to="/">Home</Link></li>
-        <li><Link to="/menu">Menu</Link></li>
-        <li><Link to="/order">Order</Link></li>
-        <li><Link to="/Admin">Admin</Link></li>
-      </ul>
+        {/* Navigation NavLinks */}
+        <ul className="flex space-x-6">
+          <li>
+            <NavLink to="/" className="hover:text-gray-300">
+              Home
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
+              to="/menu"
+              className={({ isActive }) =>
+                isActive ? "text-yellow-300" : "hover:text-gray-300"
+              }
+            >
+              Menu
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
+              to="/order"
+              className={({ isActive }) =>
+                isActive ? "text-yellow-300" : "hover:text-gray-300"
+              }
+            >
+              Order
+            </NavLink>
+          </li>
+          <li>
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                isActive ? "text-yellow-300" : "hover:text-gray-300"
+              }
+            >
+              Admin
+            </NavLink>
+          </li>
+        </ul>
+      </div>
     </nav>
   );
 }
