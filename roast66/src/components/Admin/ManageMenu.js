@@ -78,6 +78,7 @@ function ManageMenu() {
                 <input type="number" name="price" placeholder="Price" value={menuItemForm.price} onChange={handleFormChange} required />
                 <textarea name="description" placeholder="Description" value={menuItemForm.description} onChange={handleFormChange} required />
                 <button type="submit">{selectedMenuItemId === 'new' ? 'Add Menu Item' : 'Update Menu Item'}</button>
+                <Button 
             </form>
             <ul>
                 {menuItems.map(item => (
