@@ -1,4 +1,12 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Ignore bin and obj folders for .NET projects
+**/bin/
+**/obj/
+# Ignore user-specific Visual Studio files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
 
 # dependencies
 /node_modules
@@ -14,6 +22,7 @@
 
 # misc
 .DS_Store
+.env
 .env.local
 .env.development.local
 .env.test.local

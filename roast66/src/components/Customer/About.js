@@ -4,8 +4,8 @@ import Card from '../common/Card';
 
 function About() {
   return (
-    <div className="p-6">
-      <Card title="About Us">
+    <div >
+      <Card className="min-h-40" title="About Us">
         <p className="mb-4">
           Roast 66 is a unique coffee shop on wheels, bringing your favorite coffee directly to you! Whether you are at home, at work, or on the go, we can deliver freshly brewed coffee to your location, given enough time and depending on the drink.
         </p>

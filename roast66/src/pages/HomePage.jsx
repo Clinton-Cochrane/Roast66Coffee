@@ -1,14 +1,21 @@
+// src/pages/HomePage.jsx
 import React from "react";
-import About from "../components/Customer/About";
 import Welcome from "../components/Customer/Welcome";
+import About from "../components/Customer/About";
 import Location from "../components/Customer/Location";
 
 function HomePage() {
   return (
-    <main className="p-6 space-y-6">
-      <Welcome />
-      <About />
-      <Location />
+    <main className=" flex flex-col items-center">
+      <div className="p-2 w-full max-w-3xl">
+        <Welcome />
+      </div>
+      <div className=" p-2 w-full max-w-3xl">
+        <About />
+      </div>
+      <div className="p-2 w-full max-w-3xl">
+        <Location />
+      </div>
     </main>
   );
 }

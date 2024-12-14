@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from '../../axiosConfig';
 import Card from '../common/Card';
-import Button from '../common/Button';
 
 function ViewOrders() {
   const [orders, setOrders] = useState([]);

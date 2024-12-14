@@ -1,0 +1,41 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "5001:80"
+    env_file:
+      - CoffeeShopApi/.env   # Path to the backend .env file
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    ports:
+      - "3000:80"
+    env_file:
+      - Roast66/.env         # Path to the frontend .env file
+    depends_on:
+      - backend
+
+  postgres-db:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: coffeedb
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD: toor
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U root -d coffeedb"]
+      interval: 10s
+      retries: 5
+
+volumes:
+  postgres-data:

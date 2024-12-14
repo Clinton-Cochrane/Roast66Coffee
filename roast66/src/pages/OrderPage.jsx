@@ -8,6 +8,7 @@ function OrderPage() {
   const [menuItems, setMenuItems] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
   const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
 
   useEffect(() => {
     fetchMenuItems();
@@ -21,12 +22,18 @@ function OrderPage() {
   };
 
   const addItemToOrder = (item) => {
-    setOrderItems([...orderItems, { ...item, quantity: 1 }]);
+    setOrderItems([...orderItems, { ...item, quantity: 1, notes: "" }]);
   };
 
   const handleQuantityChange = (index, quantity) => {
     const newOrderItems = [...orderItems];
     newOrderItems[index].quantity = quantity;
+    setOrderItems(newOrderItems);
+  };
+
+  const handleNotesChange = (index, notes) => {
+    const newOrderItems = [...orderItems];
+    newOrderItems[index].notes = notes;
     setOrderItems(newOrderItems);
   };
 
@@ -39,9 +46,11 @@ function OrderPage() {
     e.preventDefault();
     const orderData = {
       customerName,
+      customerPhone,
       orderItems: orderItems.map((item) => ({
         menuItemId: item.id,
         quantity: item.quantity,
+        notes: item.notes, // Include notes in the submission
       })),
     };
     axios
@@ -49,6 +58,7 @@ function OrderPage() {
       .then(() => {
         setOrderItems([]);
         setCustomerName("");
+        setCustomerPhone("");
         alert("Order placed successfully!");
       })
       .catch((error) => console.error(error));
@@ -71,38 +81,49 @@ function OrderPage() {
       </select>
 
       <form onSubmit={handleOrderSubmit} className="space-y-4">
-       <FormInput
+        <ul className="space-y-4">
+          {orderItems.map((item, index) => (
+            <li key={index} className="flex flex-col space-y-2 p-4 border rounded shadow">
+              <div className="flex justify-between items-center">
+                <span className="font-bold">
+                  {item.name} - ${item.price}
+                </span>
+                <FormInput
+                  type="number"
+                  value={item.quantity}
+                  min="1"
+                  onChange={(e) => handleQuantityChange(index, e.target.value)}
+                  required
+                />
+                <Button type="button" onClick={() => handleRemoveItem(index)} color="red">
+                  Remove
+                </Button>
+              </div>
+              <FormInput
+                type="text"
+                placeholder="Notes (optional)"
+                value={item.notes}
+                onChange={(e) => handleNotesChange(index, e.target.value)}
+                className="placeholder-gray-400"
+              />
+            </li>
+          ))}
+        </ul>
+
+        <FormInput
           type="text"
           placeholder="Your Name"
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}
           required
         />
-
-
-        <ul className="space-y-2">
-          {orderItems.map((item, index) => (
-            <li key={index} className="flex justify-between items-center">
-              <span>
-                {item.name} - ${item.price}{" "}
-              </span>
-              <FormInput
-                type="number"
-                value={item.quantity}
-                min="1"
-                onChange={(e) => handleQuantityChange(index, e.target.value)}
-                required
-              />
-              <Button
-                type="button"
-                onClick={() => handleRemoveItem(index)}
-                color="red"
-              >
-                Remove
-              </Button>
-            </li>
-          ))}
-        </ul>
+        <FormInput
+          type="text"
+          placeholder="Phone For When Order Is Ready"
+          value={customerPhone}
+          onChange={(e) => setCustomerPhone(e.target.value)}
+          required
+        />
 
         <Button type="submit" color="green">
           Place Order

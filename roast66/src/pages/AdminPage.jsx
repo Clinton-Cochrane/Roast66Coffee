@@ -9,7 +9,7 @@ import NotificationSettings from '../components/Admin/NotificationSettings';
 function AdminPage() {
     return (
         <div className="min-h-screen bg-gray-100 p-6 space-y-6">
-            <Header title ="Admin Dashboard"/>
+            <Header color = "bg-red-800" title ="Admin Dashboard"/>
             <ManageMenu />
             <ViewOrders />
             <NotificationSettings />
