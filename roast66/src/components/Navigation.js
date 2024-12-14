@@ -9,7 +9,7 @@ function Navigation() {
         {/* Brand */}
         <div className="text-2xl font-bold">
           <NavLink to="/" title= "Roast 66 Coffee Home">
-            <img src="/path/to/logo.png" alt="Roast 66" className="h-8" />
+            <img src="/roast66/src/logo.svg" alt="Roast 66" className="h-8" />
           </NavLink>
         </div>
 
