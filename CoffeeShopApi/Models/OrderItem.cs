@@ -21,6 +21,9 @@ namespace CoffeeShopApi.Models
         [Column("quantity")]
         public int Quantity { get; set; }
 
+        [Column("Customer_Notes")]
+        public string? Notes { get; set; }
+
         [JsonIgnore]
         [ForeignKey("OrderId")]
         public Order? Order { get; set; }

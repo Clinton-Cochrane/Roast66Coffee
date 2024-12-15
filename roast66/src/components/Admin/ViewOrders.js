@@ -30,12 +30,13 @@ function ViewOrders() {
               <p className="mb-4"><strong>Date:</strong> {new Date(order.orderDate).toLocaleString()}</p>
 
               <ul className="space-y-2">
-                {(order.orderItems || []).map(item => (
-                  <li key={item.id} className="flex justify-between items-center border-b pb-2">
+                {(order.OrderItems || []).map(item => (
+                  <li key={item.id} className="flex flex-col border-b pb-2">
                     {item.menuItem && item.menuItem.name ? (
                       <>
                         <span><strong>Item:</strong> {item.menuItem.name}</span>
                         <span><strong>Quantity:</strong> {item.quantity}</span>
+                        {item.notes && (<span> <strong>Notes: </strong>{item.notes}</span>)}
                       </>
                     ) : (
                       <span className="text-red-500">Item data is unavailable</span>
