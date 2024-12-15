@@ -1,70 +1,185 @@
-# Getting Started with Create React App
+Roast 66 Coffee
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+Welcome to Roast 66 Coffee, a full-stack web application for managing a coffee shop's menu, orders, and administration tasks. Built with React for the frontend, .NET for the backend, and PostgreSQL for the database.
 
-## Available Scripts
+ 
 
-In the project directory, you can run:
+Table of Contents
 
-### `npm start`
+Features
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+Tech Stack
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+Installation
 
-### `npm test`
+Environment Variables
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Running the App
 
-### `npm run build`
+Database Migrations
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Seeding the Database
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+Deployment
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+Screenshots
 
-### `npm run eject`
+License
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+Features
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+View Menu: Browse a selection of drinks and offerings.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Place Orders: Submit orders for processing.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+Admin Panel: Add, update, or delete menu items.
 
-## Learn More
+Seeding Database: Seed initial menu items.
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Responsive Design: Optimized for both desktop and mobile devices.
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Tech Stack
 
-### Code Splitting
+Frontend
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+React (with React Router, Axios, and Tailwind CSS)
 
-### Analyzing the Bundle Size
+React Icons (for icons)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Backend
 
-### Making a Progressive Web App
+.NET 8 (ASP.NET Core Web API)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Entity Framework Core
 
-### Advanced Configuration
+PostgreSQL (database)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+Deployment
 
-### Deployment
+Render (for frontend and backend hosting)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+Docker (for containerization)
 
-### `npm run build` fails to minify
+Installation
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Prerequisites
+
+Ensure you have the following installed:
+
+Node.js (v18 or higher)
+
+.NET 8 SDK
+
+Docker Desktop
+
+PostgreSQL (if running locally)
+
+Clone the Repository
+
+git clone https://github.com/your-username/Roast66.git
+cd Roast66
+
+Install Dependencies
+
+Frontend
+
+cd frontend
+npm install
+
+Backend
+
+cd backend
+
+Environment Variables
+
+Create .env files for both the frontend and backend.
+
+Frontend .env
+
+REACT_APP_API_URL=http://localhost:5000/api
+
+Backend appsettings.json
+
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Host=localhost;Port=5432;Database=coffeedb;Username=your-username;Password=your-password"
+  }
+}
+
+Running the App
+
+Using Docker Compose
+
+In the root directory, run:
+
+docker-compose up --build
+
+This will:
+
+Start the frontend on http://localhost:3000
+
+Start the backend on http://localhost:5000
+
+Set up the PostgreSQL database
+
+Running Without Docker
+
+Start the Backend
+
+cd backend
+
+# Apply migrations
+ dotnet ef database update
+
+# Run the backend
+ dotnet run
+
+Backend should now be running at http://localhost:5000.
+
+Start the Frontend
+
+cd frontend
+npm start
+
+Frontend should now be running at http://localhost:3000.
+
+Database Migrations
+
+If you need to add new migrations:
+
+cd backend
+
+# Create a new migration
+ dotnet ef migrations add MigrationName
+
+# Apply the migration
+ dotnet ef database update
+
+Seeding the Database
+
+Seed the database with initial menu items by hitting the following endpoint:
+
+POST http://localhost:5000/api/admin/seed-menu
+
+Deployment
+
+Deploying to Render
+
+Push your changes to GitHub:
+
+git add .
+git commit -m "Prepare for deployment"
+git push origin main
+
+In the Render Dashboard:
+
+Deploy the frontend and backend services.
+
+Seed the database on Render by calling the /api/admin/seed-menu endpoint.
+
+
+License
+
+This project is licensed under the MIT License.
+
+
