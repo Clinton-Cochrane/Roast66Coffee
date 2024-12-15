@@ -144,6 +144,13 @@ namespace CoffeeShopApi.Controllers
             Console.WriteLine("Ping endpoint was called");
             return Ok("pong");
         }
+
+        [HttpPost("seed-menu")]
+        public async Task<IActionResult> SeedMenuItems()
+        {
+            await Data.SeedMenuItems.SeedAsync(_context);
+            return Ok("Menu items have been seeded successfully!");
+        }
     }
 
 

@@ -1,27 +1,19 @@
-// Data/DbInitializer.cs
 using CoffeeShopApi.Models;
+using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
+
+
 
 namespace CoffeeShopApi.Data
 {
-
-    public static class DbInitializer
+    public static class SeedMenuItems
     {
-        public static void Initialize(ApplicationDbContext context)
+        public static async Task SeedAsync(ApplicationDbContext context)
         {
-            // Ensure the database is created.
-            context.Database.EnsureCreated();
-
-            // Look for any existing data.
-            if (context.MenuItems.Any())
+            // List of drinks to insert/update
+            var drinks = new List<MenuItem>
             {
-                return; // DB has been seeded.
-            }
-
-            var menuItems = new MenuItem[]
-            {
-             new MenuItem { Name = "Espresso", Price = 2.50M, Description = "Strong and bold espresso shot" },
+                new MenuItem { Name = "Espresso", Price = 2.50M, Description = "Strong and bold espresso shot" },
                 new MenuItem { Name = "Latte", Price = 3.50M, Description = "Creamy latte with milk foam" },
                 new MenuItem { Name = "Cappuccino", Price = 3.00M, Description = "Rich cappuccino with steamed milk" },
                 new MenuItem { Name = "Americano", Price = 2.75M, Description = "Espresso diluted with hot water" },
@@ -52,12 +44,27 @@ namespace CoffeeShopApi.Data
                 new MenuItem { Name = "SS Super Shot", Price = 3.50M, Description = "Triple espresso shot with raw sugar." },
                 new MenuItem { Name = "Z28 Zinger", Price = 4.25M, Description = "Iced lemon and ginger tea with sparkling water." },
                 new MenuItem { Name = "427 Thunderbolt", Price = 5.00M, Description = "Espresso with dark chocolate and cayenne." },
+                // Add more drinks as needed
             };
-            foreach (MenuItem item in menuItems)
+
+            // Loop through each drink and add or update it
+            foreach (var drink in drinks)
             {
-                context.MenuItems.Add(item);
+                var existingDrink = await context.MenuItems.FirstOrDefaultAsync(m => m.Name == drink.Name);
+
+                if (existingDrink == null)
+                {
+                    context.MenuItems.Add(drink);
+                }
+                else
+                {
+                    // Update existing drink details
+                    existingDrink.Price = drink.Price;
+                    existingDrink.Description = drink.Description;
+                }
             }
-            context.SaveChanges();
+
+            await context.SaveChangesAsync();
         }
     }
 }

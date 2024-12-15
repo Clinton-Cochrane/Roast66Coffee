@@ -20,6 +20,7 @@ function Menu() {
           <Card key={item.id}>
             <h3 className="text-xl font-semibold mb-2">{item.name}</h3>
             <p className="text-gray-700">${item.price.toFixed(2)}</p>
+            <p className="text-gray-700">{item.description}</p>
           </Card>
         ))}
       </div>

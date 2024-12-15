@@ -75,7 +75,7 @@ function OrderPage() {
         <option value="">Select a menu item</option>
         {menuItems.map((item) => (
           <option key={item.id} value={JSON.stringify(item)}>
-            {item.name} - ${item.price}
+            {item.name} - ${item.price} - {item.description}
           </option>
         ))}
       </select>

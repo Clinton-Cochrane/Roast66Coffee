@@ -8,6 +8,7 @@ import AdminPage from './pages/AdminPage';
 import Navigation from './components/Navigation';
 import './styles/Customer.css';
 import './styles/Navigation.css';
+import Footer from './components/layout/Footer';
 
 function App() {
   return (
@@ -20,6 +21,7 @@ function App() {
           <Route path="/order" element={<OrderPage />} />
           <Route path="/admin" element={<AdminPage />} />
         </Routes>
+      <Footer/>
       </div>
     </Router>
   );
