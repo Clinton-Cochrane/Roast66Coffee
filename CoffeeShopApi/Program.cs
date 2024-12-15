@@ -38,9 +38,14 @@ namespace CoffeeShopApi
             host.Run();
         }
 
-        public static IHostBuilder CreateHostBuilder(string[] args) =>
+       public static IHostBuilder CreateHostBuilder(string[] args) =>
     Host.CreateDefaultBuilder(args)
-     .ConfigureLogging(logging =>
+        .ConfigureAppConfiguration((context, config) =>
+        {
+            // Load environment variables
+            config.AddEnvironmentVariables();
+        })
+        .ConfigureLogging(logging =>
         {
             logging.ClearProviders();
             logging.AddConsole();
@@ -50,7 +55,6 @@ namespace CoffeeShopApi
         {
             webBuilder.UseStartup<Startup>();
             webBuilder.UseUrls("http://0.0.0.0:80"); // Explicitly listen on port 80
-
         });
     }
 }
