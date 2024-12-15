@@ -9,7 +9,6 @@ function Menu() {
   useEffect(() => {
     axios.get('/admin/menu')
       .then(response => {
-        console.log('API Response:', response.data);  // Log the response
         setMenuItems(response.data);
       })
       .catch(error => {

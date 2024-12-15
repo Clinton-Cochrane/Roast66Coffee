@@ -47,10 +47,7 @@ function ManageMenu() {
   };
 
   const handleFormChange = (e) => {
-    console.log("Event:", e);  // Log the full event object
     const { name, value } = e.target;
-    console.log(`Field: ${name}, Value: ${value}`);
-
     setMenuItemForm({
       ...menuItemForm,
       [name]: name === "price" ? parseFloat(value) || 0 : value,
@@ -68,9 +65,7 @@ function ManageMenu() {
       price: parseFloat(menuItemForm.price) || 0,
       description: menuItemForm.description,
     };
-  
-    console.log("Form Data:", formData); // Log form data before submitting
-  
+    
     if (selectedMenuItemId === "new") {
       axios
         .post("/admin/menu", formData) // Send formData directly
