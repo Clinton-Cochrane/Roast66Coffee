@@ -7,7 +7,7 @@ function Menu() {
   const [menuItems, setMenuItems] = useState([]);
 
   useEffect(() => {
-    axios.get('/api/admin/menu')
+    axios.get('/admin/menu')
       .then(response => {
         console.log('API Response:', response.data);  // Log the response
         setMenuItems(response.data);
