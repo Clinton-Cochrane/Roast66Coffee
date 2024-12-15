@@ -154,7 +154,7 @@ function ManageMenu() {
               key={item.id}
               className="flex justify-between items-center border-b pb-2"
             >
-              <span>
+              <span className='flex-1'>
                 {item.name} - ${item.price} - {item.description}
               </span>
               <Button onClick={() => handleDelete(item.id)} color="red">
