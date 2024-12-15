@@ -148,8 +148,16 @@ namespace CoffeeShopApi.Controllers
         [HttpPost("seed-menu")]
         public async Task<IActionResult> SeedMenuItems()
         {
-            await Data.SeedMenuItems.SeedAsync(_context);
-            return Ok("Menu items have been seeded successfully!");
+            try
+            {
+                await Data.SeedMenuItems.SeedAsync(_context);
+                return Ok("Menu items have been seeded successfully!");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error seeding menu items: {ex.Message}");
+                return StatusCode(500, $"Error: {ex.Message}");
+            }
         }
     }
 
