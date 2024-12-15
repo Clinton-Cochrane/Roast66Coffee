@@ -48,23 +48,31 @@ namespace CoffeeShopApi.Data
             };
 
             // Loop through each drink and add or update it
-            foreach (var drink in drinks)
+            try
             {
-                var existingDrink = await context.MenuItems.FirstOrDefaultAsync(m => m.Name == drink.Name);
+                foreach (var drink in drinks)
+                {
+                    var existingDrink = await context.MenuItems.FirstOrDefaultAsync(m => m.Name == drink.Name);
 
-                if (existingDrink == null)
-                {
-                    context.MenuItems.Add(drink);
+                    if (existingDrink == null)
+                    {
+                        context.MenuItems.Add(drink);
+                    }
+                    else
+                    {
+                        existingDrink.Price = drink.Price;
+                        existingDrink.Description = drink.Description;
+                    }
                 }
-                else
-                {
-                    // Update existing drink details
-                    existingDrink.Price = drink.Price;
-                    existingDrink.Description = drink.Description;
-                }
+
+                await context.SaveChangesAsync();
+                Console.WriteLine("Seeding completed successfully.");
             }
-
-            await context.SaveChangesAsync();
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during seeding: {ex.Message}");
+                throw;
+            }
         }
     }
 }
