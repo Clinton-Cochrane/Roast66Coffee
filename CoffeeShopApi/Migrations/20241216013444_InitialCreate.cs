@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
@@ -6,26 +7,26 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CoffeeShopApi.Migrations
 {
     /// <inheritdoc />
-    public partial class AddNotificationSettings : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_orders_menuitems_menuitemid",
-                table: "orders");
-
-            migrationBuilder.DropIndex(
-                name: "IX_orders_menuitemid",
-                table: "orders");
-
-            migrationBuilder.DropColumn(
-                name: "menuitemid",
-                table: "orders");
-
-            migrationBuilder.DropColumn(
-                name: "quantity",
-                table: "orders");
+            migrationBuilder.CreateTable(
+                name: "menuitems",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    name = table.Column<string>(type: "text", nullable: false),
+                    price = table.Column<decimal>(type: "numeric", nullable: false),
+                    description = table.Column<string>(type: "text", nullable: false),
+                    CategoryType = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_menuitems", x => x.id);
+                });
 
             migrationBuilder.CreateTable(
                 name: "notificationsettings",
@@ -41,6 +42,20 @@ namespace CoffeeShopApi.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "orders",
+                columns: table => new
+                {
+                    id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    customername = table.Column<string>(type: "text", nullable: false),
+                    orderdate = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_orders", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "orderitems",
                 columns: table => new
                 {
@@ -48,7 +63,8 @@ namespace CoffeeShopApi.Migrations
                         .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
                     orderid = table.Column<int>(type: "integer", nullable: false),
                     menuitemid = table.Column<int>(type: "integer", nullable: false),
-                    quantity = table.Column<int>(type: "integer", nullable: false)
+                    quantity = table.Column<int>(type: "integer", nullable: false),
+                    Customer_Notes = table.Column<string>(type: "text", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -87,32 +103,11 @@ namespace CoffeeShopApi.Migrations
             migrationBuilder.DropTable(
                 name: "orderitems");
 
-            migrationBuilder.AddColumn<int>(
-                name: "menuitemid",
-                table: "orders",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
+            migrationBuilder.DropTable(
+                name: "menuitems");
 
-            migrationBuilder.AddColumn<int>(
-                name: "quantity",
-                table: "orders",
-                type: "integer",
-                nullable: false,
-                defaultValue: 0);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_orders_menuitemid",
-                table: "orders",
-                column: "menuitemid");
-
-            migrationBuilder.AddForeignKey(
-                name: "FK_orders_menuitems_menuitemid",
-                table: "orders",
-                column: "menuitemid",
-                principalTable: "menuitems",
-                principalColumn: "id",
-                onDelete: ReferentialAction.Cascade);
+            migrationBuilder.DropTable(
+                name: "orders");
         }
     }
 }

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CoffeeShopApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20240618234847_help")]
-    partial class HelpMigration
+    [Migration("20241216013444_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -33,6 +33,9 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnName("id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CategoryType")
+                        .HasColumnType("integer");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -106,6 +109,10 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("menuitemid");
 
+                    b.Property<string>("Notes")
+                        .HasColumnType("text")
+                        .HasColumnName("Customer_Notes");
+
                     b.Property<int>("OrderId")
                         .HasColumnType("integer")
                         .HasColumnName("orderid");
@@ -121,6 +128,8 @@ namespace CoffeeShopApi.Migrations
                     b.HasIndex("OrderId");
 
                     b.ToTable("orderitems");
+
+                    b.HasAnnotation("Relational:JsonPropertyName", "OrderItems");
                 });
 
             modelBuilder.Entity("CoffeeShopApi.Models.OrderItem", b =>
