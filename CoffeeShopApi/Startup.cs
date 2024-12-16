@@ -40,8 +40,9 @@ namespace CoffeeShopApi
             });
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env,ApplicationDbContext context)
         {
+             context.Database.Migrate(); // Applies any pending migrations
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
