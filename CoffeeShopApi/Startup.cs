@@ -27,7 +27,7 @@ namespace CoffeeShopApi
             services.AddScoped<OrderService>();
             services.AddScoped<NotificationService>();
             services.AddScoped<NotificationSettingsService>();
-            services.AddScoped<TwilioService>();
+            // services.AddScoped<TwilioService>();
 
             services.AddControllers();
 
