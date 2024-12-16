@@ -24,8 +24,6 @@ namespace CoffeeShopApi
                     context.Database.Migrate(); // Ensure the database is up-to-date
                     DbInitializer.Initialize(context);
                     Console.WriteLine("Database migration successful.");
-                    Console.WriteLine("Database Migration Skipped for now");
-
                 }
                 catch (Exception ex)
                 {
