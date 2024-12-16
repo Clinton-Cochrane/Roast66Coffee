@@ -1,11 +1,16 @@
-// src/components/layout/Navigation.jsx
-import React from "react";
+import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { FaInstagram } from "react-icons/fa";
+import { FaInstagram, FaBars, FaTimes } from "react-icons/fa";
 
 import logo from "../logo.png"; // Adjust the path if necessary
 
 function Navigation() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const toggleMenu = () => {
+    setIsMenuOpen(!isMenuOpen);
+  };
+
   return (
     <nav className="bg-primary text-secondary p-4 shadow-md">
       <div className="bg-secondary container mx-auto flex items-center justify-between p-4 rounded">
@@ -21,12 +26,28 @@ function Navigation() {
           </NavLink>
         </div>
 
+        {/* Hamburger Menu Button */}
+        <button
+          onClick={toggleMenu}
+          className="block md:hidden text-dark focus:outline-none"
+        >
+          {isMenuOpen ? (
+            <FaTimes className="text-2xl" />
+          ) : (
+            <FaBars className="text-2xl" />
+          )}
+        </button>
+
         {/* Navigation Links */}
-        <ul className="flex space-x-6 items-center">
+        <ul
+          className={`${
+            isMenuOpen ? "block" : "hidden"
+          } md:flex md:space-x-6 items-center w-full md:w-auto md:static absolute top-16 left-0 bg-secondary md:bg-transparent p-4 md:p-0 rounded md:rounded-none`}
+        >
           <li>
             <NavLink
               to="/"
-              className="text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent"
+              className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
             >
               Home
             </NavLink>
@@ -34,7 +55,7 @@ function Navigation() {
           <li>
             <NavLink
               to="/menu"
-              className="text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent"
+              className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
             >
               Menu
             </NavLink>
@@ -42,16 +63,15 @@ function Navigation() {
           <li>
             <NavLink
               to="/order"
-              className="text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent"
+              className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
             >
               Order
             </NavLink>
           </li>
-
           <li>
             <NavLink
               to="/admin"
-              className="text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent"
+              className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
             >
               Admin
             </NavLink>
@@ -61,11 +81,13 @@ function Navigation() {
               href="https://www.instagram.com/roast66coffee"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-dark hover:text-accent no-underline flex items-center border-b-2 border-transparent hover:border-accent"
+              className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
               title="Follow us on Instagram"
             >
-              <FaInstagram className="text-2xl mr-1" />
-              Instagram
+              <span className="inline-flex items-center">
+                <FaInstagram className="text-xl mr-1" />
+                Instagram
+              </span>
             </a>
           </li>
         </ul>
