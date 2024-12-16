@@ -145,6 +145,22 @@ namespace CoffeeShopApi.Controllers
             return Ok("pong");
         }
 
+        [HttpGet("categories")]
+        public IActionResult GetCategories()
+        {
+            var categories = Enum.GetValues(typeof(CategoryType))
+                .Cast<CategoryType>()
+                .Select(ct => new { id = (int)ct, name = FormatCategoryName(ct.ToString()) });
+            return Ok(categories);
+        }
+
+        private string FormatCategoryName(string name)
+        {
+            // Insert spaces before capital letters for better readability
+            return System.Text.RegularExpressions.Regex.Replace(name, "([A-Z])", " $1").Trim();
+        }
+
+
         [HttpPost("seed-menu")]
         public async Task<IActionResult> SeedMenuItems()
         {

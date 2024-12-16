@@ -9,21 +9,37 @@ import Card from "../common/Card";
 function ManageMenu() {
   const [menuItems, setMenuItems] = useState([]);
   const [selectedMenuItemId, setSelectedMenuItemId] = useState("");
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [menuItemForm, setMenuItemForm] = useState({
     name: "",
     price: "",
     description: "",
+    categoryType: 0,
   });
 
   useEffect(() => {
-    fetchMenuItems();
+    Promise.all([fetchMenuItems(), fetchCategories()]).finally(() =>
+      setLoading(false)
+    );
   }, []);
+
+  if (loading) {
+    return <p className="text-center">Loading...</p>;
+  }
 
   const fetchMenuItems = () => {
     axios
       .get("/admin/menu")
       .then((response) => setMenuItems(response.data))
-      .catch((error) => console.error(error));
+      .catch((error) => console.error("Error fetching menu items:", error));
+  };
+
+  const fetchCategories = () => {
+    axios
+      .get("/admin/categories")
+      .then((response) => setCategories(response.data))
+      .catch((error) => console.error("Error fetching categories:", error));
   };
 
   const handleSelectChange = (e) => {
@@ -35,7 +51,7 @@ function ManageMenu() {
         name: "",
         price: 0,
         description: "",
-        categoryType: "",
+        categoryType: 0,
       });
     } else {
       const selectedItem = menuItems.find(
@@ -71,7 +87,7 @@ function ManageMenu() {
       name: menuItemForm.name,
       price: parseFloat(menuItemForm.price) || 0,
       description: menuItemForm.description,
-      categoryType: menuItemForm.categoryType,
+      categoryType: parseInt(menuItemForm.categoryType, 10) || 0,
     };
 
     if (selectedMenuItemId === "new") {
@@ -79,7 +95,12 @@ function ManageMenu() {
         .post("/admin/menu", formData) // Send formData directly
         .then(() => {
           fetchMenuItems();
-          setMenuItemForm({ name: "", price: "", description: "" });
+          setMenuItemForm({
+            name: "",
+            price: "",
+            description: "",
+            categoryType: 0,
+          });
           setSelectedMenuItemId("");
         })
         .catch((error) => console.error(error));
@@ -88,7 +109,12 @@ function ManageMenu() {
         .put(`/admin/menu/${selectedMenuItemId}`, formData) // Send formData directly
         .then(() => {
           fetchMenuItems();
-          setMenuItemForm({ name: "", price: "", description: "" });
+          setMenuItemForm({
+            name: "",
+            price: "",
+            description: "",
+            categoryType: 0,
+          });
           setSelectedMenuItemId("");
         })
         .catch((error) => console.error(error));
@@ -134,6 +160,7 @@ function ManageMenu() {
             type="number"
             name="price"
             placeholder="Price"
+            step="0.01"
             value={menuItemForm.price}
             onChange={handleFormChange}
             required
@@ -146,14 +173,21 @@ function ManageMenu() {
             onChange={handleFormChange}
             required
           />
-          <FormInput
-            type="text"
-            name="CategoryType"
-            placeholder="Type of Menu Item"
+          <select
+            name="categoryType"
             value={menuItemForm.categoryType}
             onChange={handleFormChange}
+            className="w-full p-2 border rounded"
             required
-          />
+          >
+            <option value="">Select Category</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
+
           <Button type="submit" color="green">
             {selectedMenuItemId === "new"
               ? "Add Menu Item"
