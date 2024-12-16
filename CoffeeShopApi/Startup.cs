@@ -25,20 +25,19 @@ namespace CoffeeShopApi
 
             services.AddScoped<MenuService>();
             services.AddScoped<OrderService>();
+            services.AddScoped<NotificationService>();
+            services.AddScoped<TwilioService>();
 
             services.AddControllers();
 
             // CORS Policy for Production Frontend
             services.AddCors(options =>
-            {
-                options.AddPolicy("AllowFrontend",
-                    builder =>
-                    {
-                        builder.WithOrigins("https://roast66coffee-frontend.onrender.com")
-                               .AllowAnyHeader()
-                               .AllowAnyMethod();
-                    });
-            });
+       {
+           options.AddPolicy("AllowFrontend",
+               builder => builder.WithOrigins("https://roast66coffee-frontend.onrender.com")
+                                 .AllowAnyHeader()
+                                 .AllowAnyMethod());
+       });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ApplicationDbContext context)
