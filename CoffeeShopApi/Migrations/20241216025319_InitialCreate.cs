@@ -27,6 +27,20 @@ namespace CoffeeShopApi.Migrations
                 {
                     table.PrimaryKey("PK_menuitems", x => x.id);
                 });
+
+            migrationBuilder.CreateTable(
+                name: "notificationsettings",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    phonenumber = table.Column<string>(type: "text", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_notificationsettings", x => x.Id);
+                });
+
             migrationBuilder.CreateTable(
                 name: "orders",
                 columns: table => new
@@ -83,6 +97,9 @@ namespace CoffeeShopApi.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "notificationsettings");
+
             migrationBuilder.DropTable(
                 name: "orderitems");
 
