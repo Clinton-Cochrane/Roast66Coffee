@@ -1,10 +1,10 @@
 // src/components/Admin/ManageMenu.jsx
-import React, { useEffect, useState } from 'react';
-import axios from '../../axiosConfig';
-import '../../styles/ManageMenu.css';
-import FormInput from '../common/FormInput';
-import Button from '../common/Button';
-import Card from '../common/Card';
+import React, { useEffect, useState } from "react";
+import axios from "../../axiosConfig";
+import "../../styles/ManageMenu.css";
+import FormInput from "../common/FormInput";
+import Button from "../common/Button";
+import Card from "../common/Card";
 
 function ManageMenu() {
   const [menuItems, setMenuItems] = useState([]);
@@ -31,7 +31,12 @@ function ManageMenu() {
     setSelectedMenuItemId(selectedId);
 
     if (selectedId === "new") {
-      setMenuItemForm({ name: "", price: 0, description: "" });
+      setMenuItemForm({
+        name: "",
+        price: 0,
+        description: "",
+        categoryType: "",
+      });
     } else {
       const selectedItem = menuItems.find(
         (item) => item.id === parseInt(selectedId)
@@ -41,6 +46,7 @@ function ManageMenu() {
           name: selectedItem.name,
           price: selectedItem.price.toString(),
           description: selectedItem.description,
+          categoryType: selectedItem.categoryType,
         });
       }
     }
@@ -56,16 +62,18 @@ function ManageMenu() {
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
-  
-    const id = selectedMenuItemId === "new" ? 0 : parseInt(selectedMenuItemId, 10);
-  
+
+    const id =
+      selectedMenuItemId === "new" ? 0 : parseInt(selectedMenuItemId, 10);
+
     const formData = {
       id: id,
       name: menuItemForm.name,
       price: parseFloat(menuItemForm.price) || 0,
       description: menuItemForm.description,
+      categoryType: menuItemForm.categoryType,
     };
-    
+
     if (selectedMenuItemId === "new") {
       axios
         .post("/admin/menu", formData) // Send formData directly
@@ -86,7 +94,6 @@ function ManageMenu() {
         .catch((error) => console.error(error));
     }
   };
-  
 
   const handleDelete = (id) => {
     axios
@@ -139,6 +146,14 @@ function ManageMenu() {
             onChange={handleFormChange}
             required
           />
+          <FormInput
+            type="text"
+            name="CategoryType"
+            placeholder="Type of Menu Item"
+            value={menuItemForm.categoryType}
+            onChange={handleFormChange}
+            required
+          />
           <Button type="submit" color="green">
             {selectedMenuItemId === "new"
               ? "Add Menu Item"
@@ -154,7 +169,7 @@ function ManageMenu() {
               key={item.id}
               className="flex justify-between items-center border-b pb-2"
             >
-              <span className='flex-1'>
+              <span className="flex-1">
                 {item.name} - ${item.price} - {item.description}
               </span>
               <Button onClick={() => handleDelete(item.id)} color="red">

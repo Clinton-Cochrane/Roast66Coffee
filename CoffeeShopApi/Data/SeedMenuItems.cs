@@ -13,37 +13,53 @@ namespace CoffeeShopApi.Data
             // List of drinks to insert/update
             var drinks = new List<MenuItem>
             {
-                new MenuItem { Name = "Espresso", Price = 2.50M, Description = "Strong and bold espresso shot" },
-                new MenuItem { Name = "Latte", Price = 3.50M, Description = "Creamy latte with milk foam" },
-                new MenuItem { Name = "Cappuccino", Price = 3.00M, Description = "Rich cappuccino with steamed milk" },
-                new MenuItem { Name = "Americano", Price = 2.75M, Description = "Espresso diluted with hot water" },
-                new MenuItem { Name = "Mocha", Price = 4.00M, Description = "Chocolate espresso drink with steamed milk" },
-                new MenuItem { Name = "Macchiato", Price = 3.25M, Description = "Espresso with a small amount of milk" },
-                new MenuItem { Name = "Flat White", Price = 3.75M, Description = "Velvety smooth espresso with steamed milk" },
-                new MenuItem { Name = "Mr. Brownie Shaken Espresso", Price = 4.15M, Description = "Shaken espresso with brown sugar, cinnamon powder, and vanilla cold foam" },
-                new MenuItem { Name = "Mrs. Brownie Latte", Price = 7.23M, Description = "Iced coconut and caramel latte" },
-                new MenuItem { Name = "Black SS Lemonade", Price = 2.50M, Description = "Red raspberry, pomegranate, and bubbly lemonade" },
-                new MenuItem { Name = "Red SnotRod Energy Bump", Price = 2.50M, Description = "Cherry, passion fruit, and white peach flavored energy drink" },
-                new MenuItem { Name = "Brown S10 Turbo", Price = 4.00M, Description = "Double shot espresso with dark chocolate and chili kick" },
-                new MenuItem { Name = "Green Nova Refresher", Price = 3.75M, Description = "Iced sparkling lime drink with cucumber and mint" },
-                new MenuItem { Name = "Shitbox LUV Fuel", Price = 5.00M, Description = "Triple espresso with caramel drizzle and guarana syrup" },
-                new MenuItem { Name = "Yellow Cuda Cold Brew", Price = 4.25M, Description = "Cold brew with honey and vanilla cream" },
-                new MenuItem { Name = "Midnight Charger Mocha", Price = 4.50M, Description = "Dark chocolate mocha with espresso and hazelnut" },
-                new MenuItem { Name = "Hot Rod Cinnamon Chai", Price = 4.00M, Description = "Spiced chai latte with extra cinnamon" },
-                new MenuItem { Name = "Blue Flame Nitro", Price = 5.25M, Description = "Nitro cold brew with sweet cream and blueberry syrup" },
-                new MenuItem { Name = "GTO Grape Energy Boost", Price = 4.50M, Description = "Grape energy drink with lemon and passion fruit" },
-                new MenuItem { Name = "Track Hawk Toffee Latte", Price = 4.75M, Description = "Toffee latte with whipped cream and caramel drizzle" },
-                new MenuItem { Name = "Pink Slip Punch", Price = 3.50M, Description = "Strawberry, watermelon, and lemon punch" },
-                new MenuItem { Name = "LS Swap Cold Brew", Price = 4.75M, Description = "Smooth, nitro-infused cold brew with caramel and vanilla." },
-                new MenuItem { Name = "Big Block Brew", Price = 5.00M, Description = "Extra-strong dark roast coffee with a double shot of espresso." },
-                new MenuItem { Name = "Small Block Special", Price = 4.00M, Description = "Classic cappuccino with cocoa dusting." },
-                new MenuItem { Name = "Chevelle Cream Dream", Price = 4.50M, Description = "Vanilla latte with caramel swirl and whipped cream." },
-                new MenuItem { Name = "Black Tire Roasted Camaro", Price = 5.25M, Description = "Black Coffee chocolate and hazelnut." },
-                new MenuItem { Name = "454 Punch", Price = 4.75M, Description = "Cherry, pomegranate, and lime energy drink." },
-                new MenuItem { Name = "Rat Rod Roast", Price = 4.25M, Description = "Dark espresso with molasses and cinnamon." },
-                new MenuItem { Name = "SS Super Shot", Price = 3.50M, Description = "Triple espresso shot with raw sugar." },
-                new MenuItem { Name = "Z28 Zinger", Price = 4.25M, Description = "Iced lemon and ginger tea with sparkling water." },
-                new MenuItem { Name = "427 Thunderbolt", Price = 5.00M, Description = "Espresso with dark chocolate and cayenne." },
+               
+                
+                // Drinks
+                new MenuItem { Name = "Espresso", Price = 2.50M, Description = "Strong and bold espresso shot", CategoryType = CategoryType.Coffee },
+                new MenuItem { Name = "Latte", Price = 3.50M, Description = "Creamy latte with milk foam", CategoryType = CategoryType.Coffee },
+                new MenuItem { Name = "Cappuccino", Price = 3.00M, Description = "Rich cappuccino with steamed milk", CategoryType = CategoryType.Coffee },
+                new MenuItem { Name = "Americano", Price = 2.75M, Description = "Espresso diluted with hot water", CategoryType = CategoryType.Coffee },
+                new MenuItem { Name = "Mocha", Price = 4.00M, Description = "Chocolate espresso drink with steamed milk", CategoryType = CategoryType.Coffee },
+
+                // Drinks
+                new MenuItem { Name = "Energy Drink", Price = 4.00M, Description = "Select Flavor from below", CategoryType = CategoryType.Drink },
+                new MenuItem { Name = "Lemonade", Price = 4.00M, Description = "Refreshing Iced Lemonade", CategoryType = CategoryType.Drink },
+                new MenuItem { Name = "Refresher", Price = 4.00M, Description = "It's like water but different", CategoryType = CategoryType.Drink },
+
+                // Specials
+                new MenuItem { Name = "Mr. Brownie Shaken Espresso", Price = 4.15M, Description = "Shaken espresso with brown sugar, cinnamon powder, and vanilla cold foam", CategoryType = CategoryType.Specials },
+                new MenuItem { Name = "Mrs. Brownie Latte", Price = 7.23M, Description = "Iced coconut and caramel latte", CategoryType = CategoryType.Specials },
+                new MenuItem { Name = "Shitbox LUV Fuel", Price = 5.00M, Description = "Triple espresso with caramel drizzle and guarana syrup", CategoryType = CategoryType.Specials },
+                new MenuItem { Name = "Blue Flame Nitro", Price = 5.25M, Description = "Nitro cold brew with sweet cream and blueberry syrup", CategoryType = CategoryType.Specials },
+                new MenuItem { Name = "GTO Grape Energy Boost", Price = 4.50M, Description = "Grape energy drink with lemon and passion fruit", CategoryType = CategoryType.Specials },
+                new MenuItem { Name = "Black SS Lemonade", Price = 2.50M, Description = "Red raspberry, pomegranate, and bubbly lemonade", CategoryType = CategoryType.Specials },
+                new MenuItem { Name = "Red SnotRod Energy Bump", Price = 2.50M, Description = "Cherry, passion fruit, and white peach flavored energy drink", CategoryType = CategoryType.Specials },
+                new MenuItem { Name = "Green Nova Refresher", Price = 3.75M, Description = "Iced sparkling lime drink with cucumber and mint", CategoryType = CategoryType.Specials },
+                new MenuItem { Name = "Pink Slip Punch", Price = 3.50M, Description = "Strawberry, watermelon, and lemon punch", CategoryType = CategoryType.Specials },
+                new MenuItem { Name = "454 Punch", Price = 4.75M, Description = "Cherry, pomegranate, and lime energy drink", CategoryType = CategoryType.Specials },
+
+                // Flavors
+                new MenuItem { Name = "Chocolate Shot", Price = 0.50M, Description = "Rich chocolate flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Vanilla Shot", Price = 0.50M, Description = "Classic vanilla flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Coconut Shot", Price = 0.50M, Description = "Tropical coconut flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Caramel Shot", Price = 0.50M, Description = "Sweet caramel flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Guarana Shot", Price = 0.50M, Description = "Energy-boosting guarana shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Blueberry Shot", Price = 0.50M, Description = "Fresh blueberry flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Grape Shot", Price = 0.50M, Description = "Juicy grape flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Lemon Shot", Price = 0.50M, Description = "Zesty lemon flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Passion Fruit Shot", Price = 0.50M, Description = "Exotic passion fruit flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Red Raspberry Shot", Price = 0.50M, Description = "Tangy red raspberry flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Pomegranate Shot", Price = 0.50M, Description = "Sweet pomegranate flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Cherry Shot", Price = 0.50M, Description = "Bold cherry flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "White Peach Shot", Price = 0.50M, Description = "Delicate white peach flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Lime Shot", Price = 0.50M, Description = "Refreshing lime flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Cucumber Shot", Price = 0.50M, Description = "Cool cucumber flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Mint Shot", Price = 0.50M, Description = "Cooling mint flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Strawberry Shot", Price = 0.50M, Description = "Sweet strawberry flavor shot", CategoryType = CategoryType.Flavors },
+                new MenuItem { Name = "Watermelon Shot", Price = 0.50M, Description = "Juicy watermelon flavor shot", CategoryType = CategoryType.Flavors }
+
+
                 // Add more drinks as needed
             };
 
