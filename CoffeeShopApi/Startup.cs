@@ -25,38 +25,45 @@ namespace CoffeeShopApi
 
             services.AddScoped<MenuService>();
             services.AddScoped<OrderService>();
-            
 
             services.AddControllers();
 
+            // CORS Policy for Production Frontend
             services.AddCors(options =>
             {
-                options.AddPolicy("AllowAllOrigins",
-                    builder => builder.AllowAnyOrigin()
-                                      .AllowAnyMethod()
-                                      .AllowAnyHeader());
+                options.AddPolicy("AllowFrontend",
+                    builder =>
+                    {
+                        builder.WithOrigins("https://roast66coffee-frontend.onrender.com")
+                               .AllowAnyHeader()
+                               .AllowAnyMethod();
+                    });
             });
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env,ApplicationDbContext context)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ApplicationDbContext context)
         {
-             context.Database.Migrate(); // Applies any pending migrations
+            // Apply database migrations
+            context.Database.Migrate();
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
+                app.UseCors(builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
             }
             else
             {
                 app.UseExceptionHandler("/Home/Error");
                 app.UseHsts();
+
+                // Use strict CORS policy in Production
+                app.UseCors("AllowFrontend");
             }
 
-            // app.UseHttpsRedirection();
+            // app.UseHttpsRedirection(); // Uncomment if using HTTPS
             app.UseStaticFiles();
 
             app.UseRouting();
-
-            app.UseCors("AllowAllOrigins");
 
             app.UseAuthorization();
 
