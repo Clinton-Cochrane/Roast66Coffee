@@ -26,43 +26,38 @@ namespace CoffeeShopApi
             services.AddScoped<MenuService>();
             services.AddScoped<OrderService>();
             services.AddScoped<NotificationService>();
+            services.AddScoped<NotificationSettingsService>();
             services.AddScoped<TwilioService>();
 
             services.AddControllers();
 
-            // CORS Policy for Production Frontend
             services.AddCors(options =>
-       {
-           options.AddPolicy("AllowFrontend",
-               builder => builder.WithOrigins("https://roast66coffee-frontend.onrender.com")
-                                 .AllowAnyHeader()
-                                 .AllowAnyMethod());
-       });
+            {
+                options.AddPolicy("AllowAllOrigins",
+                    builder => builder.AllowAnyOrigin()
+                                      .AllowAnyMethod()
+                                      .AllowAnyHeader());
+            });
         }
 
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, ApplicationDbContext context)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
-            // Apply database migrations
-            context.Database.Migrate();
-
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-                app.UseCors(builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
             }
             else
             {
                 app.UseExceptionHandler("/Home/Error");
                 app.UseHsts();
-
-                // Use strict CORS policy in Production
-                app.UseCors("AllowFrontend");
             }
 
-            // app.UseHttpsRedirection(); // Uncomment if using HTTPS
+            // app.UseHttpsRedirection();
             app.UseStaticFiles();
 
             app.UseRouting();
+
+            app.UseCors("AllowAllOrigins");
 
             app.UseAuthorization();
 
