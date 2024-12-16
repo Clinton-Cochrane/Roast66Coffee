@@ -10,7 +10,6 @@ function ManageMenu() {
   const [menuItems, setMenuItems] = useState([]);
   const [selectedMenuItemId, setSelectedMenuItemId] = useState("");
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [menuItemForm, setMenuItemForm] = useState({
     name: "",
     price: "",
@@ -18,30 +17,24 @@ function ManageMenu() {
     categoryType: 0,
   });
 
-  useEffect(() => {
-    Promise.all([fetchMenuItems(), fetchCategories()]).finally(() =>
-      setLoading(false)
-    );
-  }, []);
-
-  if (loading) {
-    return <p className="text-center">Loading...</p>;
-  }
-
   const fetchMenuItems = () => {
     axios
       .get("/admin/menu")
       .then((response) => setMenuItems(response.data))
       .catch((error) => console.error("Error fetching menu items:", error));
   };
-
+  
   const fetchCategories = () => {
     axios
       .get("/admin/categories")
       .then((response) => setCategories(response.data))
       .catch((error) => console.error("Error fetching categories:", error));
   };
-
+  
+  useEffect(() => {
+    Promise.all([fetchMenuItems(), fetchCategories()]);
+  }, []);
+  
   const handleSelectChange = (e) => {
     const selectedId = e.target.value;
     setSelectedMenuItemId(selectedId);
