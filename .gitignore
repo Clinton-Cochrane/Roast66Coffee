@@ -5,11 +5,11 @@ appsettings.Production.json
 appsettings.*.json
 
 # Ignore build folder in roast66
-../roast66/build/
+/roast66/build/
 
-# Ignore generated migration files
-CoffeeShopApi/Migrations/*.cs
-!CoffeeShopApi/Migrations/ApplicationDbContextModelSnapshot.cs  # Keep the snapshot file
+!CoffeeShopApi/Migrations/*.cs
+!CoffeeShopApi/Migrations/**/*.cs
+!CoffeeShopApi/Migrations/ApplicationDbContextModelSnapshot.cs
 
 
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
