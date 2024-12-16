@@ -34,7 +34,7 @@ function Menu() {
         console.error("Error fetching menu items:", error);
       })
       .finally(() => {
-        //setIsLoading(false);
+        setIsLoading(false);
       });
   }, []);
 
