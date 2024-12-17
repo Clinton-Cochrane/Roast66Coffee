@@ -4,6 +4,11 @@ using CoffeeShopApi.Models;
 using CoffeeShopApi.Services;
 using Microsoft.EntityFrameworkCore;
 using CoffeeShopApi.Data;
+using System.Security.Claims;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System.IdentityModel.Tokens.Jwt;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CoffeeShopApi.Controllers
 {
@@ -25,6 +30,48 @@ namespace CoffeeShopApi.Controllers
             _notificationService = notificationService;
             _configuration = configuration;
             _notificationSettingsService = notificationSettingsService;
+        }
+
+        [HttpPost("login")]
+        public IActionResult Login([FromBody] LoginModel login)
+        {
+            if (login.Username == "admin" && login.Password == "password") // Replace with proper validation
+            {
+                var token = GenerateToken();
+                return Ok(new { token });
+            }
+
+            return Unauthorized();
+        }
+
+        private string GenerateToken()
+        {
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? "default_key"));
+            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+            var claims = new[]
+            {
+        new Claim(ClaimTypes.Name, "admin"),
+        new Claim(ClaimTypes.Role, "Admin")
+    };
+            var tokenExpiry = int.TryParse(_configuration["Jwt:TokenExpiryInHours"], out var parseId) ? parseId : 0;
+
+            var token = new JwtSecurityToken(
+                _configuration["Jwt:Issuer"],
+                _configuration["Jwt:Audience"],
+                claims,
+                expires: DateTime.Now.AddHours(tokenExpiry),
+                signingCredentials: credentials);
+
+            return new JwtSecurityTokenHandler().WriteToken(token);
+        }
+
+
+        public class LoginModel
+        {
+            public required string Username { get; set; }
+            public required string Password { get; set; }
+
         }
 
         // Get all menu items
@@ -132,7 +179,6 @@ namespace CoffeeShopApi.Controllers
             return Ok();
         }
 
-        [HttpGet("/ping")]
         [HttpGet("ping")]
         public IActionResult Ping()
         {

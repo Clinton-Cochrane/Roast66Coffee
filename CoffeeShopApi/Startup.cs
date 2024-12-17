@@ -6,6 +6,9 @@ using Microsoft.Extensions.Hosting;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 namespace CoffeeShopApi
 {
@@ -38,6 +41,26 @@ namespace CoffeeShopApi
                                       .AllowAnyMethod()
                                       .AllowAnyHeader());
             });
+
+            services.AddAuthentication(options =>
+            {
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
+            {
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuer = true,
+                    ValidateAudience = true,
+                    ValidateLifetime = true,
+                    ValidateIssuerSigningKey = true,
+                    ValidIssuer = Configuration["Jwt:Issuer"],
+                    ValidAudience = Configuration["Jwt:Audience"],
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Jwt:Key"] ?? "default_key"))
+
+                };
+            });
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
@@ -52,13 +75,13 @@ namespace CoffeeShopApi
                 app.UseHsts();
             }
 
-            // app.UseHttpsRedirection();
             app.UseStaticFiles();
 
             app.UseRouting();
 
             app.UseCors("AllowAllOrigins");
 
+            app.UseAuthentication(); // Must be before UseAuthorization
             app.UseAuthorization();
 
             app.UseEndpoints(endpoints =>
