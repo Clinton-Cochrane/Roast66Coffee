@@ -2,8 +2,6 @@
 using Microsoft.AspNetCore.Mvc;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Services;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 
 namespace CoffeeShopApi.Controllers;

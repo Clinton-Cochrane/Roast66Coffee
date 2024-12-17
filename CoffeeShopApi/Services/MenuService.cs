@@ -1,21 +1,13 @@
 // Services/MenuService.cs
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Data;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
 
 namespace CoffeeShopApi.Services
 {
-    public class MenuService
+    public class MenuService(ApplicationDbContext context)
     {
-        private readonly ApplicationDbContext _context;
-
-        public MenuService(ApplicationDbContext context)
-        {
-            _context = context;
-        }
+        private readonly ApplicationDbContext _context = context;
 
         public async Task<IEnumerable<MenuItem>> GetMenuItemsAsync()
         {

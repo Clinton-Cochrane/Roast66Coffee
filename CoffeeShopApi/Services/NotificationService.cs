@@ -3,8 +3,6 @@ using Twilio;
 using Twilio.Rest.Api.V2010.Account;
 using Twilio.Types;
 using CoffeeShopApi.Models;
-using System.Threading.Tasks;
-using Microsoft.Extensions.Configuration;
 
 namespace CoffeeShopApi.Services
 {

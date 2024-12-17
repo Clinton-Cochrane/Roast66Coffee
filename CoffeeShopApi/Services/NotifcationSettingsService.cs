@@ -1,7 +1,6 @@
 // Services/NotificationSettingsService.cs
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
 namespace CoffeeShopApi.Services

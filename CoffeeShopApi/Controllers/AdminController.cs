@@ -2,13 +2,8 @@
 using Microsoft.AspNetCore.Mvc;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Services;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
-using System.Linq;
 using CoffeeShopApi.Data;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.Extensions.Configuration;
 
 namespace CoffeeShopApi.Controllers
 {

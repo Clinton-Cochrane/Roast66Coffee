@@ -1,19 +1,12 @@
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Data;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
 namespace CoffeeShopApi.Services;
 
-public class OrderService
+public class OrderService(ApplicationDbContext context)
 {
-    private readonly ApplicationDbContext _context;
-
-    public OrderService(ApplicationDbContext context)
-    {
-        _context = context;
-    }
+    private readonly ApplicationDbContext _context = context;
 
     public async Task<IEnumerable<Order>> GetOrdersAsync()
 {

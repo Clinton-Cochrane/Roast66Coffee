@@ -11,9 +11,10 @@ namespace CoffeeShopApi.Data
         {
         }
 
-        public DbSet<MenuItem> MenuItems { get; set; }
-        public DbSet<Order> Orders { get; set; }
-        public DbSet<OrderItem> OrderItems { get; set; }
-        public DbSet<NotificationSettings> NotificationSettings { get; set; }
+        public DbSet<MenuItem> MenuItems { get; set; } = null!;
+        public DbSet<Order> Orders { get; set; } = null!;
+        public DbSet<OrderItem> OrderItems { get; set; } = null!;
+        public DbSet<NotificationSettings> NotificationSettings { get; set; } = null!;
+
     }
 }
