@@ -9,6 +9,8 @@ import Navigation from './components/Navigation';
 import './styles/Customer.css';
 import './styles/Navigation.css';
 import Footer from './components/layout/Footer';
+import AdminLogin from './pages/AdminLogin';
+import PrivateRoute from './components/Admin/PrivateRoute';
 
 function App() {
   return (
@@ -19,9 +21,17 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/menu" element={<MenuPage />} />
           <Route path="/order" element={<OrderPage />} />
-          <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route
+            path="/admin"
+            element={
+              <PrivateRoute>
+                <AdminPage />
+              </PrivateRoute>
+            }
+          />
         </Routes>
-      <Footer/>
+        <Footer/>
       </div>
     </Router>
   );
