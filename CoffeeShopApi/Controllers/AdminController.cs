@@ -46,7 +46,14 @@ namespace CoffeeShopApi.Controllers
 
         private string GenerateToken()
         {
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"] ?? "default_key"));
+            var jwtKey = _configuration["Jwt:Key"];
+
+
+            if (string.IsNullOrEmpty(jwtKey) || jwtKey.Length < 32)
+            {
+                throw new InvalidOperationException("JWT key is invalid or too short. It must be at least 32 characters long.");
+            }
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey ?? "default_key"));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
