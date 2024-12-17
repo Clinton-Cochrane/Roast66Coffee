@@ -1,5 +1,4 @@
 using CoffeeShopApi.Models;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -26,6 +25,7 @@ namespace CoffeeShopApi.Data
                 new MenuItem { Name = "Energy Drink", Price = 4.00M, Description = "Select Flavor from below", CategoryType = CategoryType.DRINKS },
                 new MenuItem { Name = "Lemonade", Price = 4.00M, Description = "Refreshing Iced Lemonade", CategoryType = CategoryType.DRINKS },
                 new MenuItem { Name = "Refresher", Price = 4.00M, Description = "It's like water but different", CategoryType = CategoryType.DRINKS },
+                new MenuItem { Name = "Tesla", Price = 85.00M, Description = "Room Temp Tap Water", CategoryType = CategoryType.DRINKS },
 
                 // Specials
                 new MenuItem { Name = "Mr. Brownie Shaken Espresso", Price = 4.15M, Description = "Shaken espresso with brown sugar, cinnamon powder, and vanilla cold foam", CategoryType = CategoryType.SPECIALS },

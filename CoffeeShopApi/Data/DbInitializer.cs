@@ -41,6 +41,7 @@ namespace CoffeeShopApi.Data
                 new MenuItem { Name = "Green Nova Refresher", Price = 3.75M, Description = "Iced sparkling lime drink with cucumber and mint", CategoryType = CategoryType.SPECIALS },
                 new MenuItem { Name = "Pink Slip Punch", Price = 3.50M, Description = "Strawberry, watermelon, and lemon punch", CategoryType = CategoryType.SPECIALS },
                 new MenuItem { Name = "454 Punch", Price = 4.75M, Description = "Cherry, pomegranate, and lime energy drink", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "Tesla", Price = 85.00M, Description = "Room Temp Tap Water", CategoryType = CategoryType.DRINKS },
 
                 // Flavors (New)
                 new MenuItem {Name = "Chocolate Shot", Price = 0.50M, Description = "Rich chocolate flavor shot", CategoryType = CategoryType.FLAVORS },
