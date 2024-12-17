@@ -7,7 +7,6 @@ import {
   FaTshirt,
   FaShoppingCart,
   FaMugHot,
-  FaToolbox,
 } from "react-icons/fa";
 
 import logo from "../logo.png"; // Adjust the path if necessary
@@ -72,16 +71,6 @@ function Navigation() {
                 <FaShoppingCart className="text-xl mr-1" />
                 Order
               </span>
-            </NavLink>
-          </li>
-          <li>
-            <NavLink
-              to="/admin"
-              className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
-            ><span className="inline-flex items-center">
-            <FaToolbox className="text-xl mr-1" />
-            Admin
-          </span>
             </NavLink>
           </li>
           <li>
