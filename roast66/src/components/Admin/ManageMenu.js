@@ -23,18 +23,18 @@ function ManageMenu() {
       .then((response) => setMenuItems(response.data))
       .catch((error) => console.error("Error fetching menu items:", error));
   };
-  
+
   const fetchCategories = () => {
     axios
       .get("/admin/categories")
       .then((response) => setCategories(response.data))
       .catch((error) => console.error("Error fetching categories:", error));
   };
-  
+
   useEffect(() => {
     Promise.all([fetchMenuItems(), fetchCategories()]);
   }, []);
-  
+
   const handleSelectChange = (e) => {
     const selectedId = e.target.value;
     setSelectedMenuItemId(selectedId);
@@ -129,7 +129,7 @@ function ManageMenu() {
         <select
           value={selectedMenuItemId}
           onChange={handleSelectChange}
-          className="w-full p-2 border rounded mb-4"
+          className="w-full p-2 border rounded mb-4 top-select"
         >
           <option value="">Select a menu item</option>
           <option value="new">Add New Item</option>

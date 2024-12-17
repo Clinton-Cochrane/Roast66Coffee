@@ -7,11 +7,17 @@
   margin-bottom: 20px;
 }
 
-.manage-menu input, .manage-menu textarea, .manage-menu button {
+.manage-menu .top-select {
+  max-width: 800px; 
+  margin: 0 auto; 
+}
+.manage-menu input,
+.manage-menu textarea,
+.manage-menu button,
+.manage-menu select {
   display: block;
   margin: 10px auto;
   padding: 10px;
-  width: 80%;
   max-width: 400px;
 }
 
