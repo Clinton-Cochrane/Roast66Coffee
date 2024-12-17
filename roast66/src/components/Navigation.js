@@ -6,7 +6,6 @@ import {
   FaTimes,
   FaTshirt,
   FaShoppingCart,
-  FaCoffee,
   FaMugHot,
   FaToolbox,
 } from "react-icons/fa";
