@@ -13,12 +13,12 @@ const Footer = ({ year = 2024 }) => {
               href="https://www.instagram.com/roast66coffee"
               target="_blank"
               rel="noopener noreferrer"
-              className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
+              className="md:inline text-white no-underline border-b-2 border-transparent p-2"
               title="Follow us on Instagram"
             >
               <span className="inline-flex items-center">
-                <FaInstagram className="text-xl mr-1" />
                 Instagram
+                <FaInstagram className="text-xl mr-1" />
               </span>
             </a>
         </div>
