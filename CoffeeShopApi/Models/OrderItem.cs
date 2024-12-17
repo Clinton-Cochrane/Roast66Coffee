@@ -30,5 +30,36 @@ namespace CoffeeShopApi.Models
 
         [ForeignKey("MenuItemId")]
         public MenuItem? MenuItem { get; set; }
+
+        [InverseProperty("OrderItem")]
+
+        public List<AddOn>? AddOns { get; set; }
+    }
+
+    [Table("addons")]
+    public class AddOn
+    {
+        [Key]
+        public int Id { get; set; }
+
+        [Required]
+        [Column("menuitemid")]
+        public int MenuItemId { get; set; }
+
+        [Required]
+        [Column("quantity")]
+        public int Quantity { get; set; }
+
+        // Foreign key to link back to the order item
+        [Required]
+        [Column("orderitemid")]
+        public int OrderItemId { get; set; }
+
+        [InverseProperty("AddOns")]
+        [ForeignKey("OrderItemId")]
+        public OrderItem? OrderItem { get; set; }
+
+        [ForeignKey("MenuItemId")]
+        public MenuItem? MenuItem { get; set; }
     }
 }

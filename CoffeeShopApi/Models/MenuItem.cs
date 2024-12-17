@@ -4,13 +4,14 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CoffeeShopApi.Models
 {
-    public enum CategoryType
-    {
-        Coffee,
-        Specials,
-        Flavors,
-        Drink,
-    }
+   public enum CategoryType
+{
+    COFFEE,     // 0
+    SPECIALS,   // 1
+    FLAVORS,    // 2
+    DRINKS      // 3
+}
+
 
     [Table("menuitems")]
     public class MenuItem
