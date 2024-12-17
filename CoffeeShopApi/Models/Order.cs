@@ -20,5 +20,6 @@ namespace CoffeeShopApi.Models
 
         [JsonPropertyName("OrderItems")]
         public required List<OrderItem> OrderItems { get; set; }
+        public bool Status { get; internal set; } = false;
     }
 }

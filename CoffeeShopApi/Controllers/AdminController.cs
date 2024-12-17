@@ -44,11 +44,10 @@ namespace CoffeeShopApi.Controllers
             return Unauthorized();
         }
 
+
         private string GenerateToken()
         {
             var jwtKey = _configuration["Jwt:Key"];
-
-
             if (string.IsNullOrEmpty(jwtKey) || jwtKey.Length < 32)
             {
                 throw new InvalidOperationException("JWT key is invalid or too short. It must be at least 32 characters long.");
@@ -58,9 +57,9 @@ namespace CoffeeShopApi.Controllers
 
             var claims = new[]
             {
-        new Claim(ClaimTypes.Name, "admin"),
-        new Claim(ClaimTypes.Role, "Admin")
-    };
+                new Claim(ClaimTypes.Name, "admin"),
+                new Claim(ClaimTypes.Role, "Admin")
+            };
             var tokenExpiry = int.TryParse(_configuration["Jwt:TokenExpiryInHours"], out var parseId) ? parseId : 0;
 
             var token = new JwtSecurityToken(
@@ -81,6 +80,7 @@ namespace CoffeeShopApi.Controllers
 
         }
 
+
         // Get all menu items
         [HttpGet("menu")]
         public async Task<ActionResult<IEnumerable<MenuItem>>> GetMenuItems()
@@ -89,6 +89,7 @@ namespace CoffeeShopApi.Controllers
         }
 
         // Add a new menu item
+        [Authorize(Roles = "Admin")]
         [HttpPost("menu")]
         public async Task<ActionResult<MenuItem>> PostMenuItem(MenuItem menuItem)
         {
@@ -98,6 +99,7 @@ namespace CoffeeShopApi.Controllers
         }
 
         // Update an existing menu item
+        [Authorize(Roles = "Admin")]
         [HttpPut("menu/{id}")]
         public async Task<IActionResult> PutMenuItem(int id, MenuItem menuItem)
         {
@@ -128,6 +130,7 @@ namespace CoffeeShopApi.Controllers
         }
 
         // Delete a menu item
+        [Authorize(Roles = "Admin")]
         [HttpDelete("menu/{id}")]
         public async Task<IActionResult> DeleteMenuItem(int id)
         {
@@ -136,7 +139,6 @@ namespace CoffeeShopApi.Controllers
             {
                 return NotFound();
             }
-
             _context.MenuItems.Remove(menuItem);
             await _context.SaveChangesAsync();
 
@@ -148,6 +150,7 @@ namespace CoffeeShopApi.Controllers
             return _context.MenuItems.Any(e => e.Id == id);
         }
 
+        [Authorize(Roles = "Admin")]
         // Get all orders
         [HttpGet("orders")]
         public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
@@ -164,6 +167,7 @@ namespace CoffeeShopApi.Controllers
             return CreatedAtAction(nameof(GetOrders), new { id = newOrder.Id }, newOrder);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpGet("notificationSettings")]
         public async Task<ActionResult<NotificationSettings>> GetNotificationSettings()
         {
@@ -175,6 +179,7 @@ namespace CoffeeShopApi.Controllers
             return Ok(settings);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpPost("notificationSettings")]
         public async Task<IActionResult> SaveNotificationSettings([FromBody] NotificationSettingsModel model)
         {
@@ -193,6 +198,25 @@ namespace CoffeeShopApi.Controllers
             return Ok("pong");
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpPut("updateOrderStatus/{id}/status")]
+        public async Task<IActionResult> UpdateOrderStatus(int id)
+        {
+            var order = await _orderService.GetOrderByIdAsync(id);
+            if (order == null)
+            {
+                return NotFound("Order not found.");
+            }
+
+            await _orderService.UpdateStatus(order);
+            return Ok(new
+            {
+                message = "Order status updated successfully.",
+                orderId = order.Id,
+                newStatus = order.Status ? "Complete" : "Incomplete"
+            });
+        }
+
         [HttpGet("categories")]
         public IActionResult GetCategories()
         {
@@ -208,8 +232,7 @@ namespace CoffeeShopApi.Controllers
             return System.Text.RegularExpressions.Regex.Replace(name, "([A-Z])", " $1").Trim();
         }
 
-
-        [HttpPost("seed-menu")]
+        [HttpGet("seed-menu")]
         public async Task<IActionResult> SeedMenuItems()
         {
             try

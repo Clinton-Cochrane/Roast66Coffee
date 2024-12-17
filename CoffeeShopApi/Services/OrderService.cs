@@ -9,17 +9,17 @@ public class OrderService(ApplicationDbContext context)
     private readonly ApplicationDbContext _context = context;
 
     public async Task<IEnumerable<Order>> GetOrdersAsync()
-{
-    return await _context.Orders
-        .Include(o => o.OrderItems)
-        .ThenInclude(oi => oi.MenuItem)
-        .ToListAsync();
-}
+    {
+        return await _context.Orders
+            .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.MenuItem)
+            .ToListAsync();
+    }
 
 
     public async Task<Order?> GetOrderByIdAsync(int id)
     {
-        return await _context.Orders.Include(o => o.OrderItems).ThenInclude(oi => oi.MenuItem).OrderBy(o =>o.OrderDate).FirstOrDefaultAsync(o => o.Id == id);
+        return await _context.Orders.Include(o => o.OrderItems).ThenInclude(oi => oi.MenuItem).OrderBy(o => o.OrderDate).FirstOrDefaultAsync(o => o.Id == id);
     }
 
     public async Task<Order> CreateOrderAsync(Order order)
@@ -72,5 +72,12 @@ public class OrderService(ApplicationDbContext context)
     private bool OrderExists(int id)
     {
         return _context.Orders.Any(e => e.Id == id);
+    }
+
+    internal async Task UpdateStatus(Order order)
+    {
+        order.Status = !order.Status;
+        _context.Orders.Update(order);
+        await _context.SaveChangesAsync();
     }
 }
