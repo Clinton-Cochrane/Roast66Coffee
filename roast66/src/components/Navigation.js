@@ -1,6 +1,15 @@
 import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { FaInstagram, FaBars, FaTimes } from "react-icons/fa";
+import {
+  FaInstagram,
+  FaBars,
+  FaTimes,
+  FaTshirt,
+  FaShoppingCart,
+  FaCoffee,
+  FaMugHot,
+  FaToolbox,
+} from "react-icons/fa";
 
 import logo from "../logo.png"; // Adjust the path if necessary
 
@@ -46,18 +55,13 @@ function Navigation() {
         >
           <li>
             <NavLink
-              to="/"
-              className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
-            >
-              Home
-            </NavLink>
-          </li>
-          <li>
-            <NavLink
               to="/menu"
               className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
             >
-              Menu
+              <span className="inline-flex items-center">
+            <FaMugHot className="text-xl mr-1" />
+            Menu
+          </span>
             </NavLink>
           </li>
           <li>
@@ -65,16 +69,35 @@ function Navigation() {
               to="/order"
               className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
             >
-              Order
+              <span className="inline-flex items-center">
+                <FaShoppingCart className="text-xl mr-1" />
+                Order
+              </span>
             </NavLink>
           </li>
           <li>
             <NavLink
               to="/admin"
               className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
-            >
-              Admin
+            ><span className="inline-flex items-center">
+            <FaToolbox className="text-xl mr-1" />
+            Admin
+          </span>
             </NavLink>
+          </li>
+          <li>
+            <a
+              href="https://roast-66-coffee.printify.me/products"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
+              title="Buy Our Merch"
+            >
+              <span className="inline-flex items-center">
+                <FaTshirt className="text-xl mr-1" />
+                Merch
+              </span>
+            </a>
           </li>
           <li>
             <a
