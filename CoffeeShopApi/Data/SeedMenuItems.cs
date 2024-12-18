@@ -66,21 +66,10 @@ namespace CoffeeShopApi.Data
             // Loop through each drink and add or update it
             try
             {
-                foreach (var drink in drinks)
-                {
-                    var existingDrink = await context.MenuItems.FirstOrDefaultAsync(m => m.Name == drink.Name);
+                context.MenuItems.RemoveRange(context.MenuItems);
+                await context.SaveChangesAsync();
 
-                    if (existingDrink == null)
-                    {
-                        context.MenuItems.Add(drink);
-                    }
-                    else
-                    {
-                        existingDrink.Price = drink.Price;
-                        existingDrink.Description = drink.Description;
-                    }
-                }
-
+                await context.MenuItems.AddRangeAsync(context.MenuItems);
                 await context.SaveChangesAsync();
                 Console.WriteLine("Seeding completed successfully.");
             }
