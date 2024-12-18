@@ -233,8 +233,15 @@ namespace CoffeeShopApi.Controllers
         }
 
         [HttpGet("seed-menu")]
-        public async Task<IActionResult> SeedMenuItems()
+        public async Task<IActionResult> SeedMenuItems(bool confirm = false)
         {
+
+            if (!confirm)
+            {
+                return BadRequest("Please confirm the operation by passing '?confirm=true' in the query string.");
+
+            }
+
             try
             {
                 await Data.SeedMenuItems.SeedAsync(_context);

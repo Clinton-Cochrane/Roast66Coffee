@@ -30,6 +30,15 @@ function OrderPage() {
     );
   };
 
+  const handleDropDownChange = (e) => {
+    const value = e.target.value;
+    if (!value) {
+      return;
+    }
+    const item = JSON.parse(value);
+    addItemToOrder(item);
+  };
+
   const addItemToOrder = (item) => {
     if (canOrderDirectly(item)) {
       setOrderItems([
@@ -61,8 +70,9 @@ function OrderPage() {
   };
 
   const handleQuantityChange = (index, quantity) => {
+    const newQuantity = Math.min(parseInt(quantity, 10) || 1, 99); // Ensure value is between 1 and 99
     const newOrderItems = [...orderItems];
-    newOrderItems[index].quantity = quantity;
+    newOrderItems[index].quantity = newQuantity;
     setOrderItems(newOrderItems);
   };
 
@@ -73,8 +83,10 @@ function OrderPage() {
   };
 
   const handleRemoveItem = (index) => {
+    const removedItem = orderItems[index];
     const newOrderItems = orderItems.filter((_, i) => i !== index);
     setOrderItems(newOrderItems);
+    alert(`${removedItem.name} removed from order.`);
   };
 
   const handleAddFlavor = (index, flavor) => {
@@ -117,66 +129,84 @@ function OrderPage() {
         setCustomerPhone("");
         alert("Order placed successfully!");
       })
-      .catch((error) => console.error(error));
+      .catch((error) => {
+        alert("Failed to place the order");
+        console.error(error);
+      });
   };
 
   return (
     <div className="p-6">
       <h1 className="text-3xl font-bold mb-6">Place Your Order</h1>
 
-      <select
-        onChange={(e) => addItemToOrder(JSON.parse(e.target.value))}
-        className="w-full p-2 border rounded mb-4"
-      >
-        <option value="">Select a menu item</option>
-        {menuItems
-          .filter(
-            (item) =>
-              item.categoryType === CategoryType.COFFEE ||
-              item.categoryType === CategoryType.DRINKS ||
-              item.categoryType === CategoryType.SPECIALS
-          )
-          .map((item) => (
-            <option key={item.id} value={JSON.stringify(item)}>
-              {item.name} - ${item.price} - {item.description}
-            </option>
-          ))}
-      </select>
+      <div className="customer-info-container">
+        <FormInput
+          type="text"
+          placeholder="Your Name"
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
+          required
+        />
+        <FormInput
+          type="text"
+          placeholder="Phone For When Order Is Ready"
+          value={customerPhone}
+          onChange={(e) => setCustomerPhone(e.target.value)}
+          required
+        />
+      </div>
+
+      <div className="flex items-center space-x-4 mb-4">
+        <select
+          id="menu-select"
+          onChange={handleDropDownChange}
+          className="w-full p-2 border rounded mb-4"
+        >
+          <option value="">Select a menu item</option>
+          {menuItems
+            .filter((item) => canOrderDirectly(item))
+            .map((item) => (
+              <option key={item.id} value={JSON.stringify(item)}>
+                {item.name} - ${item.price} - {item.description}
+              </option>
+            ))}
+        </select>
+      </div>
 
       <form onSubmit={handleOrderSubmit} className="space-y-4">
-        <ul className="space-y-4">
+        <ul className="space-y-4 order-items-list">
           {orderItems.map((item, index) => (
-            <li
-              key={index}
-              className="flex flex-col space-y-2 p-4 border rounded shadow"
-            >
-              <div className="flex justify-between items-center">
-                <span className="font-bold">
+            <li key={index} className="order-item">
+              <div className="order-item-header">
+                <div className="order-item-quantity">
+                  <FormInput
+                    type="number"
+                    className="quantity-input"
+                    value={item.quantity}
+                    min="1"
+                    max="99"
+                    onChange={(e) =>
+                      handleQuantityChange(index, e.target.value)
+                    }
+                    required
+                  />
+                </div>
+
+                <div className="order-item-details">
                   {item.name} - ${calculateTotalPrice(item).toFixed(2)}
-                </span>
-                <FormInput
-                  type="number"
-                  value={item.quantity}
-                  min="1"
-                  onChange={(e) => handleQuantityChange(index, e.target.value)}
-                  required
-                />
+                </div>
+
                 <Button
                   type="button"
                   onClick={() => handleRemoveItem(index)}
+                  className="button-remove"
                   color="red"
                 >
-                  Remove
+                  X
                 </Button>
               </div>
-              <FormInput
-                type="text"
-                placeholder="Notes (optional)"
-                value={item.notes}
-                onChange={(e) => handleNotesChange(index, e.target.value)}
-                className="placeholder-gray-400"
-              />
-              <div>
+
+              <div className="add-ons-section">
                 <select
                   id={`flavor-select-${index}`}
                   onChange={(e) =>
@@ -198,17 +228,15 @@ function OrderPage() {
                 </select>
 
                 {item.addOns.length > 0 && (
-                  <ul className="list-disc ml-5">
+                  <ul className="add-on-list">
                     {item.addOns.map((addOn, addOnIndex) => (
-                      <li
-                        key={addOnIndex}
-                        className="flex items-center space-x-2"
-                      >
+                      <li key={addOnIndex} className="add-on-item">
                         <span>
                           {addOn.name} - ${addOn.price} x {addOn.quantity}
                         </span>
                         <FormInput
                           type="number"
+                          className="quantity-input"
                           min="1"
                           value={addOn.quantity}
                           onChange={(e) => {
@@ -223,24 +251,18 @@ function OrderPage() {
                   </ul>
                 )}
               </div>
+
+              <FormInput
+                type="text"
+                placeholder="Notes (optional)"
+                value={item.notes}
+                onChange={(e) => handleNotesChange(index, e.target.value)}
+                className="placeholder-gray-400"
+              />
             </li>
           ))}
         </ul>
 
-        <FormInput
-          type="text"
-          placeholder="Your Name"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          required
-        />
-        <FormInput
-          type="text"
-          placeholder="Phone For When Order Is Ready"
-          value={customerPhone}
-          onChange={(e) => setCustomerPhone(e.target.value)}
-          required
-        />
         <div className="font-bold text-lg">
           Total: ${calculateOrderTotal().toFixed(2)}
         </div>

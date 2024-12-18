@@ -1,35 +1,137 @@
-/* src/pages/OrderPage.css */
+/* General Styles for Order Page */
+.customer-info-container {
+    display: flex;
+    gap: 1rem; /* Adds space between the inputs */
+    margin-bottom: 1rem;
+  }
+  
+  .customer-info-container input {
+    flex: 1; /* Makes both inputs share the available space equally */
+  }
+  
+
 .order-page {
-    padding: 20px;
+  max-width: 800px;
+  margin: auto;
+  background-color: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0px 0px 10px rgba(0, 0, 0, .1);
 }
 
 .order-page select,
-.order-page input,
+.order-page input {
+  display: block;
+  margin: 10px auto;
+  padding: 10px;
+  width: 100%;
+  max-width: 100%;
+}
+
 .order-page button {
-    display: block;
-    margin: 10px auto;
-    padding: 10px;
-    width: 80%;
-    max-width: 400px;
+  padding: .5rem 1rem;
+  border-radius: 4px;
 }
 
-.order-page ul {
-    list-style: none;
-    padding: 0;
+/* Order Items List */
+.order-items-list {
+  max-width: 600px;
+  margin: 0 auto;
 }
 
-.order-page li {
-    display: flex;
-    justify-content: space-between;
+.order-item {
+  display: flex;
+  flex-direction: column;
+  padding: .75rem;
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  gap: .5rem;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, .05);
+}
+
+/* Order Item Header */
+.order-item-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  position: relative;
+}
+
+.order-item-quantity {
+  display: flex;
+  align-items: center;
+}
+
+.order-item-details {
+  flex-grow: 1;
+  font-size: 2.45rem;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+/* Order Item Controls */
+.order-item-controls {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
+
+.quantity-input {
+  width: 30px;
+  padding: .25rem;
+  text-align: center;
+}
+
+/* Add-Ons Section */
+.add-ons-section {
+  margin-top: .75rem;
+}
+
+.add-on-list {
+  list-style: none;
+  padding-left: 0;
+  margin-top: .25rem;
+}
+
+.add-on-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .5rem;
+  font-size: .9rem;
+}
+
+/* Buttons */
+.button-remove {
+    background-color: transparent;
+    color: #ff4d4f;
+    font-size: 1.25rem;
+    padding: .25rem;
+    border: none;
+    cursor: pointer;
+    position: absolute;
+    width: auto;
+    height: auto;
+    top: 0;
+    right: 0;
+    display: inline-flex;
     align-items: center;
-    padding: 10px;
-    border-bottom: 1px solid #ccc;
+    justify-content: center;
+  }
+  
+
+.button-remove:hover {
+  background-color: #d9363e;
+  transform: scale(1.2);
+  transition: transform .2s ease;
 }
 
-.order-page li input {
-    width: 50px;
-}
-
-.order-page li button {
-    margin-left: 10px;
+/* Total Section */
+.total-section {
+  font-size: 2.5rem;
+  font-weight: bold;
+  text-align: right;
+  margin-top: 1rem;
 }
