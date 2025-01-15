@@ -66,7 +66,7 @@ namespace CoffeeShopApi
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
-                    webBuilder.UseUrls("http://0.0.0.0:80"); // Explicitly listen on port 80
+                    webBuilder.UseUrls("http://0.0.0.0:8080"); // Explicitly listen on port 8080
                 });
     }
 }
