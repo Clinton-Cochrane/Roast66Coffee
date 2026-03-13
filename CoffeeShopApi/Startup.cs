@@ -36,10 +36,21 @@ namespace CoffeeShopApi
 
             services.AddCors(options =>
             {
-                options.AddPolicy("AllowAllOrigins",
-                    builder => builder.AllowAnyOrigin()
-                                      .AllowAnyMethod()
-                                      .AllowAnyHeader());
+                var allowedOrigins = Configuration["AllowedOrigins"];
+                if (!string.IsNullOrEmpty(allowedOrigins))
+                {
+                    options.AddPolicy("CorsPolicy",
+                        builder => builder.WithOrigins(allowedOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                                         .AllowAnyMethod()
+                                         .AllowAnyHeader());
+                }
+                else
+                {
+                    options.AddPolicy("CorsPolicy",
+                        builder => builder.AllowAnyOrigin()
+                                         .AllowAnyMethod()
+                                         .AllowAnyHeader());
+                }
             });
 
             services.AddAuthentication(options =>
@@ -79,7 +90,7 @@ namespace CoffeeShopApi
 
             app.UseRouting();
 
-            app.UseCors("AllowAllOrigins");
+            app.UseCors("CorsPolicy");
 
             app.UseAuthentication(); // Must be before UseAuthorization
             app.UseAuthorization();

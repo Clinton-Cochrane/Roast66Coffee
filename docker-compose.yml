@@ -5,8 +5,10 @@ services:
       dockerfile: Dockerfile.backend
     ports:
       - "5001:80"
+    environment:
+      - ASPNETCORE_URLS=http://0.0.0.0:80
     env_file:
-      - CoffeeShopApi/.env   # Path to the backend .env file
+      - CoffeeShopApi/.env
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -18,7 +20,7 @@ services:
     ports:
       - "3000:80"
     env_file:
-      - Roast66/.env         # Path to the frontend .env file
+      - roast66/.env
     depends_on:
       - backend
 

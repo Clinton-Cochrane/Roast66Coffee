@@ -65,5 +65,23 @@ namespace CoffeeShopApi.Services
         {
             return _context.MenuItems.Any(e => e.Id == id);
         }
+
+        /// <summary>
+        /// Replaces all menu items with the provided list. Used for bulk import.
+        /// Ignores client-provided IDs; new items get fresh IDs.
+        /// </summary>
+        public async Task BulkReplaceAsync(IEnumerable<MenuItem> menuItems)
+        {
+            var items = menuItems.Select(m => new MenuItem
+            {
+                Name = m.Name,
+                Price = m.Price,
+                Description = m.Description ?? string.Empty,
+                CategoryType = m.CategoryType
+            }).ToList();
+            _context.MenuItems.RemoveRange(_context.MenuItems);
+            await _context.MenuItems.AddRangeAsync(items);
+            await _context.SaveChangesAsync();
+        }
     }
 }

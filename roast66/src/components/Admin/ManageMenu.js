@@ -1,6 +1,7 @@
 // src/components/Admin/ManageMenu.jsx
 import React, { useEffect, useState } from "react";
 import axios from "../../axiosConfig";
+import { toast } from "react-toastify";
 import "../../styles/ManageMenu.css";
 import FormInput from "../common/FormInput";
 import Button from "../common/Button";
@@ -21,14 +22,14 @@ function ManageMenu() {
     axios
       .get("/admin/menu")
       .then((response) => setMenuItems(response.data))
-      .catch((error) => console.error("Error fetching menu items:", error));
+      .catch(() => toast.error("Error fetching menu items"));
   };
 
   const fetchCategories = () => {
     axios
       .get("/admin/categories")
       .then((response) => setCategories(response.data))
-      .catch((error) => console.error("Error fetching categories:", error));
+      .catch(() => toast.error("Error fetching categories"));
   };
 
   useEffect(() => {
@@ -85,40 +86,35 @@ function ManageMenu() {
 
     if (selectedMenuItemId === "new") {
       axios
-        .post("/admin/menu", formData) // Send formData directly
+        .post("/admin/menu", formData)
         .then(() => {
+          toast.success("Menu item added.");
           fetchMenuItems();
-          setMenuItemForm({
-            name: "",
-            price: "",
-            description: "",
-            categoryType: 0,
-          });
+          setMenuItemForm({ name: "", price: "", description: "", categoryType: 0 });
           setSelectedMenuItemId("");
         })
-        .catch((error) => console.error(error));
+        .catch(() => toast.error("Failed to add menu item"));
     } else {
       axios
-        .put(`/admin/menu/${selectedMenuItemId}`, formData) // Send formData directly
+        .put(`/admin/menu/${selectedMenuItemId}`, formData)
         .then(() => {
+          toast.success("Menu item updated.");
           fetchMenuItems();
-          setMenuItemForm({
-            name: "",
-            price: "",
-            description: "",
-            categoryType: 0,
-          });
+          setMenuItemForm({ name: "", price: "", description: "", categoryType: 0 });
           setSelectedMenuItemId("");
         })
-        .catch((error) => console.error(error));
+        .catch(() => toast.error("Failed to update menu item"));
     }
   };
 
   const handleDelete = (id) => {
     axios
       .delete(`/admin/menu/${id}`)
-      .then(() => fetchMenuItems())
-      .catch((error) => console.error(error));
+      .then(() => {
+        toast.success("Menu item deleted.");
+        fetchMenuItems();
+      })
+      .catch(() => toast.error("Failed to delete menu item"));
   };
 
   return (

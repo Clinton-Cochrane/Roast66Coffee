@@ -19,20 +19,21 @@ public class OrderService(ApplicationDbContext context)
 
     public async Task<Order?> GetOrderByIdAsync(int id)
     {
-        return await _context.Orders.Include(o => o.OrderItems).ThenInclude(oi => oi.MenuItem).OrderBy(o => o.OrderDate).FirstOrDefaultAsync(o => o.Id == id);
+        return await _context.Orders
+            .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.MenuItem)
+            .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.AddOns!)
+            .ThenInclude(a => a.MenuItem)
+            .OrderBy(o => o.OrderDate)
+            .FirstOrDefaultAsync(o => o.Id == id);
     }
 
     public async Task<Order> CreateOrderAsync(Order order)
     {
-        // Ensure OrderItems are properly initialized and linked
-        foreach (var item in order.OrderItems)
-        {
-            _context.OrderItems.Add(item); // Add each order item
-        }
-
         _context.Orders.Add(order);
         await _context.SaveChangesAsync();
-        return order;
+        return (await GetOrderByIdAsync(order.Id))!;
     }
 
     public async Task<bool> UpdateOrderAsync(Order order)
@@ -76,8 +77,28 @@ public class OrderService(ApplicationDbContext context)
 
     internal async Task UpdateStatus(Order order)
     {
-        order.Status = !order.Status;
+        order.OrderStatus = order.OrderStatus switch
+        {
+            OrderStatus.Received => OrderStatus.Preparing,
+            OrderStatus.Preparing => OrderStatus.ReadyForPickup,
+            OrderStatus.ReadyForPickup => OrderStatus.Completed,
+            OrderStatus.Completed => OrderStatus.Received,
+            _ => OrderStatus.Received
+        };
         _context.Orders.Update(order);
         await _context.SaveChangesAsync();
     }
+
+    /// <summary>Get order by ID and phone for customer lookup. Returns null if phone does not match.</summary>
+    public async Task<Order?> GetOrderForCustomerAsync(int orderId, string phone)
+    {
+        var order = await GetOrderByIdAsync(orderId);
+        if (order == null) return null;
+        var normalizedPhone = NormalizePhone(phone);
+        var orderPhone = NormalizePhone(order.CustomerPhone ?? "");
+        return string.Equals(orderPhone, normalizedPhone, StringComparison.Ordinal) ? order : null;
+    }
+
+    private static string NormalizePhone(string phone) =>
+        new string(phone.Where(char.IsDigit).ToArray());
 }

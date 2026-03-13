@@ -69,7 +69,7 @@ namespace CoffeeShopApi.Data
                 context.MenuItems.RemoveRange(context.MenuItems);
                 await context.SaveChangesAsync();
 
-                await context.MenuItems.AddRangeAsync(context.MenuItems);
+                await context.MenuItems.AddRangeAsync(drinks);
                 await context.SaveChangesAsync();
                 Console.WriteLine("Seeding completed successfully.");
             }

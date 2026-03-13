@@ -7,6 +7,7 @@ import {
   FaTshirt,
   FaShoppingCart,
   FaMugHot,
+  FaUserCog,
 } from "react-icons/fa";
 
 import logo from "../logo.png"; // Adjust the path if necessary
@@ -74,6 +75,16 @@ function Navigation() {
             </NavLink>
           </li>
           <li>
+            <NavLink
+              to="/order-status"
+              className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
+            >
+              <span className="inline-flex items-center">
+                Order Status
+              </span>
+            </NavLink>
+          </li>
+          <li>
             <a
               href="https://roast-66-coffee.printify.me/products"
               target="_blank"
@@ -100,6 +111,18 @@ function Navigation() {
                 Instagram
               </span>
             </a>
+          </li>
+          <li>
+            <NavLink
+              to="/admin"
+              className="block md:inline text-dark hover:text-accent no-underline border-b-2 border-transparent hover:border-accent p-2"
+              title="Admin Dashboard"
+            >
+              <span className="inline-flex items-center">
+                <FaUserCog className="text-xl mr-1" />
+                Admin
+              </span>
+            </NavLink>
           </li>
         </ul>
       </div>

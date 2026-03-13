@@ -1,5 +1,6 @@
 // Controllers/MenuController.cs
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Services;
 
@@ -22,6 +23,7 @@ public class MenuController : ControllerBase
         return Ok(await _menuService.GetMenuItemsAsync());
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<ActionResult<MenuItem>> PostMenuItem(MenuItem menuItem)
     {
@@ -46,6 +48,7 @@ public class MenuController : ControllerBase
         return NoContent();
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteMenuItem(int id)
     {

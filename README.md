@@ -32,9 +32,9 @@ View Menu: Browse a selection of drinks and offerings.
 
 Place Orders: Submit orders for processing.
 
-Admin Panel: Add, update, or delete menu items.
+Admin Panel: Add, update, or delete menu items. Bulk import/export menu as JSON for mass changes.
 
-Seeding Database: Seed initial menu items.
+Seeding Database: Seed default menu from the Admin dashboard (Bulk Menu Operations).
 
 Responsive Design: Optimized for both desktop and mobile devices.
 
@@ -83,28 +83,24 @@ Install Dependencies
 
 Frontend
 
-cd frontend
+cd roast66
 npm install
 
 Backend
 
-cd backend
+cd CoffeeShopApi
 
 Environment Variables
 
-Create .env files for both the frontend and backend.
+Copy `.env.example` to `.env` for the frontend. Copy `appsettings.Example.json` for backend config.
 
-Frontend .env
+Frontend (roast66/.env)
 
-REACT_APP_API_URL=http://localhost:5000/api
+REACT_APP_API_URL=http://localhost:5001/api
 
-Backend appsettings.json
+Backend (CoffeeShopApi/appsettings.json or env vars)
 
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=localhost;Port=5432;Database=coffeedb;Username=your-username;Password=your-password"
-  }
-}
+See `CoffeeShopApi/appsettings.Example.json` for structure. Set Admin:Username, Admin:Password, Jwt:Key, and ConnectionStrings for production.
 
 Running the App
 
@@ -116,50 +112,38 @@ docker-compose up --build
 
 This will:
 
-Start the frontend on http://localhost:3000
-
-Start the backend on http://localhost:5000
-
-Set up the PostgreSQL database
+- Start the frontend on http://localhost:3000
+- Start the backend on http://localhost:5001
+- Set up the PostgreSQL database
 
 Running Without Docker
 
 Start the Backend
 
-cd backend
+cd CoffeeShopApi
+dotnet ef database update
+dotnet run
 
-# Apply migrations
- dotnet ef database update
-
-# Run the backend
- dotnet run
-
-Backend should now be running at http://localhost:5000.
+Backend runs at http://localhost:8080 (or port in launchSettings).
 
 Start the Frontend
 
-cd frontend
+cd roast66
 npm start
 
-Frontend should now be running at http://localhost:3000.
+Frontend runs at http://localhost:3000.
 
 Database Migrations
 
-If you need to add new migrations:
-
-cd backend
-
-# Create a new migration
- dotnet ef migrations add MigrationName
-
-# Apply the migration
- dotnet ef database update
+cd CoffeeShopApi
+dotnet ef migrations add MigrationName
+dotnet ef database update
 
 Seeding the Database
 
-Seed the database with initial menu items by hitting the following endpoint:
+Log in to the Admin dashboard at /admin, then use "Seed Default Menu" in the Bulk Menu Operations section. Or call (requires admin auth):
 
-POST http://localhost:5000/api/admin/seed-menu
+GET /api/Admin/seed-menu?confirm=true
 
 Deployment
 

@@ -18,15 +18,17 @@ namespace CoffeeShopApi.Controllers
     {
         private readonly ApplicationDbContext _context;
         private readonly OrderService _orderService;
+        private readonly MenuService _menuService;
         private readonly NotificationService _notificationService;
         private readonly IConfiguration _configuration;
         private readonly NotificationSettingsService _notificationSettingsService;
 
 
-        public AdminController(ApplicationDbContext context, OrderService orderService, NotificationService notificationService, IConfiguration configuration, NotificationSettingsService notificationSettingsService)
+        public AdminController(ApplicationDbContext context, OrderService orderService, MenuService menuService, NotificationService notificationService, IConfiguration configuration, NotificationSettingsService notificationSettingsService)
         {
             _context = context;
             _orderService = orderService;
+            _menuService = menuService;
             _notificationService = notificationService;
             _configuration = configuration;
             _notificationSettingsService = notificationSettingsService;
@@ -35,7 +37,10 @@ namespace CoffeeShopApi.Controllers
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginModel login)
         {
-            if (login.Username == "admin" && login.Password == "password") // Replace with proper validation
+            var adminUser = _configuration["Admin:Username"] ?? "admin";
+            var adminPassword = _configuration["Admin:Password"] ?? "password";
+            if (string.Equals(login.Username, adminUser, StringComparison.Ordinal) &&
+                string.Equals(login.Password, adminPassword, StringComparison.Ordinal))
             {
                 var token = GenerateToken();
                 return Ok(new { token });
@@ -213,8 +218,34 @@ namespace CoffeeShopApi.Controllers
             {
                 message = "Order status updated successfully.",
                 orderId = order.Id,
-                newStatus = order.Status ? "Complete" : "Incomplete"
+                newStatus = order.OrderStatus.ToString()
             });
+        }
+
+        /// <summary>
+        /// Export all menu items as JSON for download/backup.
+        /// </summary>
+        [Authorize(Roles = "Admin")]
+        [HttpGet("menu/export")]
+        public async Task<ActionResult<IEnumerable<MenuItem>>> ExportMenu()
+        {
+            var items = await _menuService.GetMenuItemsAsync();
+            return Ok(items);
+        }
+
+        /// <summary>
+        /// Bulk replace menu with uploaded JSON. Replaces all existing items.
+        /// </summary>
+        [Authorize(Roles = "Admin")]
+        [HttpPost("menu/import")]
+        public async Task<IActionResult> ImportMenu([FromBody] List<MenuItem> menuItems)
+        {
+            if (menuItems == null || menuItems.Count == 0)
+            {
+                return BadRequest("Menu must contain at least one item.");
+            }
+            await _menuService.BulkReplaceAsync(menuItems);
+            return Ok(new { message = "Menu imported successfully.", count = menuItems.Count });
         }
 
         [HttpGet("categories")]
@@ -232,6 +263,7 @@ namespace CoffeeShopApi.Controllers
             return System.Text.RegularExpressions.Regex.Replace(name, "([A-Z])", " $1").Trim();
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpGet("seed-menu")]
         public async Task<IActionResult> SeedMenuItems(bool confirm = false)
         {

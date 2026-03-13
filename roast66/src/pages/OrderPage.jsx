@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "../axiosConfig";
+import { toast } from "react-toastify";
 import "../styles/OrderPage.css";
 import FormInput from "../components/common/FormInput";
 import Button from "../components/common/Button";
 import CategoryType from "../constants/categories";
 
 function OrderPage() {
+  const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
   const [customerName, setCustomerName] = useState("");
@@ -46,9 +49,7 @@ function OrderPage() {
         { ...item, quantity: 1, notes: "", addOns: [] },
       ]);
     } else {
-      alert(
-        "Flavors cannot be ordered alone. Please add them as add-ons to an existing drink"
-      );
+      toast.warning("Flavors cannot be ordered alone. Add them as add-ons to an existing drink.");
     }
   };
 
@@ -86,7 +87,7 @@ function OrderPage() {
     const removedItem = orderItems[index];
     const newOrderItems = orderItems.filter((_, i) => i !== index);
     setOrderItems(newOrderItems);
-    alert(`${removedItem.name} removed from order.`);
+    toast.info(`${removedItem.name} removed from order.`);
   };
 
   const handleAddFlavor = (index, flavor) => {
@@ -99,7 +100,7 @@ function OrderPage() {
       addOns.push({ ...flavor, quantity: 1 });
       setOrderItems(newOrderItems);
     } else {
-      alert("This flavor has already been added.");
+      toast.warning("This flavor has already been added.");
     }
 
     // Reset the dropdown
@@ -108,6 +109,10 @@ function OrderPage() {
 
   const handleOrderSubmit = (e) => {
     e.preventDefault();
+    if (orderItems.length === 0) {
+      toast.error("Please add at least one item to your order.");
+      return;
+    }
     const orderData = {
       customerName,
       customerPhone,
@@ -123,16 +128,14 @@ function OrderPage() {
     };
     axios
       .post("/order", orderData)
-      .then(() => {
+      .then((response) => {
+        const createdOrder = response.data;
         setOrderItems([]);
         setCustomerName("");
         setCustomerPhone("");
-        alert("Order placed successfully!");
+        navigate("/order/confirmation", { state: { order: createdOrder } });
       })
-      .catch((error) => {
-        alert("Failed to place the order");
-        console.error(error);
-      });
+      .catch(() => toast.error("Failed to place the order"));
   };
 
   return (
@@ -267,7 +270,11 @@ function OrderPage() {
           Total: ${calculateOrderTotal().toFixed(2)}
         </div>
 
-        <Button type="submit" color="green">
+        <Button
+          type="submit"
+          color="green"
+          disabled={orderItems.length === 0}
+        >
           Place Order
         </Button>
       </form>
