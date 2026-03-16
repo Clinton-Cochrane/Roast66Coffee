@@ -169,7 +169,7 @@ function OrderPage() {
       </div>
 
       <p className="text-gray-600 text-sm mb-4 text-center">
-        Select a drink from the dropdown, customize it with flavors and notes, then add another from the dropdown when you're ready.
+        Select a drink from the dropdown, customize it with flavors and notes, then add another from the dropdown when you&apos;re ready.
       </p>
 
       <div className="flex items-center space-x-4 mb-4">
