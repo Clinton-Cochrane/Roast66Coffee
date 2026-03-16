@@ -31,6 +31,7 @@ node_modules/
 .env.*
 !**/.env.example
 **/appsettings.Production.json
+CoffeeShopApi/appsettings.json
 
 # Misc
 .DS_Store

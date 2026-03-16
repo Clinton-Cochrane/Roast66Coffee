@@ -9,15 +9,17 @@ namespace CoffeeShopApi.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
+        [Range(0, int.MaxValue, ErrorMessage = "OrderId is server-assigned")]
         [Column("orderid")]
         public int OrderId { get; set; }
 
         [Required]
+        [Range(1, int.MaxValue, ErrorMessage = "MenuItemId must be a valid menu item")]
         [Column("menuitemid")]
         public int MenuItemId { get; set; }
 
         [Required]
+        [Range(1, 100, ErrorMessage = "Quantity must be between 1 and 100")]
         [Column("quantity")]
         public int Quantity { get; set; }
 

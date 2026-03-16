@@ -1,0 +1,44 @@
+# Roast66 Coffee - Render Blueprint
+# Deploy: Connect this repo to Render and apply the Blueprint.
+# Set secret env vars in the Render Dashboard after first deploy.
+
+databases:
+  - name: roast66-db
+    databaseName: coffeedb
+    plan: free
+
+services:
+  - type: web
+    runtime: docker
+    name: roast66-api
+    dockerfilePath: ./Dockerfile.backend
+    dockerContext: .
+    healthCheckPath: /api/admin/ping
+    envVars:
+      - key: ConnectionStrings__DefaultConnection
+        fromDatabase:
+          name: roast66-db
+          property: connectionString
+      - key: Admin__Username
+        sync: false
+      - key: Admin__Password
+        sync: false
+      - key: Jwt__Key
+        sync: false
+      - key: Jwt__Issuer
+        value: Roast66Coffee
+      - key: Jwt__Audience
+        value: Roast66Coffee
+      - key: Jwt__TokenExpiryInHours
+        value: "1"
+      - key: AllowedOrigins
+        sync: false
+
+  - type: web
+    name: roast66-web
+    runtime: static
+    buildCommand: cd roast66 && npm install && npm run build
+    staticPublishPath: roast66/build
+    envVars:
+      - key: REACT_APP_API_URL
+        sync: false

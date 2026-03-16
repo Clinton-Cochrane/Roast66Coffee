@@ -19,10 +19,12 @@ namespace CoffeeShopApi.Models
         [Column("id")]
         public int Id { get; set; }
 
-        [Required]
+        [Required(ErrorMessage = "Customer name is required")]
+        [StringLength(100, MinimumLength = 1)]
         [Column("customername")]
         public required string CustomerName { get; set; }
 
+        [StringLength(20)]
         [Column("customerphone")]
         public string? CustomerPhone { get; set; }
 
@@ -32,6 +34,8 @@ namespace CoffeeShopApi.Models
         [Column("orderstatus")]
         public OrderStatus OrderStatus { get; set; } = OrderStatus.Received;
 
+        [Required]
+        [MinLength(1, ErrorMessage = "At least one order item is required")]
         [JsonPropertyName("OrderItems")]
         public required List<OrderItem> OrderItems { get; set; }
     }

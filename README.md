@@ -92,19 +92,26 @@ cd CoffeeShopApi
 
 Environment Variables
 
-Copy `.env.example` to `.env` for the frontend. Copy `appsettings.Example.json` for backend config.
+Copy `.env.example` to `.env` for the frontend. For the backend, copy `CoffeeShopApi/appsettings.Example.json` to `CoffeeShopApi/appsettings.json` (appsettings.json is gitignored and must be created locally).
 
 Frontend (roast66/.env)
 
 REACT_APP_API_URL=http://localhost:5001/api
 
-Backend (CoffeeShopApi/appsettings.json or env vars)
+Backend (CoffeeShopApi/appsettings.json or environment variables)
 
-See `CoffeeShopApi/appsettings.Example.json` for structure. Set Admin:Username, Admin:Password, Jwt:Key, and ConnectionStrings for production.
+See `CoffeeShopApi/appsettings.Example.json` for the full structure. Required keys:
+
+- `ConnectionStrings:DefaultConnection` - PostgreSQL connection string
+- `Admin:Username`, `Admin:Password` - Admin login credentials
+- `Jwt:Key` (min 32 chars), `Jwt:Issuer`, `Jwt:Audience` - JWT configuration
+- `AllowedOrigins` - Comma-separated list of allowed frontend URLs (required in production)
 
 Running the App
 
 Using Docker Compose
+
+Copy `env.example` to `.env` in the repo root to customize Postgres credentials (optional; defaults to root/toor for local dev only).
 
 In the root directory, run:
 
@@ -124,7 +131,7 @@ cd CoffeeShopApi
 dotnet ef database update
 dotnet run
 
-Backend runs at http://localhost:8080 (or port in launchSettings).
+Backend runs at http://localhost:80 (set `PORT` env var for a different port).
 
 Start the Frontend
 
@@ -147,19 +154,28 @@ GET /api/Admin/seed-menu?confirm=true
 
 Deployment
 
-Deploying to Render
+Production Deployment (Render)
 
-Push your changes to GitHub:
+This project includes a `render.yaml` Blueprint for one-click deployment to Render.
 
-git add .
-git commit -m "Prepare for deployment"
-git push origin main
+1. Push your code to GitHub and connect the repository to Render.
+2. In Render Dashboard, create a new Blueprint Instance and select this repo. Render will create:
+   - A PostgreSQL database (`roast66-db`)
+   - Backend API (`roast66-api`) - Docker-based
+   - Frontend static site (`roast66-web`)
+3. Set the following environment variables in the Render Dashboard (they are marked `sync: false` and must be entered manually):
 
-In the Render Dashboard:
+   **Backend (roast66-api):**
+   - `Admin__Username` - Admin login username
+   - `Admin__Password` - Admin login password (use a strong password)
+   - `Jwt__Key` - Secret key for JWT signing (min 32 characters)
+   - `AllowedOrigins` - Comma-separated frontend URLs, e.g. `https://roast66-web.onrender.com,https://yourdomain.com`
 
-Deploy the frontend and backend services.
+   **Frontend (roast66-web):**
+   - `REACT_APP_API_URL` - Backend API URL, e.g. `https://roast66-api.onrender.com/api`
 
-Seed the database on Render by calling the /api/admin/seed-menu endpoint.
+4. After the first deploy, you may need to redeploy the backend so `AllowedOrigins` includes the actual frontend URL, and redeploy the frontend so `REACT_APP_API_URL` points to the actual backend URL.
+5. Seed the database: Log in to Admin at `/admin`, then use "Seed Default Menu" in Bulk Menu Operations. Or call `GET /api/Admin/seed-menu?confirm=true` with admin auth.
 
 
 License

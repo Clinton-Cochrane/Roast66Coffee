@@ -14,9 +14,12 @@ namespace CoffeeShopApi
 {
     public class Startup
     {
-        public Startup(IConfiguration configuration)
+        private readonly IWebHostEnvironment _env;
+
+        public Startup(IConfiguration configuration, IWebHostEnvironment env)
         {
             Configuration = configuration;
+            _env = env;
         }
 
         public IConfiguration Configuration { get; }
@@ -44,12 +47,18 @@ namespace CoffeeShopApi
                                          .AllowAnyMethod()
                                          .AllowAnyHeader());
                 }
-                else
+                else if (_env.IsDevelopment())
                 {
                     options.AddPolicy("CorsPolicy",
                         builder => builder.AllowAnyOrigin()
                                          .AllowAnyMethod()
                                          .AllowAnyHeader());
+                }
+                else
+                {
+                    throw new InvalidOperationException(
+                        "AllowedOrigins must be configured in production. Set the AllowedOrigins " +
+                        "configuration value or environment variable to a comma-separated list of allowed frontend URLs.");
                 }
             });
 
