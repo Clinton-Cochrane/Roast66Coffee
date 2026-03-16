@@ -39,6 +39,8 @@ CoffeeShopApi/appsettings.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+TODO.md
+
 
 # Known noisy paths
 roast66/node_modules/.bin/acorn
