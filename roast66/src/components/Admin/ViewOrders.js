@@ -1,5 +1,5 @@
 // src/components/Admin/ViewOrders.jsx
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import axios from "../../axiosConfig";
 import { toast } from "react-toastify";
 import Card from "../common/Card";
@@ -7,20 +7,52 @@ import Button from "../common/Button";
 import { ORDER_STATUS_LABELS } from "../../constants/orderStatus";
 
 const STATUS_STAGES = ["Received", "Preparing", "ReadyForPickup", "Completed"];
+const POLL_INTERVAL_MS = 60000;
 
 function ViewOrders() {
   const [orders, setOrders] = useState([]);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
+
+  const fetchOrders = useCallback(() => {
+    axios
+      .get("/admin/orders")
+      .then((response) => {
+        setOrders(response.data);
+        setLastRefreshedAt(new Date());
+        setNewOrdersCount(0);
+      })
+      .catch(() => toast.error("Failed to fetch orders"));
+  }, []);
+
+  const fetchNewOrdersCount = useCallback(() => {
+    if (!lastRefreshedAt) return;
+    axios
+      .get("/admin/orders/new-count", {
+        params: { since: lastRefreshedAt.toISOString() },
+      })
+      .then((response) => setNewOrdersCount(response.data.count ?? 0))
+      .catch(() => {});
+  }, [lastRefreshedAt]);
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [fetchOrders]);
 
-  const fetchOrders = () => {
-    axios
-      .get("/admin/orders")
-      .then((response) => setOrders(response.data))
-      .catch(() => toast.error("Failed to fetch orders"));
-  };
+  useEffect(() => {
+    if (!lastRefreshedAt) return;
+
+    fetchNewOrdersCount();
+    const interval = setInterval(fetchNewOrdersCount, POLL_INTERVAL_MS);
+
+    const handleFocus = () => fetchNewOrdersCount();
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [lastRefreshedAt, fetchNewOrdersCount]);
 
   const advanceStatus = (orderId) => {
     axios
@@ -37,7 +69,22 @@ function ViewOrders() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
-      <h1 className="text-3xl font-bold mb-6">View Orders</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-3xl font-bold">View Orders</h1>
+        <div className="relative inline-block">
+          <Button onClick={fetchOrders} color="blue">
+            Refresh
+          </Button>
+          {newOrdersCount > 0 && (
+            <span
+              className="absolute -top-1 -right-1 min-w-[1.25rem] h-5 px-1 inline-flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full"
+              aria-label={`${newOrdersCount} new orders`}
+            >
+              {newOrdersCount > 99 ? "99+" : newOrdersCount}
+            </span>
+          )}
+        </div>
+      </div>
       {orders.length === 0 ? (
         <p className="text-gray-500">No orders available</p>
       ) : (

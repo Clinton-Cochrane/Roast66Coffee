@@ -57,6 +57,7 @@ namespace CoffeeShopApi.Models
         [Column("orderitemid")]
         public int OrderItemId { get; set; }
 
+        [JsonIgnore]
         [InverseProperty("AddOns")]
         [ForeignKey("OrderItemId")]
         public OrderItem? OrderItem { get; set; }

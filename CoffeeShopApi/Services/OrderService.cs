@@ -99,6 +99,14 @@ public class OrderService(ApplicationDbContext context)
         return string.Equals(orderPhone, normalizedPhone, StringComparison.Ordinal) ? order : null;
     }
 
+    /// <summary>Count orders created after the given UTC timestamp. Used for admin badge.</summary>
+    public async Task<int> GetCountSinceAsync(DateTime sinceUtc)
+    {
+        return await _context.Orders
+            .Where(o => o.OrderDate > sinceUtc)
+            .CountAsync();
+    }
+
     private static string NormalizePhone(string phone) =>
         new string(phone.Where(char.IsDigit).ToArray());
 }

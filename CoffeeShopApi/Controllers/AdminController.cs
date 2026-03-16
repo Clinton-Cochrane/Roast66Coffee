@@ -169,6 +169,14 @@ namespace CoffeeShopApi.Controllers
             return Ok(orders);
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpGet("orders/new-count")]
+        public async Task<ActionResult<object>> GetNewOrdersCount([FromQuery] DateTime since)
+        {
+            var count = await _orderService.GetCountSinceAsync(since.ToUniversalTime());
+            return Ok(new { count });
+        }
+
         [HttpPost("orders")]
         public async Task<ActionResult<Order>> PostOrder(Order order)
         {

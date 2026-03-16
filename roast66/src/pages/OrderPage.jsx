@@ -135,7 +135,10 @@ function OrderPage() {
         setCustomerPhone("");
         navigate("/order/confirmation", { state: { order: createdOrder } });
       })
-      .catch(() => toast.error("Failed to place the order"));
+      .catch((error) => {
+        console.error("Order submission failed:", error?.response?.status, error?.response?.data, error);
+        toast.error("Failed to place the order. Please try again or check the console for details.");
+      });
   };
 
   return (
