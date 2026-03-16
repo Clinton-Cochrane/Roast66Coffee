@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import axios from "../axiosConfig";
 import { toast } from "react-toastify";
 import "../styles/OrderPage.css";
@@ -140,7 +140,15 @@ function OrderPage() {
 
   return (
     <div className="p-6">
-      <h1 className="text-3xl font-bold mb-6">Place Your Order</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <h1 className="text-3xl font-bold">Place Your Order</h1>
+        <Link
+          to="/order-status"
+          className="text-accent hover:underline font-medium"
+        >
+          Check Order Status →
+        </Link>
+      </div>
 
       <div className="customer-info-container">
         <FormInput

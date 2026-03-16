@@ -1,22 +1,20 @@
 import React, { useState } from "react";
+import PropTypes from "prop-types";
 import axios from "../axiosConfig";
-import { useNavigate } from "react-router-dom";
 import FormInput from "../components/common/FormInput";
 import Button from "../components/common/Button";
 
-const AdminLogin = () => {
+const AdminLogin = ({ onLoginSuccess }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
       const response = await axios.post("/Admin/login", { username, password });
       localStorage.setItem("token", response.data.token);
-      navigate("/admin");
-    // eslint-disable-next-line no-unused-vars
+      onLoginSuccess?.();
     } catch (err) {
       setError("Invalid credentials");
     }
@@ -47,6 +45,14 @@ const AdminLogin = () => {
       </form>
     </div>
   );
+};
+
+AdminLogin.propTypes = {
+  onLoginSuccess: PropTypes.func,
+};
+
+AdminLogin.defaultProps = {
+  onLoginSuccess: null,
 };
 
 export default AdminLogin;
