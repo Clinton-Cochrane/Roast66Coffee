@@ -139,7 +139,8 @@ function OrderPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="p-6 flex flex-col items-center">
+      <div className="w-full max-w-5xl">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 className="text-3xl font-bold">Place Your Order</h1>
         <Link
@@ -166,6 +167,10 @@ function OrderPage() {
           required
         />
       </div>
+
+      <p className="text-gray-600 text-sm mb-4 text-center">
+        Select a drink from the dropdown, customize it with flavors and notes, then add another from the dropdown when you're ready.
+      </p>
 
       <div className="flex items-center space-x-4 mb-4">
         <select
@@ -286,6 +291,7 @@ function OrderPage() {
           Place Order
         </Button>
       </form>
+      </div>
     </div>
   );
 }

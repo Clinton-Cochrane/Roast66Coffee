@@ -54,9 +54,10 @@ function Menu() {
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
-      <h2 className="text-3xl font-bold mb-6 text-center">Our Menu</h2>
+      <div className="w-full max-w-5xl mx-auto">
+        <h2 className="text-3xl font-bold mb-6 text-center">Our Menu</h2>
 
-      {isLoading ? (
+        {isLoading ? (
         <Loading />
       ) : (
         Object.entries(groupedItems).map(
@@ -82,6 +83,7 @@ function Menu() {
             )
         )
       )}
+      </div>
     </div>
   );
 }
