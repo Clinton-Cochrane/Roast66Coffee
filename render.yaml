@@ -32,6 +32,7 @@ services:
       - key: Jwt__TokenExpiryInHours
         value: "1"
       - key: AllowedOrigins
+        value: "https://roast66coffee-frontend.onrender.com"
         sync: false
 
   - type: web
