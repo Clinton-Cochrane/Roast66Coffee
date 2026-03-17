@@ -20,7 +20,7 @@ function OrderPage() {
 
   const fetchMenuItems = () => {
     axios
-      .get("/admin/menu")
+      .get("/menu")
       .then((response) => setMenuItems(response.data))
       .catch((error) => console.error(error));
   };
