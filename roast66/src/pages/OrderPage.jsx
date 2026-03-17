@@ -127,7 +127,7 @@ function OrderPage() {
       })),
     };
     axios
-      .post("/order", orderData)
+      .post("/admin/orders", orderData)
       .then((response) => {
         const createdOrder = response.data;
         setOrderItems([]);
