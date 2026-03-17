@@ -177,6 +177,11 @@ This project includes a `render.yaml` Blueprint for one-click deployment to Rend
 4. After the first deploy, you may need to redeploy the backend so `AllowedOrigins` includes the actual frontend URL, and redeploy the frontend so `REACT_APP_API_URL` points to the actual backend URL.
 5. Seed the database: Log in to Admin at `/admin`, then use "Seed Default Menu" in Bulk Menu Operations. Or call `GET /api/Admin/seed-menu?confirm=true` with admin auth.
 
+**Post-Deployment Operations**
+
+- **Database backups**: Render provides automatic backups for PostgreSQL. Verify backup retention in the Render Dashboard under your database service (typically 7 days for free tier). Consider upgrading for longer retention if needed.
+- **Health check**: The API exposes `/api/health` for liveness probes. Returns `{ "status": "healthy", "timestamp": "..." }`.
+
 
 License
 

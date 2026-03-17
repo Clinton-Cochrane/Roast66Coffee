@@ -7,20 +7,36 @@ using Microsoft.Extensions.Logging;
 using CoffeeShopApi.Data;
 using System;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace CoffeeShopApi
 {
+    /// <summary>Entry point. Exposed for integration testing via WebApplicationFactory.</summary>
     public class Program
     {
         public static void Main(string[] args)
         {
-            Console.WriteLine("Starting the application...");
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console()
+                .Enrich.FromLogContext()
+                .CreateBootstrapLogger();
 
-            var host = CreateHostBuilder(args).Build();
-
-            ApplyMigrations(host);
-
-            host.Run();
+            try
+            {
+                Log.Information("Starting the application...");
+                var host = CreateHostBuilder(args).Build();
+                ApplyMigrations(host);
+                host.Run();
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Application terminated unexpectedly");
+                throw;
+            }
+            finally
+            {
+                Log.CloseAndFlush();
+            }
         }
 
         private static void ApplyMigrations(IHost host)
@@ -31,13 +47,21 @@ namespace CoffeeShopApi
             try
             {
                 var context = services.GetRequiredService<ApplicationDbContext>();
-                Console.WriteLine("Applying database migrations...");
-                context.Database.Migrate(); // Ensure the database is up-to-date
+                var env = services.GetRequiredService<IWebHostEnvironment>();
 
-                // Optional: Seed the database if needed
-                DbInitializer.Initialize(context);
+                if (env.IsEnvironment("Testing"))
+                {
+                    context.Database.EnsureCreated();
+                    DbInitializer.Initialize(context);
+                }
+                else
+                {
+                    Console.WriteLine("Applying database migrations...");
+                    context.Database.Migrate();
+                    DbInitializer.Initialize(context);
+                }
 
-                Console.WriteLine("Database migration and initialization successful.");
+                Console.WriteLine("Database initialization successful.");
             }
             catch (Exception ex)
             {
@@ -52,16 +76,13 @@ namespace CoffeeShopApi
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
+                .UseSerilog((context, configuration) => configuration
+                    .ReadFrom.Configuration(context.Configuration)
+                    .Enrich.FromLogContext()
+                    .WriteTo.Console())
                 .ConfigureAppConfiguration((context, config) =>
                 {
-                    // Load environment variables
                     config.AddEnvironmentVariables();
-                })
-                .ConfigureLogging(logging =>
-                {
-                    logging.ClearProviders();
-                    logging.AddConsole();
-                    logging.SetMinimumLevel(LogLevel.Debug);
                 })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {

@@ -25,24 +25,28 @@ Remaining steps to complete production readiness and post-launch improvements.
 ## Optional Improvements (Phase 4)
 
 ### Integration / API tests
-- [ ] Add integration tests for critical API flows (order creation, menu CRUD, admin login)
-- [ ] Add API tests for validation (e.g. invalid MenuItem, invalid Order)
+- [x] Add integration tests for critical API flows (order creation, menu CRUD, admin login)
+- [x] Add API tests for validation (e.g. invalid MenuItem, invalid Order)
 - [ ] Expand frontend test coverage beyond `App.test.js` and `PrivateRoute.test.jsx`
 
 ### Rate limiting
-- [ ] Add rate limiting on login endpoint (e.g. AspNetCoreRateLimit or similar)
-- [ ] Add rate limiting on order submission endpoint
-- [ ] Configure limits appropriate for production traffic
+- [x] Add rate limiting on login endpoint (built-in .NET 8 middleware, 5 req/min per IP)
+- [x] Add rate limiting on order submission endpoint (30 req/min per IP)
+- [x] Configure limits appropriate for production traffic (Testing env uses 1000/min)
 
 ### Operational
-- [ ] Configure structured logging for production (e.g. Serilog)
-- [ ] Add health check endpoint at `/api/health` (or document existing `/api/admin/ping`)
+- [x] Configure structured logging for production (Serilog with console sink, configurable via appsettings)
+- [x] Add health check endpoint at `/api/health`
 - [ ] Set up database backups (Render provides this for Postgres; verify retention)
 
 ---
 
 ## Completed
 
+- [x] Integration tests for API flows (ApiIntegrationTests, ValidationApiTests, RateLimitTests)
+- [x] Rate limiting on login and order endpoints (per-IP, configurable)
+- [x] Serilog structured logging
+- [x] Health check endpoint at `/api/health`
 - [x] Remove secrets from version control (appsettings.json gitignored)
 - [x] CORS production guard (fail fast if AllowedOrigins missing)
 - [x] Docker Compose env vars for Postgres

@@ -1,6 +1,7 @@
 // Controllers/OrderController.cs
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Services;
 
@@ -56,6 +57,7 @@ public class OrderController : ControllerBase
     }
 
     [HttpPost]
+    [EnableRateLimiting("Order")]
     public async Task<ActionResult<Order>> PostOrder(Order order)
     {
         if (order.OrderItems == null || order.OrderItems.Count == 0)

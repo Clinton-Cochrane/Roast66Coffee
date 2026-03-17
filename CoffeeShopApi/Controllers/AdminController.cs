@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace CoffeeShopApi.Controllers
 {
@@ -36,6 +37,7 @@ namespace CoffeeShopApi.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting("Login")]
         public IActionResult Login([FromBody] LoginModel login)
         {
             var adminUser = _configuration["Admin:Username"] ?? "admin";

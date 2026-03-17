@@ -9,6 +9,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
+using Serilog;
 
 namespace CoffeeShopApi
 {
@@ -26,8 +29,16 @@ namespace CoffeeShopApi
 
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
+            if (_env.IsEnvironment("Testing"))
+            {
+                services.AddDbContext<ApplicationDbContext>(options =>
+                    options.UseInMemoryDatabase("IntegrationTestDb"));
+            }
+            else
+            {
+                services.AddDbContext<ApplicationDbContext>(options =>
+                    options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
+            }
 
             services.AddScoped<MenuService>();
             services.AddScoped<OrderService>();
@@ -36,6 +47,41 @@ namespace CoffeeShopApi
             services.AddScoped<TwilioService>();
 
             services.AddControllers();
+
+            services.AddRateLimiter(options =>
+            {
+                options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+                options.OnRejected = async (context, cancellationToken) =>
+                {
+                    context.HttpContext.Response.StatusCode = StatusCodes.Status429TooManyRequests;
+                    await context.HttpContext.Response.WriteAsync(
+                        "Too many requests. Please try again later.", cancellationToken);
+                };
+
+                var permitLogin = _env.IsEnvironment("Testing") ? 1000 : 5;
+                var permitOrder = _env.IsEnvironment("Testing") ? 1000 : 30;
+
+                options.AddPolicy("Login", context =>
+                {
+                    var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = permitLogin,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    });
+                });
+                options.AddPolicy("Order", context =>
+                {
+                    var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = permitOrder,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    });
+                });
+            });
 
             services.AddCors(options =>
             {
@@ -97,7 +143,11 @@ namespace CoffeeShopApi
 
             app.UseStaticFiles();
 
+            app.UseSerilogRequestLogging();
+
             app.UseRouting();
+
+            app.UseRateLimiter();
 
             app.UseCors("CorsPolicy");
 
