@@ -25,6 +25,13 @@ function OrderPage() {
       .catch((error) => console.error(error));
   };
 
+  /** Refetch menu only when empty (e.g. backend was asleep on initial load). Avoids redundant API calls when tabbing. */
+  const handleDropdownFocus = () => {
+    if (menuItems.length === 0) {
+      fetchMenuItems();
+    }
+  };
+
   const canOrderDirectly = (item) => {
     return (
       item.categoryType === CategoryType.COFFEE ||
@@ -179,7 +186,7 @@ function OrderPage() {
         <select
           id="menu-select"
           onChange={handleDropDownChange}
-          onFocus={fetchMenuItems}
+          onFocus={handleDropdownFocus}
           className="w-full p-2 border rounded mb-4"
         >
           <option value="">Select a menu item</option>
@@ -232,7 +239,7 @@ function OrderPage() {
                   onChange={(e) =>
                     handleAddFlavor(index, JSON.parse(e.target.value))
                   }
-                  onFocus={fetchMenuItems}
+                  onFocus={handleDropdownFocus}
                   className="w-full p-2 border rounded mb-2"
                 >
                   <option value="">Add a Flavor</option>
