@@ -12,7 +12,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post("/Admin/login", { username, password });
+      const response = await axios.post("/admin/login", { username, password });
       localStorage.setItem("token", response.data.token);
       onLoginSuccess?.();
     } catch (err) {

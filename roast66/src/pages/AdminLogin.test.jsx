@@ -47,7 +47,7 @@ describe("AdminLogin", () => {
     fireEvent.click(screen.getByRole("button", { name: /login/i }));
 
     await waitFor(() => {
-      expect(axios.post).toHaveBeenCalledWith("/Admin/login", {
+      expect(axios.post).toHaveBeenCalledWith("/admin/login", {
         username: "admin",
         password: "password",
       });
