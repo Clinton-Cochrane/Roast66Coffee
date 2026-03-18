@@ -107,11 +107,17 @@ See `CoffeeShopApi/appsettings.Example.json` for the full structure. Required ke
 - `Jwt:Key` (min 32 chars), `Jwt:Issuer`, `Jwt:Audience` - JWT configuration
 - `AllowedOrigins` - Comma-separated list of allowed frontend URLs (required in production)
 
+Backend (CoffeeShopApi/.env) for Docker
+
+When using Docker Compose, the backend loads from `CoffeeShopApi/.env` (not appsettings.json). Copy `CoffeeShopApi/.env.example` to `CoffeeShopApi/.env` and adjust values. The connection string must use `Host=postgres-db` (the Docker service name) instead of `localhost`.
+
 Running the App
 
 Using Docker Compose
 
-Copy `env.example` to `.env` in the repo root to customize Postgres credentials (optional; defaults to root/toor for local dev only).
+1. Copy `env.example` to `.env` in the repo root to customize Postgres credentials (optional; defaults to root/toor for local dev only).
+2. Copy `roast66/.env.example` to `roast66/.env` for the frontend API URL.
+3. Copy `CoffeeShopApi/.env.example` to `CoffeeShopApi/.env` for the backend (connection string, JWT, etc.). Use `Host=postgres-db` in the connection string for Docker.
 
 In the root directory, run:
 

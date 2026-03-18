@@ -68,7 +68,9 @@ namespace CoffeeShopApi.Controllers
                 new Claim(ClaimTypes.Name, "admin"),
                 new Claim(ClaimTypes.Role, "Admin")
             };
-            var tokenExpiry = int.TryParse(_configuration["Jwt:TokenExpiryInHours"], out var parseId) ? parseId : 0;
+            var tokenExpiry = int.TryParse(_configuration["Jwt:TokenExpiryInHours"], out var parsedHours) && parsedHours > 0
+                ? parsedHours
+                : 1;
 
             var token = new JwtSecurityToken(
                 _configuration["Jwt:Issuer"],
@@ -180,6 +182,7 @@ namespace CoffeeShopApi.Controllers
         }
 
         [HttpPost("orders")]
+        [EnableRateLimiting("Order")]
         public async Task<ActionResult<Order>> PostOrder(Order order)
         {
             var newOrder = await _orderService.CreateOrderAsync(order);

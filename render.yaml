@@ -13,7 +13,7 @@ services:
     name: roast66-api
     dockerfilePath: ./Dockerfile.backend
     dockerContext: .
-    healthCheckPath: /api/admin/ping
+    healthCheckPath: /api/health
     envVars:
       - key: ConnectionStrings__DefaultConnection
         fromDatabase:
@@ -32,7 +32,7 @@ services:
       - key: Jwt__TokenExpiryInHours
         value: "1"
       - key: AllowedOrigins
-        value: "https://roast66coffee-frontend.onrender.com"
+        value: "https://roast66-web.onrender.com"
         sync: false
 
   - type: web
