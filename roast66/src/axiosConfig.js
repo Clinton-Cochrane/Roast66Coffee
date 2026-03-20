@@ -1,8 +1,8 @@
 import axios from 'axios';
+import { API_BASE_URL } from './config';
 
 const instance = axios.create({
-  // eslint-disable-next-line no-undef
-  baseURL: process.env.REACT_APP_API_URL || 'https://roast66coffee.onrender.com/api',
+  baseURL: API_BASE_URL,
 });
 
 // Add a request interceptor to include the token
