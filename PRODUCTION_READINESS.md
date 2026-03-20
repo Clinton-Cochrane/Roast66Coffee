@@ -18,7 +18,8 @@ The Roast66 Coffee application is **substantially production-ready**. Core featu
 | Area | Status | Notes |
 |------|--------|-------|
 | **API validation** | ✅ | MenuItem, Order, OrderItem, LoginModel, NotificationSettingsModel validated |
-| **Integration tests** | ✅ | 19 tests pass (order creation, menu CRUD, admin login, validation, rate limits) |
+| **Integration tests** | ✅ | 20 tests pass (order creation, duplicate detection, menu CRUD, admin login, validation, rate limits) |
+| **Duplicate order detection** | ✅ | Same customer + same content within 2 min → 409; configurable via `Order:DuplicateDetectionWindowMinutes` |
 | **Rate limiting** | ✅ | Login (5/min), Order (30/min) per IP in production |
 | **CORS** | ✅ | Fail-fast if `AllowedOrigins` missing in production |
 | **Secrets** | ✅ | `appsettings.json` gitignored; use env vars in production |
@@ -112,7 +113,7 @@ Order submission uses `POST /api/admin/orders` (AdminController) with rate limit
 ### Phase 3: Post-Deployment Verification
 
 - [ ] Health: `GET https://roast66-api.onrender.com/api/health` returns 200.
-- [ ] Menu: `GET https://roast66-api.onrender.com/api/menu` returns items (after seed).
+- [ x] Menu: `GET https://roast66-api.onrender.com/api/menu` returns items (after seed).
 - [ ] Place test order from frontend.
 - [ ] Admin login, view orders, advance status.
 - [ ] Order status lookup with order ID + phone.
@@ -133,17 +134,32 @@ Order submission uses `POST /api/admin/orders` (AdminController) with rate limit
 
 ---
 
-## 5. Checklist Summary
+## 5. Free-Tier Resilience Options
+
+When on Render free tier (or similar), services spin down after inactivity and there is no built-in redundancy. These options can help at no cost:
+
+| Option | What it does | Effort |
+|--------|--------------|--------|
+| **UptimeRobot** | Free uptime monitoring (pings every 5 min). Alerts you when the API is down. | 5 min setup |
+| **Neon PostgreSQL** | Free Postgres with external connections. Use Neon as DB instead of Render’s; deploy API to both Render and Fly.io pointing at Neon. Gives API redundancy. | 1–2 hrs |
+| **Fly.io mirror** | Deploy the API to Fly.io (free tier) as a second instance. Both point to the same DB (Neon or Render Postgres if it allows external connections). Use a DNS failover service (e.g. free tier of a DNS provider) to switch traffic if Render is down. | 2–3 hrs |
+| **Oracle Cloud Always Free** | 2 ARM VMs, 200GB storage. Run API + DB there as a backup. More setup, but always-on. | 4+ hrs |
+
+**Practical starting point:** Set up **UptimeRobot** to monitor `/api/health`. When you’re ready for redundancy, move the DB to **Neon** (free) and deploy the API to both Render and Fly.io.
+
+---
+
+## 6. Checklist Summary
 
 | Category | Items |
 |----------|-------|
-| **Fixed** | Rate limit, health path, AllowedOrigins, JWT expiry fallback |
+| **Fixed** | Rate limit, health path, AllowedOrigins, JWT expiry fallback, duplicate order detection |
 | **Deploy** | Render Blueprint, env vars, seed menu |
 | **Handoff** | Credentials, README, this doc |
 
 ---
 
-## 6. Quick Reference — Render Env Vars
+## 7. Quick Reference — Render Env Vars
 
 **Backend (roast66-api):**
 ```
@@ -151,6 +167,7 @@ Admin__Username=<admin_username>
 Admin__Password=<strong_password>
 Jwt__Key=<min_32_chars>
 AllowedOrigins=https://roast66-web.onrender.com
+Order__DuplicateDetectionWindowMinutes=2
 ```
 
 **Frontend (roast66-web):**

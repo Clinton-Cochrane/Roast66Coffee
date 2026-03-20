@@ -4,6 +4,15 @@ Implementation notes for future development. Use this file as a guide when imple
 
 ---
 
+## Payment Integration (POS-Ready)
+
+When adding payment (Stripe, Square, etc.), the API is designed to act as the POS. Integrate payment as a separate step:
+
+- **Idempotency-Key header**: For payment flows, clients should send `Idempotency-Key: <uuid>` with order+payment requests. Add an `IdempotencyKey` column to `Order` and check for existing order with that key before creating. Returns existing order if key was used within 24h.
+- **Duplicate detection**: Already implemented — same customer + same content within 2 min returns 409. Complements idempotency for non-payment double-clicks.
+
+---
+
 ## 1. Request My Presence
 
 **Description:** Event hosts can request the coffee trailer to pull up at their event. Admin reviews and approves/declines requests.

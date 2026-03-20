@@ -185,6 +185,16 @@ namespace CoffeeShopApi.Controllers
         [EnableRateLimiting("Order")]
         public async Task<ActionResult<Order>> PostOrder(Order order)
         {
+            var duplicate = await _orderService.FindDuplicateOrderAsync(order);
+            if (duplicate != null)
+            {
+                return StatusCode(StatusCodes.Status409Conflict, new
+                {
+                    message = "Duplicate order detected. An identical order was placed recently.",
+                    existingOrderId = duplicate.Id,
+                    order = duplicate
+                });
+            }
             var newOrder = await _orderService.CreateOrderAsync(order);
             await _notificationService.SendOrderNotificationAsync(newOrder);
             return CreatedAtAction(nameof(GetOrders), new { id = newOrder.Id }, newOrder);

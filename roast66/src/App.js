@@ -7,6 +7,7 @@ import HomePage from './pages/HomePage';
 import MenuPage from './pages/MenuPage';
 import OrderPage from './pages/OrderPage';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
+import DuplicateOrderPage from './pages/DuplicateOrderPage';
 import OrderStatusPage from './pages/OrderStatusPage';
 import Navigation from './components/Navigation';
 import './styles/Customer.css';
@@ -24,6 +25,7 @@ function App() {
           <Route path="/menu" element={<MenuPage />} />
           <Route path="/order" element={<OrderPage />} />
           <Route path="/order/confirmation" element={<OrderConfirmationPage />} />
+          <Route path="/order/duplicate" element={<DuplicateOrderPage />} />
           <Route path="/order-status" element={<OrderStatusPage />} />
           <Route path="/admin-login" element={<Navigate to="/admin" replace />} />
           <Route path="/admin" element={<AdminGate />} />

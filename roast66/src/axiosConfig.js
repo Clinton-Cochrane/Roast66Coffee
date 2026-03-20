@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const instance = axios.create({
   // eslint-disable-next-line no-undef
-  baseURL: process.env.REACT_APP_API_URL || 'https://roast66coffee.onrender.com/api',
+  baseURL: process.env.REACT_APP_API_URL || 'https://roast66-api.onrender.com/api',
 });
 
 // Add a request interceptor to include the token

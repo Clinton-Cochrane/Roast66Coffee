@@ -4,9 +4,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoffeeShopApi.Services;
 
-public class OrderService(ApplicationDbContext context)
+public class OrderService(ApplicationDbContext context, IConfiguration configuration)
 {
     private readonly ApplicationDbContext _context = context;
+    private readonly IConfiguration _configuration = configuration;
+
+    private int DuplicateDetectionWindowMinutes =>
+        _configuration.GetValue("Order:DuplicateDetectionWindowMinutes", 2);
 
     public async Task<IEnumerable<Order>> GetOrdersAsync()
     {
@@ -27,6 +31,59 @@ public class OrderService(ApplicationDbContext context)
             .ThenInclude(a => a.MenuItem)
             .OrderBy(o => o.OrderDate)
             .FirstOrDefaultAsync(o => o.Id == id);
+    }
+
+    /// <summary>
+    /// Finds a duplicate order: same customer + same content within the configured time window.
+    /// Returns the existing order if found, null otherwise.
+    /// </summary>
+    public async Task<Order?> FindDuplicateOrderAsync(Order order)
+    {
+        var windowStart = DateTime.UtcNow.AddMinutes(-DuplicateDetectionWindowMinutes);
+        var customerKey = NormalizeCustomerKey(order);
+        if (string.IsNullOrEmpty(customerKey)) return null;
+
+        var incomingFingerprint = ComputeOrderContentFingerprint(order);
+        if (string.IsNullOrEmpty(incomingFingerprint)) return null;
+
+        var recentOrders = await _context.Orders
+            .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.AddOns)
+            .Where(o => o.OrderDate >= windowStart)
+            .Where(o => NormalizeCustomerKey(o) == customerKey)
+            .ToListAsync();
+
+        foreach (var existing in recentOrders)
+        {
+            if (ComputeOrderContentFingerprint(existing) == incomingFingerprint)
+                return existing;
+        }
+        return null;
+    }
+
+    private static string NormalizeCustomerKey(Order order)
+    {
+        var phone = NormalizePhone(order.CustomerPhone ?? "");
+        if (!string.IsNullOrEmpty(phone)) return $"phone:{phone}";
+        var name = (order.CustomerName ?? "").Trim();
+        return string.IsNullOrEmpty(name) ? "" : $"name:{name.ToLowerInvariant()}";
+    }
+
+    private static string ComputeOrderContentFingerprint(Order order)
+    {
+        if (order.OrderItems == null || order.OrderItems.Count == 0)
+            return string.Empty;
+
+        var parts = order.OrderItems
+            .OrderBy(oi => oi.MenuItemId)
+            .Select(oi =>
+            {
+                var addons = (oi.AddOns ?? [])
+                    .OrderBy(a => a.MenuItemId)
+                    .Select(a => $"{a.MenuItemId}:{a.Quantity}");
+                return $"{oi.MenuItemId}:{oi.Quantity}:{oi.Notes ?? ""}:{string.Join(",", addons)}";
+            });
+        return string.Join("|", parts);
     }
 
     public async Task<Order> CreateOrderAsync(Order order)

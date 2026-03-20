@@ -70,6 +70,28 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
+    public async Task PostOrder_DuplicateOrderWithinWindow_Returns409Conflict()
+    {
+        var order = new Order
+        {
+            CustomerName = "Duplicate Test Customer",
+            CustomerPhone = "5559876543",
+            OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 2 }]
+        };
+        var firstResponse = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        firstResponse.EnsureSuccessStatusCode();
+
+        var secondResponse = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        Assert.Equal(HttpStatusCode.Conflict, secondResponse.StatusCode);
+
+        var conflictBody = await secondResponse.Content.ReadFromJsonAsync<DuplicateOrderResponse>(JsonOptions);
+        Assert.NotNull(conflictBody);
+        Assert.NotNull(conflictBody!.Message);
+        Assert.True(conflictBody.ExistingOrderId > 0);
+        Assert.NotNull(conflictBody.Order);
+    }
+
+    [Fact]
     public async Task PostOrder_ThenGetOrders_WithAdminToken_ReturnsOrder()
     {
         var token = await GetAdminToken();
@@ -148,5 +170,12 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     private class LoginResponse
     {
         public string Token { get; set; } = string.Empty;
+    }
+
+    private class DuplicateOrderResponse
+    {
+        public string Message { get; set; } = string.Empty;
+        public int ExistingOrderId { get; set; }
+        public Order? Order { get; set; }
     }
 }

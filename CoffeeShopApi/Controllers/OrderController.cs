@@ -66,6 +66,17 @@ public class OrderController : ControllerBase
             return BadRequest(ModelState);
         }
 
+        var duplicate = await _orderService.FindDuplicateOrderAsync(order);
+        if (duplicate != null)
+        {
+            return StatusCode(StatusCodes.Status409Conflict, new
+            {
+                message = "Duplicate order detected. An identical order was placed recently.",
+                existingOrderId = duplicate.Id,
+                order = duplicate
+            });
+        }
+
         var createdOrder = await _orderService.CreateOrderAsync(order);
         await _notificationService.SendOrderNotificationAsync(createdOrder);
         return CreatedAtAction(nameof(GetOrder), new { id = createdOrder.Id }, createdOrder);

@@ -143,8 +143,26 @@ function OrderPage() {
         navigate("/order/confirmation", { state: { order: createdOrder } });
       })
       .catch((error) => {
-        console.error("Order submission failed:", error?.response?.status, error?.response?.data, error);
-        toast.error("Failed to place the order. Please try again or check the console for details.");
+        if (error?.response?.status === 409) {
+          const existingOrder = error.response?.data?.order;
+          const existingOrderId = error.response?.data?.existingOrderId;
+          setOrderItems([]);
+          setCustomerName("");
+          setCustomerPhone("");
+          navigate("/order/duplicate", {
+            state: { order: existingOrder, existingOrderId },
+          });
+        } else {
+          console.error(
+            "Order submission failed:",
+            error?.response?.status,
+            error?.response?.data,
+            error
+          );
+          toast.error(
+            "Failed to place the order. Please try again or check the console for details."
+          );
+        }
       });
   };
 
