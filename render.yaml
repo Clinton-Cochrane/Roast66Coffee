@@ -44,5 +44,4 @@ services:
     staticPublishPath: roast66/build
     envVars:
       - key: REACT_APP_API_URL
-        value: "https://roast66-api.onrender.com/api"
         sync: false
