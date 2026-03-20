@@ -46,7 +46,11 @@ namespace CoffeeShopApi
             services.AddScoped<NotificationSettingsService>();
             services.AddScoped<TwilioService>();
 
-            services.AddControllers();
+            services.AddControllers()
+                .AddJsonOptions(options =>
+                {
+                    options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+                });
 
             services.AddRateLimiter(options =>
             {

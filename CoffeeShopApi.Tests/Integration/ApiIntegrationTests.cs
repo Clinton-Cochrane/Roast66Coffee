@@ -98,7 +98,12 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         _client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-        var order = CreateValidOrder();
+        var order = new Order
+        {
+            CustomerName = "Admin Token Test Customer",
+            CustomerPhone = "5559998888",
+            OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 1 }]
+        };
         var postResponse = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
         postResponse.EnsureSuccessStatusCode();
 
@@ -106,7 +111,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         getResponse.EnsureSuccessStatusCode();
         var orders = await getResponse.Content.ReadFromJsonAsync<List<Order>>(JsonOptions);
         Assert.NotNull(orders);
-        Assert.Contains(orders, o => o.CustomerName == order.CustomerName);
+        Assert.Contains(orders, o => o.CustomerName == "Admin Token Test Customer");
     }
 
     [Fact]

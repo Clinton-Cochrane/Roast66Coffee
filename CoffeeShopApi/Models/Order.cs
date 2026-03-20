@@ -1,6 +1,5 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Text.Json.Serialization;
 
 namespace CoffeeShopApi.Models
 {
@@ -36,7 +35,6 @@ namespace CoffeeShopApi.Models
 
         [Required]
         [MinLength(1, ErrorMessage = "At least one order item is required")]
-        [JsonPropertyName("OrderItems")]
         public required List<OrderItem> OrderItems { get; set; }
     }
 }

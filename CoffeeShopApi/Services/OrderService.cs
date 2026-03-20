@@ -50,10 +50,11 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
             .Include(o => o.OrderItems)
             .ThenInclude(oi => oi.AddOns)
             .Where(o => o.OrderDate >= windowStart)
-            .Where(o => NormalizeCustomerKey(o) == customerKey)
             .ToListAsync();
 
-        foreach (var existing in recentOrders)
+        var sameCustomer = recentOrders.Where(o => NormalizeCustomerKey(o) == customerKey);
+
+        foreach (var existing in sameCustomer)
         {
             if (ComputeOrderContentFingerprint(existing) == incomingFingerprint)
                 return existing;

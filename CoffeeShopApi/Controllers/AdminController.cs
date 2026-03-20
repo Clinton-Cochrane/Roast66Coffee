@@ -185,6 +185,10 @@ namespace CoffeeShopApi.Controllers
         [EnableRateLimiting("Order")]
         public async Task<ActionResult<Order>> PostOrder(Order order)
         {
+            if (order.OrderItems == null || order.OrderItems.Count == 0)
+            {
+                return BadRequest(new { message = "At least one order item is required." });
+            }
             var duplicate = await _orderService.FindDuplicateOrderAsync(order);
             if (duplicate != null)
             {
