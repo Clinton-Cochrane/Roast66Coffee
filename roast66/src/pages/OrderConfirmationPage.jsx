@@ -26,11 +26,12 @@ function OrderConfirmationPage() {
     );
   }
 
-  const total = (order.OrderItems || []).reduce(
+  const items = order.orderItems ?? order.OrderItems ?? [];
+  const total = items.reduce(
     (sum, item) =>
       sum +
       (item.menuItem?.price ?? 0) * (item.quantity ?? 1) +
-      (item.addOns || []).reduce(
+      (item.addOns ?? []).reduce(
         (aSum, addOn) =>
           aSum + (addOn.menuItem?.price ?? 0) * (addOn.quantity ?? 1),
         0
@@ -41,15 +42,15 @@ function OrderConfirmationPage() {
   return (
     <div className="p-6 max-w-lg mx-auto">
       <h1 className="text-3xl font-bold mb-2">Order Confirmed!</h1>
-      <p className="text-gray-600 mb-6">
-        Thanks for your order, {order.customerName}. We&apos;ll have it ready
+        <p className="text-gray-600 mb-6">
+        Thanks for your order, {order.customerName ?? order.CustomerName}. We&apos;ll have it ready
         soon.
       </p>
 
       <div className="bg-gray-50 rounded-lg p-4 mb-6">
         <p className="text-lg font-bold mb-2">Order #{order.id}</p>
         <ul className="space-y-1 mb-4">
-          {(order.OrderItems || []).map((item, i) => (
+          {items.map((item, i) => (
             <li key={i}>
               {item.quantity}x {item.menuItem?.name ?? "Item"}
               {(item.addOns || []).length > 0 &&
@@ -62,7 +63,7 @@ function OrderConfirmationPage() {
       </div>
 
       <h2 className="text-xl font-bold mb-4">Order Status</h2>
-      <OrderTracker currentStatus={order.orderStatus ?? 0} />
+      <OrderTracker currentStatus={order.orderStatus ?? order.OrderStatus ?? 0} />
 
       <div className="mt-8 pt-6 border-t">
         <p className="text-sm text-gray-600 mb-2">

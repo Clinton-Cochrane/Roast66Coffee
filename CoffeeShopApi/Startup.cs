@@ -50,6 +50,7 @@ namespace CoffeeShopApi
                 .AddJsonOptions(options =>
                 {
                     options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
+                    options.JsonSerializerOptions.PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase;
                 });
 
             services.AddRateLimiter(options =>
@@ -86,6 +87,17 @@ namespace CoffeeShopApi
                     });
                 });
             });
+
+            if (!_env.IsEnvironment("Testing"))
+            {
+                var jwtKey = Configuration["Jwt:Key"];
+                if (string.IsNullOrEmpty(jwtKey) || jwtKey.Length < 32)
+                {
+                    throw new InvalidOperationException(
+                        "Jwt:Key must be configured and at least 32 characters long. " +
+                        "Set Jwt__Key (or Jwt:Key) in environment variables or appsettings.");
+                }
+            }
 
             services.AddCors(options =>
             {

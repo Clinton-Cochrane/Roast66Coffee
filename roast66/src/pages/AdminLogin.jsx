@@ -16,7 +16,12 @@ const AdminLogin = ({ onLoginSuccess }) => {
       localStorage.setItem("token", response.data.token);
       onLoginSuccess?.();
     } catch (err) {
-      setError("Invalid credentials");
+      const status = err.response?.status;
+      setError(
+        status >= 500
+          ? "Server error. Please try again later or contact support."
+          : "Invalid credentials"
+      );
     }
   };
 

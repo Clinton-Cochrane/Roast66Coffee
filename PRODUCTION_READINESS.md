@@ -159,7 +159,21 @@ When on Render free tier (or similar), services spin down after inactivity and t
 
 ---
 
-## 7. Quick Reference — Render Env Vars
+## 7. Troubleshooting
+
+### Login returns 500 or "Invalid credentials" (server error)
+
+**Cause:** `Jwt__Key` is missing or shorter than 32 characters. The API validates credentials correctly but fails when signing the JWT token.
+
+**Fix:** In Render Dashboard → roast66-api (or your API service) → Environment:
+1. Add or update `Jwt__Key` with a secret string **at least 32 characters** (e.g. `openssl rand -base64 32`).
+2. Redeploy the API service.
+
+If `Jwt__Key` is missing, the app will now fail at startup with a clear error instead of failing at login time.
+
+---
+
+## 8. Quick Reference — Render Env Vars
 
 **Backend (roast66-api):**
 ```
