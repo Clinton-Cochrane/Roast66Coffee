@@ -115,6 +115,18 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
+    public async Task GetAdminOrders_WithToken_SameAuthorizationAsOrderController()
+    {
+        var token = await GetAdminToken();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/admin/orders");
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public async Task AdminMenuCrud_CreateUpdateDelete_WithToken()
     {
         var token = await GetAdminToken();

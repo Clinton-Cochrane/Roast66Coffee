@@ -12,6 +12,7 @@ using System.Text;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using Serilog;
+using System.Security.Claims;
 
 namespace CoffeeShopApi
 {
@@ -139,8 +140,10 @@ namespace CoffeeShopApi
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = JwtTokenSettings.GetIssuer(Configuration),
                     ValidAudience = JwtTokenSettings.GetAudience(Configuration),
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Jwt:Key"] ?? "default_key"))
-
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Jwt:Key"] ?? "default_key")),
+                    // Map JWT role/name claims so [Authorize(Roles = "Admin")] and IsInRole work with handler defaults.
+                    RoleClaimType = ClaimTypes.Role,
+                    NameClaimType = ClaimTypes.Name
                 };
             });
         }

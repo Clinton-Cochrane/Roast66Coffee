@@ -22,7 +22,14 @@ function ViewOrders() {
         setLastRefreshedAt(new Date());
         setNewOrdersCount(0);
       })
-      .catch(() => toast.error("Failed to fetch orders"));
+      .catch((err) => {
+        const status = err.response?.status;
+        toast.error(
+          status === 401
+            ? "Not signed in or session expired — sign out and log in again."
+            : "Failed to fetch orders"
+        );
+      });
   }, []);
 
   const fetchNewOrdersCount = useCallback(() => {
@@ -127,7 +134,7 @@ function ViewOrders() {
               </p>
 
               <ul className="space-y-2">
-                {(order.OrderItems || []).map((item) => (
+                {(order.orderItems || order.OrderItems || []).map((item) => (
                   <li key={item.id} className="flex flex-col border-b pb-2">
                     {item.menuItem?.name ? (
                       <>
