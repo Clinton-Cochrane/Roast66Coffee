@@ -137,8 +137,8 @@ namespace CoffeeShopApi
                     ValidateAudience = true,
                     ValidateLifetime = true,
                     ValidateIssuerSigningKey = true,
-                    ValidIssuer = Configuration["Jwt:Issuer"],
-                    ValidAudience = Configuration["Jwt:Audience"],
+                    ValidIssuer = JwtTokenSettings.GetIssuer(Configuration),
+                    ValidAudience = JwtTokenSettings.GetAudience(Configuration),
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Jwt:Key"] ?? "default_key"))
 
                 };

@@ -1,4 +1,5 @@
 // Controllers/AdminController.cs
+using CoffeeShopApi;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc;
 using CoffeeShopApi.Models;
@@ -73,8 +74,8 @@ namespace CoffeeShopApi.Controllers
                 : 1;
 
             var token = new JwtSecurityToken(
-                _configuration["Jwt:Issuer"],
-                _configuration["Jwt:Audience"],
+                JwtTokenSettings.GetIssuer(_configuration),
+                JwtTokenSettings.GetAudience(_configuration),
                 claims,
                 expires: DateTime.Now.AddHours(tokenExpiry),
                 signingCredentials: credentials);
