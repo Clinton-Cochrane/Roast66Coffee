@@ -1,13 +1,25 @@
 // src/components/Admin/ViewOrders.jsx
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import axios from "../../axiosConfig";
 import { toast } from "react-toastify";
 import Card from "../common/Card";
 import Button from "../common/Button";
-import { ORDER_STATUS_LABELS } from "../../constants/orderStatus";
+import { ORDER_STATUS, ORDER_STATUS_LABELS } from "../../constants/orderStatus";
 
 const STATUS_STAGES = ["Received", "Preparing", "ReadyForPickup", "Completed"];
 const POLL_INTERVAL_MS = 60000;
+
+function orderStatusValue(order) {
+  const raw = order.orderStatus ?? order.OrderStatus;
+  if (typeof raw === "string" && raw !== "" && !Number.isNaN(Number(raw))) {
+    return Number(raw);
+  }
+  return Number(raw);
+}
+
+function orderId(order) {
+  return order.id ?? order.Id;
+}
 
 function ViewOrders() {
   const [orders, setOrders] = useState([]);
@@ -61,14 +73,41 @@ function ViewOrders() {
     };
   }, [lastRefreshedAt, fetchNewOrdersCount]);
 
-  const advanceStatus = (orderId) => {
+  const sortedOrders = useMemo(() => {
+    const list = Array.isArray(orders) ? [...orders] : [];
+    list.sort((a, b) => {
+      const sa = orderStatusValue(a);
+      const sb = orderStatusValue(b);
+      const aDone = sa === ORDER_STATUS.Completed;
+      const bDone = sb === ORDER_STATUS.Completed;
+      if (aDone !== bDone) return aDone ? 1 : -1;
+      const da = new Date(a.orderDate ?? a.OrderDate).getTime();
+      const db = new Date(b.orderDate ?? b.OrderDate).getTime();
+      return db - da;
+    });
+    return list;
+  }, [orders]);
+
+  const advanceStatus = (id) => {
     axios
-      .put(`/admin/updateOrderStatus/${orderId}/status`)
-      .then(() => {
-        toast.success("Order status updated.");
+      .put(`/admin/updateOrderStatus/${id}/status`)
+      .then((res) => {
+        const next = res.data?.newStatus;
+        if (next === "Completed") {
+          toast.success("Order marked complete.");
+        } else {
+          toast.success("Order status updated.");
+        }
         fetchOrders();
       })
-      .catch(() => toast.error("Failed to update status"));
+      .catch((err) => {
+        const data = err.response?.data;
+        const message =
+          typeof data === "string"
+            ? data
+            : data?.message ?? err.response?.statusText;
+        toast.error(message || "Failed to update status");
+      });
   };
 
   const getStatusLabel = (status) =>
@@ -96,41 +135,56 @@ function ViewOrders() {
         <p className="text-gray-500">No orders available</p>
       ) : (
         <div className="space-y-4">
-          {orders.map((order) => (
+          {sortedOrders.map((order) => {
+            const id = orderId(order);
+            const status = orderStatusValue(order);
+            const isComplete = status === ORDER_STATUS.Completed;
+            const advanceLabel =
+              status === ORDER_STATUS.ReadyForPickup
+                ? "Mark complete"
+                : "Advance status";
+
+            return (
             <Card
-              key={order.id}
-              title={`Order #${order.id}`}
+              key={id}
+              title={`Order #${id}`}
               className="mb-2"
             >
-              <div className="flex items-center gap-2 mb-4">
+              <div className="flex items-center gap-2 mb-4 flex-wrap">
                 <span
                   className={`px-2 py-1 rounded text-sm font-medium ${
-                    order.orderStatus === 3
+                    isComplete
                       ? "bg-green-200 text-green-800"
                       : "bg-blue-100 text-blue-800"
                   }`}
                 >
-                  {getStatusLabel(order.orderStatus)}
+                  {getStatusLabel(status)}
                 </span>
-                <Button
-                  onClick={() => advanceStatus(order.id)}
-                  color="green"
-                  disabled={order.orderStatus === 3}
-                >
-                  {order.orderStatus === 3 ? "Complete" : "Advance status"}
-                </Button>
+                {isComplete ? (
+                  <span className="text-sm font-medium text-green-800">
+                    Completed — no further action
+                  </span>
+                ) : (
+                  <Button
+                    onClick={() => advanceStatus(id)}
+                    color="green"
+                  >
+                    {advanceLabel}
+                  </Button>
+                )}
               </div>
               <p className="mb-1">
-                <strong>Customer:</strong> {order.customerName}
+                <strong>Customer:</strong> {order.customerName ?? order.CustomerName}
               </p>
-              {order.customerPhone && (
+              {(order.customerPhone ?? order.CustomerPhone) && (
                 <p className="mb-1">
-                  <strong>Phone:</strong> {order.customerPhone}
+                  <strong>Phone:</strong>{" "}
+                  {order.customerPhone ?? order.CustomerPhone}
                 </p>
               )}
               <p className="mb-4">
                 <strong>Date:</strong>{" "}
-                {new Date(order.orderDate).toLocaleString()}
+                {new Date(order.orderDate ?? order.OrderDate).toLocaleString()}
               </p>
 
               <ul className="space-y-2">
@@ -161,7 +215,8 @@ function ViewOrders() {
                 ))}
               </ul>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

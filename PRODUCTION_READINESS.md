@@ -115,8 +115,8 @@ Order submission uses `POST /api/admin/orders` (AdminController) with rate limit
 - [ ] Health: `GET https://roast66-api.onrender.com/api/health` returns 200.
 - [ x] Menu: `GET https://roast66-api.onrender.com/api/menu` returns items (after seed).
 - [x ] Place test order from frontend.
-- [ ] Admin login, view orders, advance status.
-- [ ] Order status lookup with order ID + phone.
+- [ x] Admin login, view orders, advance status.
+- [ x] Order status lookup with order ID + phone.
 
 ### Phase 4: Client Handoff
 
