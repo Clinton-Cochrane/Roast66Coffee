@@ -23,8 +23,9 @@ services:
         sync: false
       - key: Admin__Password
         sync: false
+      # Auto-generated 256-bit secret (base64); avoids deploy crash when Jwt__Key was never set in the dashboard.
       - key: Jwt__Key
-        sync: false
+        generateValue: true
       - key: Jwt__Issuer
         value: Roast66Coffee
       - key: Jwt__Audience

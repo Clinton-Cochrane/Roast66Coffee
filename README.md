@@ -169,12 +169,12 @@ This project includes a `render.yaml` Blueprint for one-click deployment to Rend
    - A PostgreSQL database (`roast66-db`)
    - Backend API (`roast66-api`) - Docker-based
    - Frontend static site (`roast66-web`)
-3. Set the following environment variables in the Render Dashboard (they are marked `sync: false` and must be entered manually):
+3. Set the following environment variables in the Render Dashboard. Values marked `sync: false` in `render.yaml` must be entered manually; others are set by the Blueprint.
 
    **Backend (roast66-api):**
    - `Admin__Username` - Admin login username
    - `Admin__Password` - Admin login password (use a strong password)
-   - `Jwt__Key` - Secret key for JWT signing (min 32 characters)
+   - `Jwt__Key` - Render auto-generates this from the Blueprint (`generateValue: true`). If you created the service before that was added, add or regenerate this variable in the dashboard: a random string at least 32 characters long (otherwise the API exits on startup with `Jwt:Key must be configured`).
    - `AllowedOrigins` - Comma-separated frontend URLs, e.g. `https://roast66-web.onrender.com,https://yourdomain.com`
 
    **Frontend (roast66-web):**
