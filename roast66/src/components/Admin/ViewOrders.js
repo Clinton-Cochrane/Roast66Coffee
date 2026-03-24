@@ -21,6 +21,14 @@ function orderId(order) {
   return order.id ?? order.Id;
 }
 
+/** Milliseconds since epoch for sorting; invalid/missing dates sort as 0 (stable fallback). */
+function orderDateMs(order) {
+  const raw = order.orderDate ?? order.OrderDate;
+  if (raw == null || raw === "") return 0;
+  const t = new Date(raw).getTime();
+  return Number.isFinite(t) ? t : 0;
+}
+
 function ViewOrders() {
   const [orders, setOrders] = useState([]);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
@@ -81,8 +89,8 @@ function ViewOrders() {
       const aDone = sa === ORDER_STATUS.Completed;
       const bDone = sb === ORDER_STATUS.Completed;
       if (aDone !== bDone) return aDone ? 1 : -1;
-      const da = new Date(a.orderDate ?? a.OrderDate).getTime();
-      const db = new Date(b.orderDate ?? b.OrderDate).getTime();
+      const da = orderDateMs(a);
+      const db = orderDateMs(b);
       return db - da;
     });
     return list;
