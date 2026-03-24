@@ -174,7 +174,7 @@ This project includes a `render.yaml` Blueprint for one-click deployment to Rend
    **Backend (roast66-api):**
    - `Admin__Username` - Admin login username
    - `Admin__Password` - Admin login password (use a strong password)
-   - `Jwt__Key` - Render auto-generates this from the Blueprint (`generateValue: true`). If you created the service before that was added, add or regenerate this variable in the dashboard: a random string at least 32 characters long (otherwise the API exits on startup with `Jwt:Key must be configured`).
+   - `Jwt__Key` - Render auto-generates this from the Blueprint (`generateValue: true`) when the Blueprint is applied. If it is still unset, the API generates a random signing key at startup and logs a warning (sessions invalidate on every restart). For production, set a stable secret of at least 32 characters in the dashboard (e.g. `openssl rand -base64 48`).
    - `AllowedOrigins` - Comma-separated frontend URLs, e.g. `https://roast66-web.onrender.com,https://yourdomain.com`
 
    **Frontend (roast66-web):**

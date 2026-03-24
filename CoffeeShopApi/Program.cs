@@ -6,6 +6,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using CoffeeShopApi.Data;
 using System;
+using System.Collections.Generic;
+using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -82,7 +84,36 @@ namespace CoffeeShopApi
                     .WriteTo.Console())
                 .ConfigureAppConfiguration((context, config) =>
                 {
-                    config.AddEnvironmentVariables();
+                    // Probe appsettings + env the same way the host does. Docker/Render images often have no
+                    // gitignored appsettings.json; Jwt__Key is easy to miss in the dashboard — inject a key so the app boots.
+                    var probe = new ConfigurationBuilder()
+                        .SetBasePath(context.HostingEnvironment.ContentRootPath)
+                        .AddJsonFile("appsettings.json", optional: true)
+                        .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true)
+                        .AddEnvironmentVariables()
+                        .Build();
+
+                    if (context.HostingEnvironment.IsEnvironment("Testing"))
+                    {
+                        (probe as IDisposable)?.Dispose();
+                        return;
+                    }
+
+                    var jwtKey = probe["Jwt:Key"];
+                    (probe as IDisposable)?.Dispose();
+
+                    if (!string.IsNullOrEmpty(jwtKey) && jwtKey.Length >= 32)
+                        return;
+
+                    var generated = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+                    config.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Jwt:Key"] = generated
+                    });
+                    Console.WriteLine(
+                        "WARN: Jwt:Key was missing or shorter than 32 characters. " +
+                        "Using a random signing key for this process. " +
+                        "Set Jwt__Key (at least 32 characters) in the environment for stable keys across restarts.");
                 })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
