@@ -31,6 +31,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
       <form onSubmit={handleLogin} className="space-y-4">
         <FormInput
           type="text"
+          name="username"
           placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
@@ -38,6 +39,7 @@ const AdminLogin = ({ onLoginSuccess }) => {
         />
         <FormInput
           type="password"
+          name="password"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
@@ -54,10 +56,6 @@ const AdminLogin = ({ onLoginSuccess }) => {
 
 AdminLogin.propTypes = {
   onLoginSuccess: PropTypes.func,
-};
-
-AdminLogin.defaultProps = {
-  onLoginSuccess: null,
 };
 
 export default AdminLogin;

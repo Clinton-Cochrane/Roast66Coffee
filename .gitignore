@@ -41,11 +41,7 @@ yarn-debug.log*
 yarn-error.log*
 TODO.md
 
-
 # Known noisy paths
 roast66/node_modules/.bin/acorn
-TODO.md
 PRODUCTION_READINESS.md
 features.md
-PRODUCTION_READINESS.md
-PRODUCTION_READINESS.md
