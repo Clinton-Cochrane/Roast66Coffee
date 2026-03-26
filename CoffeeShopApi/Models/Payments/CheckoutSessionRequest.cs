@@ -1,0 +1,41 @@
+using System.ComponentModel.DataAnnotations;
+
+namespace CoffeeShopApi.Models.Payments;
+
+public class CheckoutSessionRequest
+{
+    [Required]
+    [StringLength(100, MinimumLength = 1)]
+    public string CustomerName { get; set; } = string.Empty;
+
+    [Required]
+    [StringLength(20, MinimumLength = 1)]
+    public string CustomerPhone { get; set; } = string.Empty;
+
+    [Required]
+    [MinLength(1)]
+    public List<CheckoutOrderItemRequest> OrderItems { get; set; } = [];
+}
+
+public class CheckoutOrderItemRequest
+{
+    [Range(1, int.MaxValue)]
+    public int MenuItemId { get; set; }
+
+    [Range(1, 100)]
+    public int Quantity { get; set; }
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
+
+    public List<CheckoutAddOnItemRequest> AddOns { get; set; } = [];
+}
+
+public class CheckoutAddOnItemRequest
+{
+    [Range(1, int.MaxValue)]
+    public int MenuItemId { get; set; }
+
+    [Range(1, 100)]
+    public int Quantity { get; set; }
+}

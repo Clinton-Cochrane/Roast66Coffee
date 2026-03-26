@@ -46,6 +46,10 @@ namespace CoffeeShopApi
             services.AddScoped<NotificationService>();
             services.AddScoped<NotificationSettingsService>();
             services.AddScoped<TwilioService>();
+            services.AddScoped<StripePaymentService>();
+            services.AddSingleton<KeepAliveStateStore>();
+            services.AddHostedService<ConnectionWarmupService>();
+            services.AddHttpClient();
 
             services.AddControllers()
                 .AddJsonOptions(options =>

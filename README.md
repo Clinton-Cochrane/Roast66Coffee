@@ -187,6 +187,36 @@ This project includes a `render.yaml` Blueprint for one-click deployment to Rend
 
 - **Database backups**: Render provides automatic backups for PostgreSQL. Verify backup retention in the Render Dashboard under your database service (typically 7 days for free tier). Consider upgrading for longer retention if needed.
 - **Health check**: The API exposes `/api/health` for liveness probes. Returns `{ "status": "healthy", "timestamp": "..." }`.
+- **Keepalive mode (free-tier mitigation)**:
+  - Admin dashboard now sends `POST /api/ops/keepalive/heartbeat` while the page is open.
+  - API warmup service runs lightweight probes only inside the active window (`KeepAlive:*` settings).
+  - Optional external helper script: `scripts/ops/keepalive-pulse.sh` (requires `ADMIN_JWT_TOKEN`).
+- **Stripe Checkout (optional, feature-flagged)**:
+  - Set backend env vars: `Stripe__SecretKey`, `Stripe__WebhookSecret`, `Stripe__FrontendBaseUrl`.
+  - Set frontend env var: `REACT_APP_ENABLE_STRIPE_CHECKOUT=true`.
+  - Frontend calls `POST /api/payments/checkout-session`; webhook endpoint is `POST /api/payments/webhook`.
+  - Orders are finalized only after `checkout.session.completed`.
+
+### Production Operations Runbook
+
+- **Staging parity**
+  - Maintain a staging Render stack with the same env var keys as production.
+  - Run migrations and checkout flow in staging before each release.
+- **Backup verification cadence**
+  - Daily: verify latest backup exists.
+  - Weekly: restore backup to staging and validate key API reads (`/api/menu`, `/api/order/lookup`).
+- **Incident rollback**
+  - Roll back frontend/backend service to last known-good deploy in Render.
+  - If data issue: restore latest safe DB backup to staging first, verify, then restore production.
+- **Billing/cost guardrails**
+  - Configure Render/Supabase budget alerts and usage notifications.
+  - Review monthly usage before changing service plans.
+
+### Business Payments and Compliance Checklist
+
+- Stripe account completed: legal business profile, KYC identity checks, payout bank account, tax details.
+- Checkout legal pages published and linked: Terms of Service, Privacy Policy, Refund/Cancellation Policy.
+- Reconciliation process defined: daily payout reconciliation + monthly accounting close.
 
 
 License

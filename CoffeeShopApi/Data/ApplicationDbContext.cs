@@ -1,6 +1,7 @@
 // Data/ApplicationDbContext.cs
 using Microsoft.EntityFrameworkCore;
 using CoffeeShopApi.Models;
+using CoffeeShopApi.Models.Payments;
 
 namespace CoffeeShopApi.Data
 {
@@ -15,6 +16,7 @@ namespace CoffeeShopApi.Data
         public DbSet<Order> Orders { get; set; } = null!;
         public DbSet<OrderItem> OrderItems { get; set; } = null!;
         public DbSet<NotificationSettings> NotificationSettings { get; set; } = null!;
+        public DbSet<PaymentCheckoutDraft> PaymentCheckoutDrafts { get; set; } = null!;
     }
 }
 

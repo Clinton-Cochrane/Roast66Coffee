@@ -37,6 +37,22 @@ services:
         sync: false
       - key: Order__DuplicateDetectionWindowMinutes
         value: "2"
+      - key: KeepAlive__Enabled
+        value: "true"
+      - key: KeepAlive__ProbeIntervalMinutes
+        value: "4"
+      - key: KeepAlive__ActiveWindowMinutes
+        value: "10"
+      - key: KeepAlive__SupabaseHeartbeatUrl
+        sync: false
+      - key: KeepAlive__SupabaseServiceRoleKey
+        sync: false
+      - key: Stripe__SecretKey
+        sync: false
+      - key: Stripe__WebhookSecret
+        sync: false
+      - key: Stripe__FrontendBaseUrl
+        value: "https://roast66-web.onrender.com"
 
   - type: web
     name: roast66-web

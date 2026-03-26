@@ -8,7 +8,7 @@ const instance = axios.create({
 // Add a request interceptor to include the token for authenticated endpoints only.
 // Public endpoints (e.g. order placement) must not receive the token—invalid/expired
 // tokens cause JWT validation to fail and can trigger 405 via the exception handler.
-const PUBLIC_PATHS = ['/admin/orders', '/order'];
+const PUBLIC_PATHS = ['/admin/orders', '/order', '/payments/checkout-session'];
 const isPublicPost = (config) =>
   config.method?.toLowerCase() === 'post' &&
   PUBLIC_PATHS.some((p) => config.url?.includes(p));

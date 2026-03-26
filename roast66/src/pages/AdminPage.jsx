@@ -8,6 +8,7 @@ import Header from "../components/layout/Header";
 import "../styles/AdminPage.css";
 import NotificationSettings from "../components/Admin/NotificationSettings";
 import Loading from "../components/common/Loading";
+import useKeepAliveHeartbeat from "../hooks/useKeepAliveHeartbeat";
 
 const ADMIN_TAB_IDS = {
   ORDERS: "orders",
@@ -26,6 +27,7 @@ function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [menuRefreshKey, setMenuRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState(ADMIN_TAB_IDS.ORDERS);
+  useKeepAliveHeartbeat(true);
 
   useEffect(() => {
     const token = localStorage.getItem("token");

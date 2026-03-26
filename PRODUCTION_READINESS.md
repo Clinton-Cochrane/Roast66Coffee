@@ -187,4 +187,71 @@ Order__DuplicateDetectionWindowMinutes=2
 **Frontend (roast66-web):**
 ```
 REACT_APP_API_URL=https://roast66-api.onrender.com/api
+REACT_APP_ENABLE_STRIPE_CHECKOUT=false
 ```
+
+**Keepalive / Warmup (roast66-api):**
+```
+KeepAlive__Enabled=true
+KeepAlive__ProbeIntervalMinutes=4
+KeepAlive__ActiveWindowMinutes=10
+KeepAlive__SupabaseHeartbeatUrl=<optional_supabase_rest_url>
+KeepAlive__SupabaseServiceRoleKey=<optional_service_role_key>
+```
+
+**Payments (roast66-api):**
+```
+Stripe__SecretKey=<stripe_secret_key>
+Stripe__WebhookSecret=<stripe_webhook_secret>
+Stripe__FrontendBaseUrl=https://roast66-web.onrender.com
+```
+
+---
+
+## 9. Staging, Backups, and Rollback Runbook
+
+### Staging parity checklist
+
+- Provision a staging stack with the same env var keys as production.
+- Run database migrations on staging before production deploy.
+- Verify smoke tests:
+  - `GET /api/health`
+  - `GET /api/menu`
+  - place test order and status lookup
+  - Stripe test checkout + webhook completion
+
+### Backup verification
+
+- **Daily:** confirm newest backup exists in provider dashboard.
+- **Weekly:** restore latest backup into staging and run smoke tests.
+- Record restore duration and any failures in operations notes.
+
+### Incident rollback
+
+1. Identify blast radius (frontend, API, DB, or payment webhooks).
+2. Roll back API/frontend to last known-good deploy.
+3. If DB corruption is suspected:
+   - Restore backup into staging and verify data integrity.
+   - Restore production only after staging verification passes.
+4. Confirm service health via `/api/health` and core order flows.
+
+### Owners / contacts
+
+- **Primary owner:** Application maintainer / business operator.
+- **Payment owner:** business account owner with Stripe dashboard access.
+- **Escalation path:** hosting provider support -> payment provider support.
+
+---
+
+## 10. Payment Operations Checklist
+
+- Complete Stripe account verification (KYC, business profile, payout bank).
+- Configure statement descriptor and support contact email.
+- Publish legal policies:
+  - Terms of Service
+  - Privacy Policy
+  - Refund/Cancellation Policy
+- Define bookkeeping cadence:
+  - daily settlement reconciliation
+  - weekly exception review (failed/refunded/disputed payments)
+  - monthly close and export archive

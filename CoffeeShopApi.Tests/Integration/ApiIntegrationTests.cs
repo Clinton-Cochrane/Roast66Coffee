@@ -162,6 +162,42 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         response.EnsureSuccessStatusCode();
     }
 
+    [Fact]
+    public async Task KeepAliveHeartbeat_WithAdminToken_ReturnsAccepted()
+    {
+        var token = await GetAdminToken();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/ops/keepalive/heartbeat");
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        request.Content = JsonContent.Create(new { source = "integration-test" });
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateCheckoutSession_WithoutStripeConfig_Returns503()
+    {
+        var payload = new
+        {
+            customerName = "Stripe Test",
+            customerPhone = "5550001234",
+            orderItems = new[]
+            {
+                new
+                {
+                    menuItemId = 1,
+                    quantity = 1,
+                    notes = "No sugar",
+                    addOns = Array.Empty<object>()
+                }
+            }
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/payments/checkout-session", payload);
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
     private static Order CreateValidOrder()
     {
         return new Order

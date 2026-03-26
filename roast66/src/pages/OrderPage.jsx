@@ -7,6 +7,9 @@ import FormInput from "../components/common/FormInput";
 import Button from "../components/common/Button";
 import CategoryType from "../constants/categories";
 
+const ENABLE_STRIPE_CHECKOUT =
+  process.env.REACT_APP_ENABLE_STRIPE_CHECKOUT === "true";
+
 function OrderPage() {
   const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState([]);
@@ -133,6 +136,27 @@ function OrderPage() {
         })),
       })),
     };
+    if (ENABLE_STRIPE_CHECKOUT) {
+      const idempotencyKey =
+        window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+      axios
+        .post("/payments/checkout-session", orderData, {
+          headers: { "X-Idempotency-Key": idempotencyKey },
+        })
+        .then((response) => {
+          const checkoutUrl = response?.data?.checkoutUrl;
+          if (!checkoutUrl) {
+            throw new Error("Missing checkout URL");
+          }
+          window.location.assign(checkoutUrl);
+        })
+        .catch((error) => {
+          console.error("Checkout session creation failed:", error);
+          toast.error("Unable to start payment. Please try again.");
+        });
+      return;
+    }
+
     axios
       .post("/admin/orders", orderData)
       .then((response) => {

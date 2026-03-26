@@ -3,6 +3,8 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AdminPage from "./AdminPage";
 
+jest.mock("../hooks/useKeepAliveHeartbeat", () => jest.fn());
+
 jest.mock("../components/Admin/ViewOrders", () => function MockViewOrders() {
   return <div data-testid="mock-view-orders">Orders content</div>;
 });
