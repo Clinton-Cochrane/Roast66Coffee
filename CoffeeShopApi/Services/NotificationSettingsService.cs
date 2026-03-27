@@ -24,6 +24,7 @@ namespace CoffeeShopApi.Services
                 existingSettings.AdminPhoneNumber = settings.AdminPhoneNumber;
                 existingSettings.BaristaPhoneNumber = settings.BaristaPhoneNumber;
                 existingSettings.TrailerPhoneNumber = settings.TrailerPhoneNumber;
+                existingSettings.TwilioFromPhoneNumber = settings.TwilioFromPhoneNumber;
                 _context.NotificationSettings.Update(existingSettings);
             }
             else

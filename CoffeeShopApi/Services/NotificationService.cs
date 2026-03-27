@@ -34,6 +34,8 @@ public class NotificationService
         var itemCount = order.OrderItems?.Sum(oi => oi.Quantity) ?? 0;
         var staffBody = $"Roast 66: New order #{order.Id} from {order.CustomerName} ({order.CustomerPhone}), {itemCount} item(s).";
         var customerBody = $"Roast 66: We received your order #{order.Id}. We will text you when it is ready for pickup.";
+        var settings = await _settingsService.GetNotificationSettingsAsync(cancellationToken);
+        var twilioFromPhone = NormalizePhone(settings?.TwilioFromPhoneNumber ?? string.Empty);
 
         var recipients = await GetStaffRecipientsAsync(cancellationToken);
         foreach (var recipient in recipients)
@@ -46,6 +48,7 @@ public class NotificationService
                 body: staffBody,
                 orderId: order.Id,
                 payload: new { orderId = order.Id, order.CustomerName, order.CustomerPhone, itemCount },
+                fromPhoneNumber: twilioFromPhone,
                 cancellationToken: cancellationToken);
         }
 
@@ -60,6 +63,7 @@ public class NotificationService
                 body: customerBody,
                 orderId: order.Id,
                 payload: new { orderId = order.Id, order.CustomerName, order.CustomerPhone, itemCount },
+                fromPhoneNumber: twilioFromPhone,
                 cancellationToken: cancellationToken);
         }
     }
@@ -71,6 +75,8 @@ public class NotificationService
         {
             return;
         }
+        var settings = await _settingsService.GetNotificationSettingsAsync(cancellationToken);
+        var twilioFromPhone = NormalizePhone(settings?.TwilioFromPhoneNumber ?? string.Empty);
 
         var body = $"Roast 66: Your order #{order.Id} is ready for pickup.";
         await SendWithLoggingAsync(
@@ -81,6 +87,7 @@ public class NotificationService
             body: body,
             orderId: order.Id,
             payload: new { orderId = order.Id, order.CustomerName, order.CustomerPhone, status = order.OrderStatus.ToString() },
+            fromPhoneNumber: twilioFromPhone,
             cancellationToken: cancellationToken);
     }
 
@@ -143,6 +150,7 @@ public class NotificationService
         string body,
         int orderId,
         object payload,
+        string fromPhoneNumber,
         CancellationToken cancellationToken)
     {
         var normalizedPhone = NormalizePhone(recipientPhone);
@@ -191,7 +199,7 @@ public class NotificationService
             message.AttemptCount = attempt;
             try
             {
-                message.ProviderMessageId = await _twilioService.SendSmsAsync(normalizedPhone, body);
+                message.ProviderMessageId = await _twilioService.SendSmsAsync(normalizedPhone, body, fromPhoneNumber);
                 message.Status = "sent";
                 message.LastError = null;
                 message.SentUtc = DateTime.UtcNow;

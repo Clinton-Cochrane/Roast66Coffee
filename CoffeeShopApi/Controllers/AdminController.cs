@@ -86,6 +86,19 @@ namespace CoffeeShopApi.Controllers
             });
         }
 
+        [Authorize(Roles = "Admin")]
+        [HttpGet("credential-settings")]
+        public ActionResult<CredentialSettingsInfo> GetCredentialSettingsInfo()
+        {
+            return Ok(new CredentialSettingsInfo
+            {
+                Username = _configuration["Admin:Username"] ?? "admin",
+                UsernameEnvKey = "Admin__Username",
+                PasswordEnvKey = "Admin__Password",
+                UpdateInstructions = "Update these environment variables in your deployment provider and redeploy the API service."
+            });
+        }
+
 
         private string GenerateToken()
         {
@@ -261,7 +274,8 @@ namespace CoffeeShopApi.Controllers
             {
                 AdminPhoneNumber = model.AdminPhoneNumber,
                 BaristaPhoneNumber = model.BaristaPhoneNumber,
-                TrailerPhoneNumber = model.TrailerPhoneNumber
+                TrailerPhoneNumber = model.TrailerPhoneNumber,
+                TwilioFromPhoneNumber = model.TwilioFromPhoneNumber
             };
             await _notificationSettingsService.SaveNotificationSettingsAsync(settings, cancellationToken);
             return Ok();
@@ -423,11 +437,29 @@ namespace CoffeeShopApi.Controllers
 
         [StringLength(32)]
         public string? TrailerPhoneNumber { get; set; }
+
+        [StringLength(32)]
+        public string? TwilioFromPhoneNumber { get; set; }
     }
 
     public class ForgotPasswordRequest
     {
         [StringLength(500)]
         public string? Message { get; set; }
+    }
+
+    public class CredentialSettingsInfo
+    {
+        [StringLength(50)]
+        public string Username { get; set; } = string.Empty;
+
+        [StringLength(100)]
+        public string UsernameEnvKey { get; set; } = string.Empty;
+
+        [StringLength(100)]
+        public string PasswordEnvKey { get; set; } = string.Empty;
+
+        [StringLength(500)]
+        public string UpdateInstructions { get; set; } = string.Empty;
     }
 }

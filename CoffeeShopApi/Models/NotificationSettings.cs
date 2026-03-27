@@ -21,5 +21,9 @@ namespace CoffeeShopApi.Models
         [StringLength(32)]
         [Column("trailerphonenumber")]
         public string? TrailerPhoneNumber { get; set; }
+
+        [StringLength(32)]
+        [Column("twiliofromphonenumber")]
+        public string? TwilioFromPhoneNumber { get; set; }
     }
 }

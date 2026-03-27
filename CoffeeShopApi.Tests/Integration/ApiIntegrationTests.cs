@@ -161,6 +161,49 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
+    public async Task NotificationSettings_SaveAndGet_PersistsTwilioFromPhoneNumber()
+    {
+        var token = await GetAdminToken();
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var settingsPayload = new
+        {
+            adminPhoneNumber = "+15551230001",
+            baristaPhoneNumber = "+15551230002",
+            trailerPhoneNumber = "+15551230003",
+            twilioFromPhoneNumber = "+15551239999"
+        };
+
+        var saveResponse = await _client.PutAsJsonAsync("/api/admin/notificationSettings", settingsPayload, JsonOptions);
+        saveResponse.EnsureSuccessStatusCode();
+
+        var getResponse = await _client.GetAsync("/api/admin/notificationSettings");
+        getResponse.EnsureSuccessStatusCode();
+        var saved = await getResponse.Content.ReadFromJsonAsync<NotificationSettingsResponse>(JsonOptions);
+        Assert.NotNull(saved);
+        Assert.Equal(settingsPayload.adminPhoneNumber, saved!.AdminPhoneNumber);
+        Assert.Equal(settingsPayload.twilioFromPhoneNumber, saved.TwilioFromPhoneNumber);
+    }
+
+    [Fact]
+    public async Task CredentialSettings_WithAdminToken_ReturnsEnvKeyMetadata()
+    {
+        var token = await GetAdminToken();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/admin/credential-settings");
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var info = await response.Content.ReadFromJsonAsync<CredentialSettingsResponse>(JsonOptions);
+
+        Assert.NotNull(info);
+        Assert.Equal("Admin__Username", info!.UsernameEnvKey);
+        Assert.Equal("Admin__Password", info.PasswordEnvKey);
+    }
+
+    [Fact]
     public async Task UpdateOrderStatus_ToReadyForPickup_LogsCustomerReadyNotification()
     {
         var token = await GetAdminToken();
@@ -312,5 +355,17 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     {
         public string EventType { get; set; } = string.Empty;
         public string RecipientRole { get; set; } = string.Empty;
+    }
+
+    private class NotificationSettingsResponse
+    {
+        public string? AdminPhoneNumber { get; set; }
+        public string? TwilioFromPhoneNumber { get; set; }
+    }
+
+    private class CredentialSettingsResponse
+    {
+        public string UsernameEnvKey { get; set; } = string.Empty;
+        public string PasswordEnvKey { get; set; } = string.Empty;
     }
 }
