@@ -1,8 +1,10 @@
 import React from "react";
 import { useLocation, Link } from "react-router-dom";
 import Button from "../components/common/Button";
+import { useI18n } from "../i18n/LanguageContext";
 
 function DuplicateOrderPage() {
+  const { t } = useI18n();
   const location = useLocation();
   const order = location.state?.order;
   const existingOrderId = location.state?.existingOrderId ?? order?.id;
@@ -60,34 +62,32 @@ function DuplicateOrderPage() {
       </div>
 
       <h1 className="text-2xl font-bold text-gray-800 mb-2">
-        Whoops! Double brew detected
+        {t("duplicateOrder.title")}
       </h1>
       <p className="text-gray-600 mb-4">
-        Looks like that order went through already — maybe a double-tap or a
-        second click? No worries, your coffee&apos;s already in the queue.
+        {t("duplicateOrder.bodyOne")}
       </p>
       <p className="text-gray-600 mb-6">
-        We caught the duplicate so you don&apos;t end up with two of the same
-        order. One cup (or two, if you meant it!) is on its way.
+        {t("duplicateOrder.bodyTwo")}
       </p>
 
       {existingOrderId && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-left">
           <p className="font-semibold text-amber-900">
-            Your order #{existingOrderId} is confirmed.
+            {t("duplicateOrder.confirmedOrder", { orderId: existingOrderId })}
           </p>
           <p className="text-sm text-amber-800 mt-1">
-            Use Order Status to track when it&apos;s ready for pickup.
+            {t("duplicateOrder.confirmedOrderHelp")}
           </p>
         </div>
       )}
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
         <Link to="/order-status">
-          <Button color="green">Check Order Status</Button>
+          <Button color="green">{t("duplicateOrder.checkStatus")}</Button>
         </Link>
         <Link to="/order">
-          <Button color="blue">Place a New Order</Button>
+          <Button color="blue">{t("duplicateOrder.placeNewOrder")}</Button>
         </Link>
       </div>
     </div>

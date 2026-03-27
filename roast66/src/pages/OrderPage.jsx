@@ -6,11 +6,13 @@ import "../styles/OrderPage.css";
 import FormInput from "../components/common/FormInput";
 import Button from "../components/common/Button";
 import CategoryType from "../constants/categories";
+import { useI18n } from "../i18n/LanguageContext";
 
 const ENABLE_STRIPE_CHECKOUT =
   process.env.REACT_APP_ENABLE_STRIPE_CHECKOUT === "true";
 
 function OrderPage() {
+  const { locale, t } = useI18n();
   const navigate = useNavigate();
   const [menuItems, setMenuItems] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
@@ -61,9 +63,14 @@ function OrderPage() {
         { ...item, quantity: 1, notes: "", addOns: [] },
       ]);
     } else {
-      toast.warning("Flavors cannot be ordered alone. Add them as add-ons to an existing drink.");
+      toast.warning(t("order.flavorStandaloneWarning"));
     }
   };
+
+  const currencyFormatter = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+  });
 
   const calculateOrderTotal = () => {
     return orderItems.reduce(
@@ -99,7 +106,7 @@ function OrderPage() {
     const removedItem = orderItems[index];
     const newOrderItems = orderItems.filter((_, i) => i !== index);
     setOrderItems(newOrderItems);
-    toast.info(`${removedItem.name} removed from order.`);
+    toast.info(t("order.itemRemoved", { itemName: removedItem.name }));
   };
 
   const handleAddFlavor = (index, flavor) => {
@@ -112,7 +119,7 @@ function OrderPage() {
       addOns.push({ ...flavor, quantity: 1 });
       setOrderItems(newOrderItems);
     } else {
-      toast.warning("This flavor has already been added.");
+      toast.warning(t("order.addOnDuplicateWarning"));
     }
 
     // Reset the dropdown
@@ -122,7 +129,7 @@ function OrderPage() {
   const handleOrderSubmit = (e) => {
     e.preventDefault();
     if (orderItems.length === 0) {
-      toast.error("Please add at least one item to your order.");
+      toast.error(t("order.orderRequiredError"));
       return;
     }
     const orderData = {
@@ -150,13 +157,13 @@ function OrderPage() {
         .then((response) => {
           const checkoutUrl = response?.data?.checkoutUrl;
           if (!checkoutUrl) {
-            throw new Error("Missing checkout URL");
+            throw new Error(t("order.checkoutMissingUrl"));
           }
           window.location.assign(checkoutUrl);
         })
         .catch((error) => {
           console.error("Checkout session creation failed:", error);
-          toast.error("Unable to start payment. Please try again.");
+          toast.error(t("order.checkoutFailed"));
         });
       return;
     }
@@ -192,7 +199,7 @@ function OrderPage() {
             error
           );
           toast.error(
-            "Failed to place the order. Please try again or check the console for details."
+            t("order.submitFailed")
           );
         }
       });
@@ -202,33 +209,39 @@ function OrderPage() {
     <div className="p-6 flex flex-col items-center">
       <div className="w-full max-w-5xl">
       <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h1 className="text-3xl font-bold">Place Your Order</h1>
+        <h1 className="text-3xl font-bold">{t("order.placeYourOrder")}</h1>
         <Link
           to="/order-status"
           className="text-accent hover:underline font-medium"
         >
-          Check Order Status →
+          {t("order.checkOrderStatus")} →
         </Link>
       </div>
 
       <div className="customer-info-container">
         <FormInput
           type="text"
-          placeholder="Your Name"
+          name="customerName"
+          label={t("order.namePlaceholder")}
+          placeholder={t("order.namePlaceholder")}
           value={customerName}
           onChange={(e) => setCustomerName(e.target.value)}
           required
         />
         <FormInput
           type="text"
-          placeholder="Phone For When Order Is Ready"
+          name="customerPhone"
+          label={t("order.phonePlaceholder")}
+          placeholder={t("order.phonePlaceholder")}
           value={customerPhone}
           onChange={(e) => setCustomerPhone(e.target.value)}
           required
         />
         <FormInput
           type="email"
-          placeholder="Email for order updates (optional)"
+          name="customerEmail"
+          label={t("order.emailPlaceholder")}
+          placeholder={t("order.emailPlaceholder")}
           value={customerEmail}
           onChange={(e) => setCustomerEmail(e.target.value)}
         />
@@ -240,11 +253,11 @@ function OrderPage() {
           checked={emailOptIn}
           onChange={(e) => setEmailOptIn(e.target.checked)}
         />
-        Send me order status updates by email. We only use this for your order updates.
+        {t("order.emailOptIn")}
       </label>
 
       <p className="text-gray-600 text-sm mb-4 text-center">
-        Select a drink from the dropdown, customize it with flavors and notes, then add another from the dropdown when you&apos;re ready.
+        {t("order.instructions")}
       </p>
 
       <div className="flex items-center space-x-4 mb-4">
@@ -253,13 +266,14 @@ function OrderPage() {
           onChange={handleDropDownChange}
           onFocus={handleDropdownFocus}
           className="w-full p-2 border rounded mb-4"
+          aria-label={t("order.selectMenuItem")}
         >
-          <option value="">Select a menu item</option>
+          <option value="">{t("order.selectMenuItem")}</option>
           {menuItems
             .filter((item) => canOrderDirectly(item))
             .map((item) => (
               <option key={item.id} value={JSON.stringify(item)}>
-                {item.name} - ${item.price} - {item.description}
+                {item.name} - {currencyFormatter.format(item.price)} - {item.description}
               </option>
             ))}
         </select>
@@ -273,6 +287,7 @@ function OrderPage() {
                 <div className="order-item-quantity">
                   <FormInput
                     type="number"
+                    label={t("order.quantityLabel", { itemName: item.name })}
                     className="quantity-input"
                     value={item.quantity}
                     min="1"
@@ -306,8 +321,9 @@ function OrderPage() {
                   }
                   onFocus={handleDropdownFocus}
                   className="w-full p-2 border rounded mb-2"
+                  aria-label={t("order.addFlavor")}
                 >
-                  <option value="">Add a Flavor</option>
+                  <option value="">{t("order.addFlavor")}</option>
                   {menuItems
                     .filter(
                       (menuItem) =>
@@ -315,7 +331,7 @@ function OrderPage() {
                     )
                     .map((flavor) => (
                       <option key={flavor.id} value={JSON.stringify(flavor)}>
-                        {flavor.name} - ${flavor.price}
+                        {flavor.name} - {currencyFormatter.format(flavor.price)}
                       </option>
                     ))}
                 </select>
@@ -347,7 +363,7 @@ function OrderPage() {
 
               <FormInput
                 type="text"
-                placeholder="Notes (optional)"
+                placeholder={t("order.notesPlaceholder")}
                 value={item.notes}
                 onChange={(e) => handleNotesChange(index, e.target.value)}
                 className="placeholder-gray-400"
@@ -357,7 +373,7 @@ function OrderPage() {
         </ul>
 
         <div className="font-bold text-lg">
-          Total: ${calculateOrderTotal().toFixed(2)}
+          {t("order.total")}: {currencyFormatter.format(calculateOrderTotal())}
         </div>
 
         <Button
@@ -365,7 +381,7 @@ function OrderPage() {
           color="green"
           disabled={orderItems.length === 0}
         >
-          Place Order
+          {t("order.placeOrder")}
         </Button>
       </form>
       </div>

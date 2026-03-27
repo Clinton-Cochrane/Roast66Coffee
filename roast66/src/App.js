@@ -1,6 +1,6 @@
 // src/App.js
-import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import HomePage from './pages/HomePage';
@@ -15,23 +15,45 @@ import './styles/Navigation.css';
 import Footer from './components/layout/Footer';
 import AdminGate from './components/Admin/AdminGate';
 import CashGate from './components/Admin/CashGate';
+import { useI18n } from "./i18n/LanguageContext";
+
+function RouteFocusManager() {
+  const location = useLocation();
+
+  useEffect(() => {
+    const main = document.getElementById("main-content");
+    if (main) {
+      main.focus();
+    }
+  }, [location.pathname]);
+
+  return null;
+}
 
 function App() {
+  const { t } = useI18n();
+
   return (
     <Router>
       <div className="App">
+        <a className="skip-link" href="#main-content">
+          {t("app.skipToMain")}
+        </a>
+        <RouteFocusManager />
         <Navigation />
-        <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/menu" element={<MenuPage />} />
-          <Route path="/order" element={<OrderPage />} />
-          <Route path="/order/confirmation" element={<OrderConfirmationPage />} />
-          <Route path="/order/duplicate" element={<DuplicateOrderPage />} />
-          <Route path="/order-status" element={<OrderStatusPage />} />
-          <Route path="/admin-login" element={<Navigate to="/admin" replace />} />
-          <Route path="/admin" element={<AdminGate />} />
-          <Route path="/cash" element={<CashGate />} />
-        </Routes>
+        <main id="main-content" tabIndex={-1}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/menu" element={<MenuPage />} />
+            <Route path="/order" element={<OrderPage />} />
+            <Route path="/order/confirmation" element={<OrderConfirmationPage />} />
+            <Route path="/order/duplicate" element={<DuplicateOrderPage />} />
+            <Route path="/order-status" element={<OrderStatusPage />} />
+            <Route path="/admin-login" element={<Navigate to="/admin" replace />} />
+            <Route path="/admin" element={<AdminGate />} />
+            <Route path="/cash" element={<CashGate />} />
+          </Routes>
+        </main>
         <Footer/>
         <ToastContainer position="top-right" autoClose={3000} />
       </div>

@@ -2,27 +2,34 @@ import React from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import OrderTracker from "../components/Customer/OrderTracker";
 import Button from "../components/common/Button";
+import { useI18n } from "../i18n/LanguageContext";
 
 function OrderConfirmationPage() {
+  const { locale, t } = useI18n();
   const location = useLocation();
   const navigate = useNavigate();
   const order = location.state?.order;
   const customerEmail = order?.customerEmail ?? order?.CustomerEmail ?? "";
   const emailOptIn = Boolean(order?.customerNotificationOptIn ?? order?.CustomerNotificationOptIn);
 
+  const currencyFormatter = new Intl.NumberFormat(locale, {
+    style: "currency",
+    currency: "USD",
+  });
+
   if (!order) {
     return (
       <div className="p-6 max-w-lg mx-auto">
-        <h1 className="text-2xl font-bold mb-4">View Order Status</h1>
+        <h1 className="text-2xl font-bold mb-4">{t("orderConfirmation.fallbackTitle")}</h1>
         <p className="text-gray-600 mb-4">
-          Your order was placed. To check status later, go to{" "}
+          {t("orderConfirmation.fallbackDescriptionStart")}{" "}
           <Link to="/order-status" className="text-green-700 underline">
-            Order Status
+            {t("orderStatus.title")}
           </Link>{" "}
-          and enter your order ID and phone number.
+          {t("orderConfirmation.fallbackDescriptionEnd")}
         </p>
         <Button onClick={() => navigate("/order-status")} color="green">
-          Check Order Status
+          {t("orderConfirmation.fallbackButton")}
         </Button>
       </div>
     );
@@ -48,10 +55,10 @@ function OrderConfirmationPage() {
       customerPhone: order.customerPhone ?? order.CustomerPhone,
       trackerUrl: `${window.location.origin}/order-status`,
       items: items.map((item) => ({
-        name: item.menuItem?.name ?? "Item",
+        name: item.menuItem?.name ?? t("orderConfirmation.itemFallback"),
         quantity: item.quantity ?? 1,
         addOns: (item.addOns ?? []).map((a) => ({
-          name: a.menuItem?.name ?? "Add-on",
+          name: a.menuItem?.name ?? t("orderConfirmation.addOnFallback"),
           quantity: a.quantity ?? 1,
         })),
         notes: item.notes ?? "",
@@ -70,54 +77,59 @@ function OrderConfirmationPage() {
 
   return (
     <div className="p-6 max-w-lg mx-auto">
-      <h1 className="text-3xl font-bold mb-2">Order Confirmed!</h1>
+      <h1 className="text-3xl font-bold mb-2">{t("orderConfirmation.title")}</h1>
         <p className="text-gray-600 mb-6">
-        Thanks for your order, {order.customerName ?? order.CustomerName}. We&apos;ll have it ready
-        soon.
+        {t("orderConfirmation.thankYou", {
+          customerName: order.customerName ?? order.CustomerName,
+        })}
       </p>
 
       <div className="bg-gray-50 rounded-lg p-4 mb-6">
-        <p className="text-lg font-bold mb-2">Order #{order.id}</p>
+        <p className="text-lg font-bold mb-2">
+          {t("orderConfirmation.orderPrefix")} #{order.id}
+        </p>
         <ul className="space-y-1 mb-4">
           {items.map((item, i) => (
             <li key={i}>
-              {item.quantity}x {item.menuItem?.name ?? "Item"}
+              {item.quantity}x {item.menuItem?.name ?? t("orderConfirmation.itemFallback")}
               {(item.addOns || []).length > 0 &&
                 ` + ${item.addOns.map((a) => a.menuItem?.name).filter(Boolean).join(", ")}`}
               {item.notes && ` (${item.notes})`}
             </li>
           ))}
         </ul>
-        <p className="font-bold">Total: ${total.toFixed(2)}</p>
+        <p className="font-bold">
+          {t("orderConfirmation.total")}: {currencyFormatter.format(total)}
+        </p>
         {emailOptIn && customerEmail ? (
           <p className="text-sm text-gray-600 mt-2">
-            We will send order status updates to <strong>{customerEmail}</strong>.
+            {t("orderConfirmation.emailUpdates")} <strong>{customerEmail}</strong>.
           </p>
         ) : (
           <div className="mt-3">
             <p className="text-sm text-gray-600 mb-2">
-              Email updates are optional. Download your order summary for your records.
+              {t("orderConfirmation.emailOptional")}
             </p>
             <Button color="gray" onClick={handleDownloadSummary}>
-              Download Order Summary
+              {t("orderConfirmation.downloadSummary")}
             </Button>
           </div>
         )}
       </div>
 
-      <h2 className="text-xl font-bold mb-4">Order Status</h2>
+      <h2 className="text-xl font-bold mb-4">{t("orderConfirmation.statusTitle")}</h2>
       <OrderTracker currentStatus={order.orderStatus ?? order.OrderStatus ?? 0} />
 
       <div className="mt-8 pt-6 border-t">
         <p className="text-sm text-gray-600 mb-2">
-          Want to check status later? Go to{" "}
+          {t("orderConfirmation.laterStatusStart")}{" "}
           <Link to="/order-status" className="text-green-700 underline">
-            Order Status
+            {t("orderStatus.title")}
           </Link>{" "}
-          and enter order #{order.id} with your phone number.
+          {t("orderConfirmation.laterStatusEnd", { orderId: order.id })}
         </p>
         <Link to="/menu">
-          <Button color="blue">Back to Menu</Button>
+          <Button color="blue">{t("orderConfirmation.backToMenu")}</Button>
         </Link>
       </div>
     </div>

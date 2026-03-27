@@ -5,6 +5,7 @@ import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_DESCRIPTIONS,
 } from "../../constants/orderStatus";
+import { useI18n } from "../../i18n/LanguageContext";
 
 const STAGES = [
   ORDER_STATUS.Received,
@@ -14,10 +15,25 @@ const STAGES = [
 ];
 
 function OrderTracker({ currentStatus }) {
+  const { t } = useI18n();
   const currentIndex = STAGES.indexOf(
     typeof currentStatus === "number" ? currentStatus : ORDER_STATUS.Received
   );
   const safeIndex = currentIndex >= 0 ? currentIndex : 0;
+
+  const localizedLabels = {
+    [ORDER_STATUS.Received]: t("orderStatus.trackerReceivedLabel"),
+    [ORDER_STATUS.Preparing]: t("orderStatus.trackerPreparingLabel"),
+    [ORDER_STATUS.ReadyForPickup]: t("orderStatus.trackerReadyLabel"),
+    [ORDER_STATUS.Completed]: t("orderStatus.trackerCompletedLabel"),
+  };
+
+  const localizedDescriptions = {
+    [ORDER_STATUS.Received]: t("orderStatus.trackerReceivedDescription"),
+    [ORDER_STATUS.Preparing]: t("orderStatus.trackerPreparingDescription"),
+    [ORDER_STATUS.ReadyForPickup]: t("orderStatus.trackerReadyDescription"),
+    [ORDER_STATUS.Completed]: t("orderStatus.trackerCompletedDescription"),
+  };
 
   return (
     <div className="order-tracker space-y-4">
@@ -45,9 +61,11 @@ function OrderTracker({ currentStatus }) {
               )}
             </div>
             <div className="flex-1">
-              <p className="font-medium">{ORDER_STATUS_LABELS[status]}</p>
+              <p className="font-medium">
+                {localizedLabels[status] ?? ORDER_STATUS_LABELS[status]}
+              </p>
               <p className="text-sm text-gray-600">
-                {ORDER_STATUS_DESCRIPTIONS[status]}
+                {localizedDescriptions[status] ?? ORDER_STATUS_DESCRIPTIONS[status]}
               </p>
             </div>
           </div>
