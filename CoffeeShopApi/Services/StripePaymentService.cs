@@ -64,9 +64,21 @@ public class StripePaymentService
 
             var requestPhone = NormalizePhone(request.CustomerPhone ?? string.Empty);
             var orderPhone = NormalizePhone(order.CustomerPhone ?? "");
-            if (!string.IsNullOrEmpty(orderPhone) && (string.IsNullOrEmpty(requestPhone) || requestPhone != orderPhone))
+            if (!string.IsNullOrEmpty(orderPhone))
             {
-                throw new InvalidOperationException("Phone number does not match this order.");
+                if (string.IsNullOrEmpty(requestPhone) || requestPhone != orderPhone)
+                {
+                    throw new InvalidOperationException("Phone number does not match this order.");
+                }
+            }
+            else
+            {
+                var requestName = NormalizeName(request.CustomerName);
+                var orderName = NormalizeName(order.CustomerName);
+                if (string.IsNullOrEmpty(requestName) || requestName != orderName)
+                {
+                    throw new InvalidOperationException("Customer details do not match this order.");
+                }
             }
 
             lineItems = BuildLineItemsFromOrder(order);
@@ -325,4 +337,13 @@ public class StripePaymentService
 
     private static string NormalizePhone(string phone) =>
         new string(phone.Where(char.IsDigit).ToArray());
+
+    private static string NormalizeName(string name) =>
+        string.Join(
+            " ",
+            (name ?? string.Empty)
+                .Trim()
+                .ToLowerInvariant()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        );
 }

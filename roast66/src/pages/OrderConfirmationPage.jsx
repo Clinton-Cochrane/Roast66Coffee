@@ -10,7 +10,10 @@ function OrderConfirmationPage() {
   const navigate = useNavigate();
   const order = location.state?.order;
   const customerEmail = order?.customerEmail ?? order?.CustomerEmail ?? "";
-  const hasEmailUpdates = customerEmail.trim().length > 0;
+  const notificationOptIn = Boolean(
+    order?.customerNotificationOptIn ?? order?.CustomerNotificationOptIn
+  );
+  const hasEmailUpdates = notificationOptIn && customerEmail.trim().length > 0;
 
   const currencyFormatter = new Intl.NumberFormat(locale, {
     style: "currency",
