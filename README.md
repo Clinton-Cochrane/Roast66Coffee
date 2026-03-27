@@ -1,250 +1,279 @@
-Roast 66 Coffee
+# Roast 66 Coffee
 
-Welcome to Roast 66 Coffee, a full-stack web application for managing a coffee shop's menu, orders, and administration tasks. Built with React for the frontend, .NET for the backend, and PostgreSQL for the database.
+Roast 66 Coffee is a full-stack web application for managing a coffee shop menu, orders, and admin operations. It uses a React frontend, an ASP.NET Core Web API backend, and PostgreSQL for data storage.
 
- 
+## Table of Contents
 
-Table of Contents
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Quick Start](#quick-start)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Run the App](#run-the-app)
+- [Database Migrations](#database-migrations)
+- [Seed the Database](#seed-the-database)
+- [Deployment (Render)](#deployment-render)
+- [Production Operations](#production-operations)
+- [License](#license)
 
-Features
+## Features
 
-Tech Stack
+- View menu items and offerings.
+- Place customer orders.
+- Manage menu items from an admin dashboard.
+- Bulk import/export menu data as JSON.
+- Seed a default menu from admin bulk operations.
+- Use responsive UI across desktop and mobile.
 
-Installation
+## Tech Stack
 
-Environment Variables
+### Frontend
 
-Running the App
+- React
+- React Router
+- Axios
+- Tailwind CSS
+- React Icons
 
-Database Migrations
+### Backend
 
-Seeding the Database
+- .NET 8 (ASP.NET Core Web API)
+- Entity Framework Core
+- PostgreSQL
 
-Deployment
+### Hosting and Infrastructure
 
-Screenshots
+- Render (frontend/backend hosting)
+- Docker (containerization)
 
-License
+## Quick Start
 
-Features
+Use Docker Compose for the fastest local setup:
 
-View Menu: Browse a selection of drinks and offerings.
+1. Copy environment files:
+   - `env.example` -> `.env` (repo root, optional overrides)
+   - `roast66/.env.example` -> `roast66/.env`
+   - `CoffeeShopApi/.env.example` -> `CoffeeShopApi/.env`
+2. Ensure backend connection string uses `Host=postgres-db` in `CoffeeShopApi/.env`.
+3. Start the stack:
 
-Place Orders: Submit orders for processing.
+```bash
+docker-compose up --build
+```
 
-Admin Panel: Add, update, or delete menu items. Bulk import/export menu as JSON for mass changes.
+Services:
 
-Seeding Database: Seed default menu from the Admin dashboard (Bulk Menu Operations).
+- Frontend: `http://localhost:3000`
+- Backend: `http://localhost:5001`
+- PostgreSQL: started by Compose
 
-Responsive Design: Optimized for both desktop and mobile devices.
+## Prerequisites
 
-Tech Stack
+Install the following:
 
-Frontend
+- Node.js 18+
+- .NET 8 SDK
+- Docker Desktop
+- PostgreSQL (only required for non-Docker local runs)
 
-React (with React Router, Axios, and Tailwind CSS)
+## Installation
 
-React Icons (for icons)
+### Clone the Repository
 
-Backend
-
-.NET 8 (ASP.NET Core Web API)
-
-Entity Framework Core
-
-PostgreSQL (database)
-
-Deployment
-
-Render (for frontend and backend hosting)
-
-Docker (for containerization)
-
-Installation
-
-Prerequisites
-
-Ensure you have the following installed:
-
-Node.js (v18 or higher)
-
-.NET 8 SDK
-
-Docker Desktop
-
-PostgreSQL (if running locally)
-
-Clone the Repository
-
+```bash
 git clone https://github.com/your-username/Roast66.git
 cd Roast66
+```
 
-Install Dependencies
+### Install Frontend Dependencies
 
-Frontend
-
+```bash
 cd roast66
 npm install
+```
 
-Backend
+## Configuration
 
-cd CoffeeShopApi
+### Frontend Environment (`roast66/.env`)
 
-Environment Variables
+Copy `roast66/.env.example` to `roast66/.env`.
 
-Copy `.env.example` to `.env` for the frontend. For the backend, copy `CoffeeShopApi/appsettings.Example.json` to `CoffeeShopApi/appsettings.json` (appsettings.json is gitignored and must be created locally).
-
-Frontend (roast66/.env)
-
+```env
 REACT_APP_API_URL=http://localhost:5001/api
+```
 
-Backend (CoffeeShopApi/appsettings.json or environment variables)
+### Backend Configuration (local appsettings)
 
-See `CoffeeShopApi/appsettings.Example.json` for the full structure. Required keys:
+For local non-Docker runs, copy:
 
-- `ConnectionStrings:DefaultConnection` - PostgreSQL connection string
-- `Admin:Username`, `Admin:Password` - Admin login credentials
-- `Jwt:Key` (min 32 chars), `Jwt:Issuer`, `Jwt:Audience` - JWT configuration
-- `AllowedOrigins` - Comma-separated list of allowed frontend URLs (required in production)
+- `CoffeeShopApi/appsettings.Example.json` -> `CoffeeShopApi/appsettings.json`
 
-Backend (CoffeeShopApi/.env) for Docker
+Required keys:
 
-When using Docker Compose, the backend loads from `CoffeeShopApi/.env` (not appsettings.json). Copy `CoffeeShopApi/.env.example` to `CoffeeShopApi/.env` and adjust values. The connection string must use `Host=postgres-db` (the Docker service name) instead of `localhost`.
+- `ConnectionStrings:DefaultConnection` (PostgreSQL connection string)
+- `Admin:Username`, `Admin:Password` (admin credentials)
+- `Jwt:Key` (minimum 32 chars), `Jwt:Issuer`, `Jwt:Audience`
+- `AllowedOrigins` (comma-separated frontend URLs; required in production)
 
-Running the App
+### Backend Environment (`CoffeeShopApi/.env`) for Docker
 
-Using Docker Compose
+For Docker Compose, backend settings are loaded from `CoffeeShopApi/.env` (not `appsettings.json`).
 
-1. Copy `env.example` to `.env` in the repo root to customize Postgres credentials (optional; defaults to root/toor for local dev only).
-2. Copy `roast66/.env.example` to `roast66/.env` for the frontend API URL.
-3. Copy `CoffeeShopApi/.env.example` to `CoffeeShopApi/.env` for the backend (connection string, JWT, etc.). Use `Host=postgres-db` in the connection string for Docker.
+- Copy `CoffeeShopApi/.env.example` -> `CoffeeShopApi/.env`
+- Use `Host=postgres-db` (service name) in the connection string, not `localhost`
 
-In the root directory, run:
+## Run the App
 
+### Option A: Docker Compose
+
+From the repository root:
+
+```bash
 docker-compose up --build
+```
 
-This will:
+### Option B: Run Without Docker
 
-- Start the frontend on http://localhost:3000
-- Start the backend on http://localhost:5001
-- Set up the PostgreSQL database
+Start backend:
 
-Running Without Docker
-
-Start the Backend
-
+```bash
 cd CoffeeShopApi
 dotnet ef database update
 dotnet run
+```
 
-Backend runs at http://localhost:80 (set `PORT` env var for a different port).
+Backend default: `http://localhost:80`  
+Set `PORT` to use another port.
 
-Start the Frontend
+Start frontend:
 
+```bash
 cd roast66
 npm start
+```
 
-Frontend runs at http://localhost:3000.
+Frontend default: `http://localhost:3000`
 
-Database Migrations
+## Database Migrations
 
+```bash
 cd CoffeeShopApi
 dotnet ef migrations add MigrationName
 dotnet ef database update
+```
 
-Seeding the Database
+## Seed the Database
 
-Log in to the Admin dashboard at /admin, then use "Seed Default Menu" in the Bulk Menu Operations section. Or call (requires admin auth):
+Use one of the following options:
 
+- Admin UI: sign in at `/admin`, then run **Seed Default Menu** from Bulk Menu Operations.
+- API (admin auth required):
+
+```http
 GET /api/Admin/seed-menu?confirm=true
+```
 
-Deployment
+## Deployment (Render)
 
-Production Deployment (Render)
+This repository includes a `render.yaml` Blueprint for one-click deployment.
 
-This project includes a `render.yaml` Blueprint for one-click deployment to Render.
+1. Push the repository to GitHub and connect it in Render.
+2. Create a new Blueprint Instance in Render.
+3. Render provisions:
+   - PostgreSQL database: `roast66-db`
+   - Backend API service: `roast66-api` (Docker)
+   - Frontend static site: `roast66-web`
+4. Configure required environment variables in Render.
 
-1. Push your code to GitHub and connect the repository to Render.
-2. In Render Dashboard, create a new Blueprint Instance and select this repo. Render will create:
-   - A PostgreSQL database (`roast66-db`)
-   - Backend API (`roast66-api`) - Docker-based
-   - Frontend static site (`roast66-web`)
-3. Set the following environment variables in the Render Dashboard. Values marked `sync: false` in `render.yaml` must be entered manually; others are set by the Blueprint.
+### Backend Environment Variables (`roast66-api`)
 
-   **Backend (roast66-api):**
-   - `ASPNETCORE_ENVIRONMENT=Production`
-   - `ConnectionStrings__DefaultConnection` - PostgreSQL connection string
-   - `Admin__Username` - Admin login username
-   - `Admin__Password` - Admin login password (use a strong password)
-   - `Jwt__Key` - Render auto-generates this from the Blueprint (`generateValue: true`) when the Blueprint is applied. If it is still unset, the API generates a random signing key at startup and logs a warning (sessions invalidate on every restart). For production, set a stable secret of at least 32 characters in the dashboard (e.g. `openssl rand -base64 48`).
-   - `Jwt__Issuer` - `Roast66Coffee`
-   - `Jwt__Audience` - `Roast66Coffee`
-   - `Jwt__TokenExpiryInHours` - `16`
-   - `AllowedOrigins` - Comma-separated frontend URLs, e.g. `https://roast66-web.onrender.com,https://yourdomain.com`
-   - `Order__DuplicateDetectionWindowMinutes` - `2`
-   - Optional payments/alerts:
-     - `Stripe__SecretKey`, `Stripe__WebhookSecret`, `Stripe__FrontendBaseUrl`
-     - `Resend__ApiKey`, `Resend__From`, `Support__AlertEmail`
+- `ASPNETCORE_ENVIRONMENT=Production`
+- `ConnectionStrings__DefaultConnection`
+- `Admin__Username`
+- `Admin__Password` (use strong value)
+- `Jwt__Key` (stable secret, at least 32 chars)
+- `Jwt__Issuer=Roast66Coffee`
+- `Jwt__Audience=Roast66Coffee`
+- `Jwt__TokenExpiryInHours=16`
+- `AllowedOrigins` (comma-separated frontend URLs)
+- `Order__DuplicateDetectionWindowMinutes=2`
 
-   **Frontend (roast66-web):**
-   - `REACT_APP_API_URL` - Backend API URL, e.g. `https://roast66coffee.onrender.com/api`
-   - `REACT_APP_ENABLE_STRIPE_CHECKOUT` - `false` (set `true` when ready)
+Optional:
 
-4. After the first deploy, you may need to redeploy the backend so `AllowedOrigins` includes the actual frontend URL, and redeploy the frontend so `REACT_APP_API_URL` points to the actual backend URL.
-5. Seed the database: Log in to Admin at `/admin`, then use "Seed Default Menu" in Bulk Menu Operations. Or call `GET /api/Admin/seed-menu?confirm=true` with admin auth.
+- Stripe: `Stripe__SecretKey`, `Stripe__WebhookSecret`, `Stripe__FrontendBaseUrl`
+- Alerts/email: `Resend__ApiKey`, `Resend__From`, `Support__AlertEmail`
 
-**Post-Deployment Operations**
+`Jwt__Key` note:
 
-- **Database backups**: Render provides automatic backups for PostgreSQL. Verify backup retention in the Render Dashboard under your database service (typically 7 days for free tier). Consider upgrading for longer retention if needed.
-- **Health check**: The API exposes `/api/health` for liveness probes. Returns `{ "status": "healthy", "timestamp": "..." }`.
-- **Keepalive mode (free-tier mitigation)**:
-  - Admin dashboard now sends `POST /api/ops/keepalive/heartbeat` while the page is open.
-  - API warmup service runs lightweight probes only inside the active window (`KeepAlive:*` settings).
-  - Optional external helper script: `scripts/ops/keepalive-pulse.sh` (requires `ADMIN_JWT_TOKEN`).
-- **Stripe Checkout (optional, feature-flagged)**:
-  - Set backend env vars: `Stripe__SecretKey`, `Stripe__WebhookSecret`, `Stripe__FrontendBaseUrl`.
-  - Set frontend env var: `REACT_APP_ENABLE_STRIPE_CHECKOUT=true`.
-  - Frontend calls `POST /api/payments/checkout-session`; webhook endpoint is `POST /api/payments/webhook`.
-  - Orders are finalized only after `checkout.session.completed`.
+- Blueprint may auto-generate this value.
+- If unset, the API creates a random key at startup and logs a warning.
+- For production stability, set a fixed secret manually (example generation):
 
-### Updating Admin Password and JWT Key
+```bash
+openssl rand -base64 48
+```
 
-Use these steps any time you want to rotate login credentials.
+### Frontend Environment Variables (`roast66-web`)
 
-1. In Render Dashboard, open service `roast66-api` -> **Environment**.
+- `REACT_APP_API_URL` (example: `https://roast66coffee.onrender.com/api`)
+- `REACT_APP_ENABLE_STRIPE_CHECKOUT=false` (set `true` when ready)
+
+### Post-Deploy Checks
+
+1. Redeploy backend if `AllowedOrigins` needs actual frontend URL updates.
+2. Redeploy frontend if `REACT_APP_API_URL` changed.
+3. Seed menu data via admin UI or `GET /api/Admin/seed-menu?confirm=true`.
+
+## Production Operations
+
+### Post-Deployment Operations
+
+- Database backups: verify retention policy in Render dashboard.
+- Health check endpoint: `GET /api/health`
+- Keepalive mode (free-tier mitigation):
+  - Admin dashboard sends `POST /api/ops/keepalive/heartbeat` while open.
+  - API warmup runs in configured `KeepAlive:*` window.
+  - Optional helper: `scripts/ops/keepalive-pulse.sh` (requires `ADMIN_JWT_TOKEN`).
+- Stripe checkout (optional):
+  - Frontend starts checkout via `POST /api/payments/checkout-session`.
+  - Webhook endpoint: `POST /api/payments/webhook`.
+  - Orders finalize on `checkout.session.completed`.
+
+### Rotate Admin Password and JWT Key
+
+1. Open `roast66-api` -> **Environment** in Render Dashboard.
 2. Update `Admin__Username` and/or `Admin__Password`.
-3. (Recommended on security events) rotate `Jwt__Key` too.
-4. Save changes and redeploy `roast66-api`.
-5. Staff sign in again using the new credentials.
+3. Rotate `Jwt__Key` when needed (recommended after security incidents).
+4. Save and redeploy `roast66-api`.
+5. Staff sign in again with updated credentials.
 
 Notes:
+
 - Rotating `Admin__Password` changes future login credentials.
-- Rotating `Jwt__Key` immediately invalidates all active sessions (`/admin` and `/cash`).
+- Rotating `Jwt__Key` invalidates active sessions (`/admin`, `/cash`).
 
-### Production Operations Runbook
+### Production Runbook
 
-- **Staging parity**
-  - Maintain a staging Render stack with the same env var keys as production.
-  - Run migrations and checkout flow in staging before each release.
-- **Backup verification cadence**
-  - Daily: verify latest backup exists.
-  - Weekly: restore backup to staging and validate key API reads (`/api/menu`, `/api/order/lookup`).
-- **Incident rollback**
-  - Roll back frontend/backend service to last known-good deploy in Render.
-  - If data issue: restore latest safe DB backup to staging first, verify, then restore production.
-- **Billing/cost guardrails**
-  - Configure Render/Supabase budget alerts and usage notifications.
-  - Review monthly usage before changing service plans.
+- Staging parity:
+  - Keep staging env var keys aligned with production.
+  - Run migrations and checkout tests in staging before release.
+- Backup verification cadence:
+  - Daily: confirm latest backup exists.
+  - Weekly: restore to staging and validate key reads (`/api/menu`, `/api/order/lookup`).
+- Incident rollback:
+  - Roll frontend/backend to last known-good deployment.
+  - For data issues, validate restore in staging first.
+- Billing guardrails:
+  - Configure Render/Supabase budget alerts.
+  - Review usage monthly before plan changes.
 
-### Business Payments and Compliance Checklist
+### Payments and Compliance Checklist
 
-- Stripe account completed: legal business profile, KYC identity checks, payout bank account, tax details.
-- Checkout legal pages published and linked: Terms of Service, Privacy Policy, Refund/Cancellation Policy.
-- Reconciliation process defined: daily payout reconciliation + monthly accounting close.
+- Stripe business profile and KYC complete.
+- Terms, Privacy Policy, and Refund/Cancellation Policy published.
+- Reconciliation process defined (daily payouts, monthly close).
 
-
-License
+## License
 
 This project is licensed under the MIT License.
-
-
