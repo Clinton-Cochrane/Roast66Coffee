@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "../axiosConfig";
 import { toast } from "react-toastify";
@@ -19,20 +19,49 @@ function OrderPage() {
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
 
+  const wakeInFlightRef = useRef(false);
+
   useEffect(() => {
-    fetchMenuItems();
+    ensureMenuItemsLoaded();
   }, []);
 
-  const fetchMenuItems = () => {
-    axios
-      .get("/menu")
-      .then((response) => setMenuItems(response.data))
-      .catch((error) => console.error(error));
+  const fetchMenuItems = async () => {
+    try {
+      const response = await axios.get("/menu");
+      const items = Array.isArray(response.data) ? response.data : [];
+      setMenuItems(items);
+      return items.length;
+    } catch (error) {
+      console.error(error);
+      return 0;
+    }
   };
 
-  /** Refresh menu when user focuses a dropdown to recover from stale/sleeping backend connections. */
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  // Retry a few times on page open to wake sleeping backend.
+  const ensureMenuItemsLoaded = async () => {
+    if (wakeInFlightRef.current) return;
+    wakeInFlightRef.current = true;
+    try {
+      const maxAttempts = 4;
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const count = await fetchMenuItems();
+        if (count > 0) return;
+        if (attempt < maxAttempts - 1) {
+          await sleep(1200);
+        }
+      }
+    } finally {
+      wakeInFlightRef.current = false;
+    }
+  };
+
+  /** Only re-wake backend on focus if menu is still empty. */
   const handleDropdownFocus = () => {
-    fetchMenuItems();
+    if (menuItems.length === 0) {
+      ensureMenuItemsLoaded();
+    }
   };
 
   const canOrderDirectly = (item) => {
