@@ -26,5 +26,21 @@ instance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+instance.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    if (status === 401 && typeof window !== "undefined") {
+      localStorage.removeItem("token");
+      const pathname = window.location.pathname || "/";
+      const loginPath = pathname.startsWith("/cash") ? "/cash" : "/admin";
+      if (pathname !== loginPath) {
+        window.location.assign(loginPath);
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 
 export default instance;

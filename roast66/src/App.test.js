@@ -9,6 +9,7 @@ jest.mock("./pages/OrderPage", () => () => <div>Order Page</div>);
 jest.mock("./pages/OrderConfirmationPage", () => () => <div>Order Confirmation</div>);
 jest.mock("./pages/OrderStatusPage", () => () => <div>Order Status</div>);
 jest.mock("./components/Admin/AdminGate", () => () => <div>Admin Gate</div>);
+jest.mock("./components/Admin/CashGate", () => () => <div>Cash Gate</div>);
 jest.mock("./components/Navigation", () => () => <nav>Navigation</nav>);
 jest.mock("./components/layout/Footer", () => () => <footer>Footer</footer>);
 jest.mock("react-toastify", () => ({

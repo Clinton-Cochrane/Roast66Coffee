@@ -27,9 +27,9 @@ public class StripePaymentService
         _notificationService = notificationService;
     }
 
+    /// <summary>True when Stripe Checkout can be created (secret key present). Webhooks use <c>Stripe:WebhookSecret</c> separately.</summary>
     public bool IsConfigured() =>
-        !string.IsNullOrWhiteSpace(_configuration["Stripe:SecretKey"]) &&
-        !string.IsNullOrWhiteSpace(_configuration["Stripe:WebhookSecret"]);
+        !string.IsNullOrWhiteSpace(_configuration["Stripe:SecretKey"]);
 
     public async Task<(string checkoutUrl, string sessionId)> CreateCheckoutSessionAsync(
         CheckoutSessionRequest request,
@@ -37,7 +37,8 @@ public class StripePaymentService
         CancellationToken cancellationToken = default)
     {
         StripeConfiguration.ApiKey = _configuration["Stripe:SecretKey"];
-        var frontendBaseUrl = _configuration["Stripe:FrontendBaseUrl"] ?? "http://localhost:3000";
+        var frontendBaseUrl = (_configuration["Stripe:FrontendBaseUrl"] ?? "http://localhost:3000").TrimEnd('/');
+
         var existingDraft = await _context.PaymentCheckoutDrafts
             .FirstOrDefaultAsync(x => x.IdempotencyKey == idempotencyKey, cancellationToken);
         if (existingDraft != null)
@@ -47,6 +48,189 @@ public class StripePaymentService
             return (existingSession.Url ?? string.Empty, existingSession.Id);
         }
 
+        List<SessionLineItemOptions> lineItems;
+        string successUrl;
+        string cancelUrl;
+        CheckoutSessionRequest payloadToStore;
+
+        if (request.ExistingOrderId is int prepayId && prepayId > 0)
+        {
+            var order = await _orderService.GetOrderByIdAsync(prepayId)
+                ?? throw new InvalidOperationException("Order not found.");
+            if (order.PaidUtc != null)
+            {
+                throw new InvalidOperationException("This order is already paid.");
+            }
+
+            var requestPhone = NormalizePhone(request.CustomerPhone);
+            var orderPhone = NormalizePhone(order.CustomerPhone ?? "");
+            if (string.IsNullOrEmpty(requestPhone) || requestPhone != orderPhone)
+            {
+                throw new InvalidOperationException("Phone number does not match this order.");
+            }
+
+            lineItems = BuildLineItemsFromOrder(order);
+            if (lineItems.Count == 0)
+            {
+                throw new InvalidOperationException("This order has no billable items.");
+            }
+
+            successUrl = $"{frontendBaseUrl}/order-status?checkout=success&orderId={prepayId}";
+            cancelUrl = $"{frontendBaseUrl}/order-status?checkout=cancelled&orderId={prepayId}";
+
+            payloadToStore = new CheckoutSessionRequest
+            {
+                ExistingOrderId = prepayId,
+                CustomerName = order.CustomerName,
+                CustomerPhone = order.CustomerPhone ?? request.CustomerPhone,
+                OrderItems = []
+            };
+        }
+        else
+        {
+            if (request.OrderItems == null || request.OrderItems.Count == 0)
+            {
+                throw new InvalidOperationException("Order items are required for a new checkout.");
+            }
+
+            lineItems = await BuildLineItemsFromRequestAsync(request, cancellationToken);
+            successUrl = $"{frontendBaseUrl}/order/confirmation?checkout=success";
+            cancelUrl = $"{frontendBaseUrl}/order?checkout=cancelled";
+            payloadToStore = request;
+        }
+
+        var sessionService = new SessionService();
+        var metadata = new Dictionary<string, string>
+        {
+            ["customer_name"] = payloadToStore.CustomerName,
+            ["customer_phone"] = payloadToStore.CustomerPhone
+        };
+        if (payloadToStore.ExistingOrderId is int oid && oid > 0)
+        {
+            metadata["existing_order_id"] = oid.ToString();
+        }
+
+        var options = new SessionCreateOptions
+        {
+            Mode = "payment",
+            SuccessUrl = successUrl,
+            CancelUrl = cancelUrl,
+            LineItems = lineItems,
+            Metadata = metadata
+        };
+
+        var session = await sessionService.CreateAsync(
+            options,
+            new RequestOptions { IdempotencyKey = idempotencyKey },
+            cancellationToken);
+
+        var draft = new PaymentCheckoutDraft
+        {
+            CheckoutSessionId = session.Id,
+            IdempotencyKey = idempotencyKey,
+            CustomerName = payloadToStore.CustomerName,
+            CustomerPhone = payloadToStore.CustomerPhone,
+            PayloadJson = JsonSerializer.Serialize(payloadToStore),
+            Status = "pending"
+        };
+        _context.PaymentCheckoutDrafts.Add(draft);
+        await _context.SaveChangesAsync(cancellationToken);
+
+        return (session.Url ?? string.Empty, session.Id);
+    }
+
+    public async Task HandleCheckoutCompletedAsync(
+        string checkoutSessionId,
+        string? paymentIntentId,
+        CancellationToken cancellationToken = default)
+    {
+        var draft = await _context.PaymentCheckoutDrafts
+            .FirstOrDefaultAsync(x => x.CheckoutSessionId == checkoutSessionId, cancellationToken);
+        if (draft == null || draft.Status == "completed")
+        {
+            return;
+        }
+
+        var payload = JsonSerializer.Deserialize<CheckoutSessionRequest>(draft.PayloadJson);
+        if (payload == null)
+        {
+            throw new InvalidOperationException("Unable to deserialize checkout draft payload.");
+        }
+
+        if (payload.ExistingOrderId is int prepayOrderId && prepayOrderId > 0)
+        {
+            var order = await _orderService.GetOrderByIdAsync(prepayOrderId);
+            if (order == null)
+            {
+                throw new InvalidOperationException("Prepay order no longer exists.");
+            }
+
+            if (order.PaidUtc != null)
+            {
+                draft.Status = "completed";
+                draft.CompletedUtc = DateTime.UtcNow;
+                draft.OrderId = order.Id;
+                draft.StripePaymentIntentId = paymentIntentId;
+                await _context.SaveChangesAsync(cancellationToken);
+                return;
+            }
+
+            order.PaidUtc = DateTime.UtcNow;
+            order.StripePaymentIntentId = paymentIntentId;
+            _context.Orders.Update(order);
+
+            draft.Status = "completed";
+            draft.CompletedUtc = DateTime.UtcNow;
+            draft.StripePaymentIntentId = paymentIntentId;
+            draft.OrderId = order.Id;
+            await _context.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        var orderNew = new Order
+        {
+            CustomerName = payload.CustomerName,
+            CustomerPhone = payload.CustomerPhone,
+            OrderItems = payload.OrderItems.Select(item => new OrderItem
+            {
+                MenuItemId = item.MenuItemId,
+                Quantity = item.Quantity,
+                Notes = item.Notes,
+                AddOns = item.AddOns.Select(addOn => new AddOn
+                {
+                    MenuItemId = addOn.MenuItemId,
+                    Quantity = addOn.Quantity
+                }).ToList()
+            }).ToList()
+        };
+
+        var createdOrder = await _orderService.CreateOrderAsync(orderNew);
+        await _notificationService.SendOrderNotificationAsync(createdOrder);
+        draft.Status = "completed";
+        draft.CompletedUtc = DateTime.UtcNow;
+        draft.StripePaymentIntentId = paymentIntentId;
+        draft.OrderId = createdOrder.Id;
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task HandlePaymentFailedAsync(string paymentIntentId, CancellationToken cancellationToken = default)
+    {
+        var draft = await _context.PaymentCheckoutDrafts
+            .FirstOrDefaultAsync(x => x.StripePaymentIntentId == paymentIntentId, cancellationToken);
+        if (draft == null || draft.Status == "completed")
+        {
+            return;
+        }
+
+        draft.Status = "failed";
+        draft.FailedUtc = DateTime.UtcNow;
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<List<SessionLineItemOptions>> BuildLineItemsFromRequestAsync(
+        CheckoutSessionRequest request,
+        CancellationToken cancellationToken)
+    {
         var menuIds = request.OrderItems
             .Select(x => x.MenuItemId)
             .Concat(request.OrderItems.SelectMany(x => x.AddOns.Select(a => a.MenuItemId)))
@@ -82,96 +266,31 @@ public class StripePaymentService
             }
         }
 
-        var sessionService = new SessionService();
-        var options = new SessionCreateOptions
+        return lineItems;
+    }
+
+    private static List<SessionLineItemOptions> BuildLineItemsFromOrder(Order order)
+    {
+        var lineItems = new List<SessionLineItemOptions>();
+        foreach (var item in order.OrderItems ?? [])
         {
-            Mode = "payment",
-            SuccessUrl = $"{frontendBaseUrl}/order/confirmation?checkout=success",
-            CancelUrl = $"{frontendBaseUrl}/order?checkout=cancelled",
-            LineItems = lineItems,
-            Metadata = new Dictionary<string, string>
+            var menuItem = item.MenuItem
+                ?? throw new InvalidOperationException($"Order item {item.Id} is missing menu data.");
+            lineItems.Add(ToLineItem(menuItem.Name, menuItem.Description, menuItem.Price, item.Quantity));
+
+            foreach (var addOn in item.AddOns ?? [])
             {
-                ["customer_name"] = request.CustomerName,
-                ["customer_phone"] = request.CustomerPhone
+                var addOnItem = addOn.MenuItem
+                    ?? throw new InvalidOperationException($"Add-on {addOn.Id} is missing menu data.");
+                lineItems.Add(ToLineItem(
+                    $"{menuItem.Name} add-on: {addOnItem.Name}",
+                    addOnItem.Description,
+                    addOnItem.Price,
+                    addOn.Quantity));
             }
-        };
-
-        var session = await sessionService.CreateAsync(
-            options,
-            new RequestOptions { IdempotencyKey = idempotencyKey },
-            cancellationToken);
-
-        var draft = new PaymentCheckoutDraft
-        {
-            CheckoutSessionId = session.Id,
-            IdempotencyKey = idempotencyKey,
-            CustomerName = request.CustomerName,
-            CustomerPhone = request.CustomerPhone,
-            PayloadJson = JsonSerializer.Serialize(request),
-            Status = "pending"
-        };
-        _context.PaymentCheckoutDrafts.Add(draft);
-        await _context.SaveChangesAsync(cancellationToken);
-
-        return (session.Url ?? string.Empty, session.Id);
-    }
-
-    public async Task HandleCheckoutCompletedAsync(
-        string checkoutSessionId,
-        string? paymentIntentId,
-        CancellationToken cancellationToken = default)
-    {
-        var draft = await _context.PaymentCheckoutDrafts
-            .FirstOrDefaultAsync(x => x.CheckoutSessionId == checkoutSessionId, cancellationToken);
-        if (draft == null || draft.Status == "completed")
-        {
-            return;
         }
 
-        var payload = JsonSerializer.Deserialize<CheckoutSessionRequest>(draft.PayloadJson);
-        if (payload == null)
-        {
-            throw new InvalidOperationException("Unable to deserialize checkout draft payload.");
-        }
-
-        var order = new Order
-        {
-            CustomerName = payload.CustomerName,
-            CustomerPhone = payload.CustomerPhone,
-            OrderItems = payload.OrderItems.Select(item => new OrderItem
-            {
-                MenuItemId = item.MenuItemId,
-                Quantity = item.Quantity,
-                Notes = item.Notes,
-                AddOns = item.AddOns.Select(addOn => new AddOn
-                {
-                    MenuItemId = addOn.MenuItemId,
-                    Quantity = addOn.Quantity
-                }).ToList()
-            }).ToList()
-        };
-
-        var createdOrder = await _orderService.CreateOrderAsync(order);
-        await _notificationService.SendOrderNotificationAsync(createdOrder);
-        draft.Status = "completed";
-        draft.CompletedUtc = DateTime.UtcNow;
-        draft.StripePaymentIntentId = paymentIntentId;
-        draft.OrderId = createdOrder.Id;
-        await _context.SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task HandlePaymentFailedAsync(string paymentIntentId, CancellationToken cancellationToken = default)
-    {
-        var draft = await _context.PaymentCheckoutDrafts
-            .FirstOrDefaultAsync(x => x.StripePaymentIntentId == paymentIntentId, cancellationToken);
-        if (draft == null || draft.Status == "completed")
-        {
-            return;
-        }
-
-        draft.Status = "failed";
-        draft.FailedUtc = DateTime.UtcNow;
-        await _context.SaveChangesAsync(cancellationToken);
+        return lineItems;
     }
 
     private static SessionLineItemOptions ToLineItem(string name, string? description, decimal price, int quantity)
@@ -191,4 +310,7 @@ public class StripePaymentService
             }
         };
     }
+
+    private static string NormalizePhone(string phone) =>
+        new string(phone.Where(char.IsDigit).ToArray());
 }

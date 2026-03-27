@@ -11,6 +11,13 @@ jest.mock("../axiosConfig", () => ({
 
 import axios from "../axiosConfig";
 
+jest.mock("react-toastify", () => ({
+  toast: {
+    success: jest.fn(),
+    error: jest.fn(),
+  },
+}));
+
 describe("AdminLogin", () => {
   const mockOnLoginSuccess = jest.fn();
 
@@ -74,6 +81,17 @@ describe("AdminLogin", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
+    });
+  });
+
+  it("calls forgot-password endpoint", async () => {
+    axios.post.mockResolvedValueOnce({ data: { message: "ok" } });
+    render(<AdminLogin />);
+
+    fireEvent.click(screen.getByRole("button", { name: /forgot password/i }));
+
+    await waitFor(() => {
+      expect(axios.post).toHaveBeenCalledWith("/admin/forgot-password", {});
     });
   });
 });

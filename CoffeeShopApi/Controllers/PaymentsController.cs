@@ -1,6 +1,7 @@
 using CoffeeShopApi.Models.Payments;
 using CoffeeShopApi.Services;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Stripe;
 using Stripe.Checkout;
 
@@ -25,11 +26,23 @@ public class PaymentsController : ControllerBase
     }
 
     [HttpPost("checkout-session")]
+    [EnableRateLimiting("Order")]
     public async Task<IActionResult> CreateCheckoutSession(
         [FromBody] CheckoutSessionRequest request,
         [FromHeader(Name = "X-Idempotency-Key")] string? idempotencyKey,
         CancellationToken cancellationToken)
     {
+        if (request.ExistingOrderId is null or <= 0)
+        {
+            if (request.OrderItems == null || request.OrderItems.Count == 0)
+            {
+                return BadRequest(new
+                {
+                    message = "Order items are required unless you are prepaying an existing order."
+                });
+            }
+        }
+
         if (!_stripePaymentService.IsConfigured())
         {
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new
@@ -39,12 +52,19 @@ public class PaymentsController : ControllerBase
         }
 
         var key = string.IsNullOrWhiteSpace(idempotencyKey) ? Guid.NewGuid().ToString("N") : idempotencyKey.Trim();
-        var (checkoutUrl, sessionId) = await _stripePaymentService.CreateCheckoutSessionAsync(
-            request,
-            key,
-            cancellationToken);
+        try
+        {
+            var (checkoutUrl, sessionId) = await _stripePaymentService.CreateCheckoutSessionAsync(
+                request,
+                key,
+                cancellationToken);
 
-        return Ok(new { checkoutUrl, sessionId });
+            return Ok(new { checkoutUrl, sessionId });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPost("webhook")]

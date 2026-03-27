@@ -8,6 +8,7 @@ import Header from "../components/layout/Header";
 import "../styles/AdminPage.css";
 import NotificationSettings from "../components/Admin/NotificationSettings";
 import Loading from "../components/common/Loading";
+import Button from "../components/common/Button";
 import useKeepAliveHeartbeat from "../hooks/useKeepAliveHeartbeat";
 
 const ADMIN_TAB_IDS = {
@@ -42,6 +43,11 @@ function AdminPage() {
     setMenuRefreshKey((k) => k + 1);
   }, []);
 
+  const handleLogout = useCallback(() => {
+    localStorage.removeItem("token");
+    navigate("/admin", { replace: true });
+  }, [navigate]);
+
   if (isLoading) {
     return <Loading />;
   }
@@ -50,6 +56,11 @@ function AdminPage() {
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <Header color="bg-red-800" title="Admin Dashboard" />
+        <div className="flex justify-end">
+          <Button color="gray" onClick={handleLogout}>
+            Log out
+          </Button>
+        </div>
 
         <div
           className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden"

@@ -47,6 +47,13 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
+    public async Task ForgotPassword_WithoutEmailConfig_ReturnsServiceUnavailable()
+    {
+        var response = await _client.PostAsJsonAsync("/api/admin/forgot-password", new { });
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetMenuItems_ReturnsOk()
     {
         var response = await _client.GetAsync("/api/menu");
@@ -196,6 +203,20 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
 
         var response = await _client.PostAsJsonAsync("/api/payments/checkout-session", payload);
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateCheckoutSession_EmptyOrderItemsWithoutExistingOrder_ReturnsBadRequest()
+    {
+        var payload = new
+        {
+            customerName = "Stripe Test",
+            customerPhone = "5550001234",
+            orderItems = Array.Empty<object>()
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/payments/checkout-session", payload);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     private static Order CreateValidOrder()

@@ -47,6 +47,7 @@ namespace CoffeeShopApi
             services.AddScoped<NotificationSettingsService>();
             services.AddScoped<TwilioService>();
             services.AddScoped<StripePaymentService>();
+            services.AddScoped<SupportEmailService>();
             services.AddSingleton<KeepAliveStateStore>();
             services.AddHostedService<ConnectionWarmupService>();
             services.AddHttpClient();
@@ -70,6 +71,7 @@ namespace CoffeeShopApi
 
                 var permitLogin = _env.IsEnvironment("Testing") ? 1000 : 5;
                 var permitOrder = _env.IsEnvironment("Testing") ? 1000 : 30;
+                var permitForgotPassword = _env.IsEnvironment("Testing") ? 1000 : 3;
 
                 options.AddPolicy("Login", context =>
                 {
@@ -88,6 +90,16 @@ namespace CoffeeShopApi
                     {
                         PermitLimit = permitOrder,
                         Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    });
+                });
+                options.AddPolicy("ForgotPassword", context =>
+                {
+                    var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = permitForgotPassword,
+                        Window = TimeSpan.FromMinutes(10),
                         QueueLimit = 0
                     });
                 });

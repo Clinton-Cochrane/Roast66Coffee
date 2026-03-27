@@ -4,6 +4,12 @@ namespace CoffeeShopApi.Models.Payments;
 
 public class CheckoutSessionRequest
 {
+    /// <summary>
+    /// When set, Checkout charges this existing order (prepay) instead of creating a new order after payment.
+    /// Phone must match the order; line items are taken from the stored order.
+    /// </summary>
+    public int? ExistingOrderId { get; set; }
+
     [Required]
     [StringLength(100, MinimumLength = 1)]
     public string CustomerName { get; set; } = string.Empty;
@@ -12,8 +18,7 @@ public class CheckoutSessionRequest
     [StringLength(20, MinimumLength = 1)]
     public string CustomerPhone { get; set; } = string.Empty;
 
-    [Required]
-    [MinLength(1)]
+    /// <summary>Required for new orders; ignored when <see cref="ExistingOrderId"/> is set.</summary>
     public List<CheckoutOrderItemRequest> OrderItems { get; set; } = [];
 }
 

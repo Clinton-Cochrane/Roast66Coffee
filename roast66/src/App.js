@@ -14,6 +14,7 @@ import './styles/Customer.css';
 import './styles/Navigation.css';
 import Footer from './components/layout/Footer';
 import AdminGate from './components/Admin/AdminGate';
+import CashGate from './components/Admin/CashGate';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
           <Route path="/order-status" element={<OrderStatusPage />} />
           <Route path="/admin-login" element={<Navigate to="/admin" replace />} />
           <Route path="/admin" element={<AdminGate />} />
+          <Route path="/cash" element={<CashGate />} />
         </Routes>
         <Footer/>
         <ToastContainer position="top-right" autoClose={3000} />
