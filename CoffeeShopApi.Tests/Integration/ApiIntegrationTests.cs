@@ -47,6 +47,13 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
+    public async Task ForgotPassword_WithoutEmailConfig_ReturnsServiceUnavailable()
+    {
+        var response = await _client.PostAsJsonAsync("/api/admin/forgot-password", new { });
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetMenuItems_ReturnsOk()
     {
         var response = await _client.GetAsync("/api/menu");

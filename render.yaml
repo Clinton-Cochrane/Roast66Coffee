@@ -31,7 +31,7 @@ services:
       - key: Jwt__Audience
         value: Roast66Coffee
       - key: Jwt__TokenExpiryInHours
-        value: "1"
+        value: "16"
       - key: AllowedOrigins
         value: "https://roast66-web.onrender.com"
         sync: false
@@ -53,6 +53,12 @@ services:
         sync: false
       - key: Stripe__FrontendBaseUrl
         value: "https://roast66-web.onrender.com"
+      - key: Resend__ApiKey
+        sync: false
+      - key: Resend__From
+        sync: false
+      - key: Support__AlertEmail
+        sync: false
 
   - type: web
     name: roast66-web

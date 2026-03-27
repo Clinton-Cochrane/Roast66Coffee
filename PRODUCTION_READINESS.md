@@ -34,7 +34,7 @@ The Roast66 Coffee application is **substantially production-ready**. Core featu
 | **Duplicate order endpoint, one unrate-limited** | High | Added `[EnableRateLimiting("Order")]` to `AdminController.PostOrder`. |
 | **Health check path mismatch** | Low | Updated `render.yaml` to use `/api/health` (standard, no auth). |
 | **render.yaml AllowedOrigins default** | Low | Updated default to `https://roast66-web.onrender.com`. |
-| **JWT TokenExpiryInHours = 0** | Medium | `GenerateToken` now falls back to 1 hour when value is 0 or unparseable; `render.yaml` sets `Jwt__TokenExpiryInHours=1`. |
+| **JWT TokenExpiryInHours = 0** | Medium | `GenerateToken` now falls back to 1 hour when value is 0 or unparseable; `render.yaml` sets `Jwt__TokenExpiryInHours=16` for event-day sessions. |
 
 ### 📝 Minor / Optional
 
@@ -95,7 +95,7 @@ Order submission uses `POST /api/admin/orders` (AdminController) with rate limit
 3. **Prepare credentials**
    - Generate strong `Admin__Password`.
    - Generate 32+ char `Jwt__Key`.
-   - Confirm `Jwt__TokenExpiryInHours=1`.
+   - Confirm `Jwt__TokenExpiryInHours=16`.
 
 ### Phase 2: Deploy to Render (30–60 min)
 
@@ -113,7 +113,7 @@ Order submission uses `POST /api/admin/orders` (AdminController) with rate limit
 
 ### Phase 3: Post-Deployment Verification
 
-- [ ] Health: `GET https://roast66-api.onrender.com/api/health` returns 200.
+- [x ] Health: `GET https://roast66-api.onrender.com/api/health` returns 200.
 - [ x] Menu: `GET https://roast66-api.onrender.com/api/menu` returns items (after seed).
 - [x ] Place test order from frontend.
 - [ x] Admin login, view orders, advance status.
@@ -181,6 +181,7 @@ If `Jwt__Key` is missing, the app will now fail at startup with a clear error in
 Admin__Username=<admin_username>
 Admin__Password=<strong_password>
 Jwt__Key=<min_32_chars>
+Jwt__TokenExpiryInHours=16
 AllowedOrigins=https://roast66-web.onrender.com
 Order__DuplicateDetectionWindowMinutes=2
 ```
@@ -208,6 +209,15 @@ Stripe__FrontendBaseUrl=https://roast66-web.onrender.com
 ```
 
 **Stripe account (production):** All card charges go to the Stripe account that issued the **secret key** you configure (`sk_live_...` for production, `sk_test_...` for sandbox). There is no separate “app link” beyond using that account’s API keys in Render. Add a **webhook endpoint** in the Stripe Dashboard (Developers → Webhooks) pointing to `https://<roast66-api-host>/api/payments/webhook`, subscribing at minimum to `checkout.session.completed` and `payment_intent.payment_failed`, and paste the endpoint signing secret into `Stripe__WebhookSecret`. For local testing, run `stripe listen --forward-to http://localhost:<port>/api/payments/webhook` and use the CLI’s webhook secret in `Stripe__WebhookSecret`.
+
+**Forgot password alerts (roast66-api):**
+```
+Resend__ApiKey=<resend_api_key>
+Resend__From=<verified_sender@example.com>
+Support__AlertEmail=<family_tech_email>
+```
+
+**Session security note:** If a trailer device is lost, rotate `Jwt__Key` in Render immediately. This invalidates all active sessions (admin and cash views) and forces fresh login.
 
 ---
 
@@ -258,3 +268,29 @@ Stripe__FrontendBaseUrl=https://roast66-web.onrender.com
   - daily settlement reconciliation
   - weekly exception review (failed/refunded/disputed payments)
   - monthly close and export archive
+
+---
+
+## 11. Rollout Task List (Inside vs Outside Codebase)
+
+Use this as the execution checklist for the 16-hour JWT session, hidden `/cash` staff view, forgot-password email alerts, and Stripe prepay flow.
+
+### Outside Codebase (Render / Stripe / operations)
+
+- [ ] **Render API env vars:** set or verify `Admin__Username`, `Admin__Password`, `Jwt__Key`, `Jwt__Issuer`, `Jwt__Audience`, `Jwt__TokenExpiryInHours=16`, `AllowedOrigins`.
+- [ ] **Render API Stripe vars:** set `Stripe__SecretKey`, `Stripe__WebhookSecret`, `Stripe__FrontendBaseUrl`.
+- [ ] **Render API forgot-password vars:** set `Resend__ApiKey`, `Resend__From`, `Support__AlertEmail`.
+- [ ] **Render web env vars:** set `REACT_APP_API_URL`; set `REACT_APP_ENABLE_STRIPE_CHECKOUT=true` when ready to expose checkout and prepay.
+- [ ] **Stripe Dashboard webhook:** create endpoint `https://<api-host>/api/payments/webhook` with events `checkout.session.completed` and `payment_intent.payment_failed`; paste signing secret to `Stripe__WebhookSecret`.
+- [ ] **Emergency response drill:** document and test “lost trailer device” flow: rotate `Jwt__Key` (forces logout), rotate `Admin__Password`, then have staff log back in.
+
+### Inside Codebase (code, tests, docs, deploy validation)
+
+- [ ] **Auth/session config:** confirm `Jwt__TokenExpiryInHours=16` defaults in `render.yaml`, `CoffeeShopApi/appsettings.Example.json`, and `CoffeeShopApi/.env.example`.
+- [ ] **Staff view routing:** confirm hidden `/cash` route exists and is not linked from public navigation.
+- [ ] **Shared auth behavior:** confirm `/cash` and `/admin` use same JWT login and both provide explicit log out.
+- [ ] **401 handling:** confirm frontend interceptor clears token and redirects to `/admin` or `/cash` on unauthorized responses.
+- [ ] **Forgot password endpoint:** confirm `POST /api/admin/forgot-password` exists with rate limiting and returns clear response when email config is missing.
+- [ ] **Stripe prepay path:** confirm checkout session supports `existingOrderId` and webhook marks existing orders as paid.
+- [ ] **Migration readiness:** confirm `AddOrderStripePaymentFields` migration is present and applied in deployed environment.
+- [ ] **Tests:** run `dotnet test` and `npm test -- --watchAll=false` before production cutover.

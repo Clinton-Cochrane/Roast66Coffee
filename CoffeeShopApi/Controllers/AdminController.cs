@@ -25,9 +25,17 @@ namespace CoffeeShopApi.Controllers
         private readonly NotificationService _notificationService;
         private readonly IConfiguration _configuration;
         private readonly NotificationSettingsService _notificationSettingsService;
+        private readonly SupportEmailService _supportEmailService;
 
 
-        public AdminController(ApplicationDbContext context, OrderService orderService, MenuService menuService, NotificationService notificationService, IConfiguration configuration, NotificationSettingsService notificationSettingsService)
+        public AdminController(
+            ApplicationDbContext context,
+            OrderService orderService,
+            MenuService menuService,
+            NotificationService notificationService,
+            IConfiguration configuration,
+            NotificationSettingsService notificationSettingsService,
+            SupportEmailService supportEmailService)
         {
             _context = context;
             _orderService = orderService;
@@ -35,6 +43,7 @@ namespace CoffeeShopApi.Controllers
             _notificationService = notificationService;
             _configuration = configuration;
             _notificationSettingsService = notificationSettingsService;
+            _supportEmailService = supportEmailService;
         }
 
         [HttpPost("login")]
@@ -51,6 +60,29 @@ namespace CoffeeShopApi.Controllers
             }
 
             return Unauthorized();
+        }
+
+        [HttpPost("forgot-password")]
+        [EnableRateLimiting("ForgotPassword")]
+        public async Task<IActionResult> ForgotPassword(
+            [FromBody] ForgotPasswordRequest? request,
+            CancellationToken cancellationToken)
+        {
+            if (!_supportEmailService.IsConfigured())
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+                {
+                    message = "Password support is not configured right now."
+                });
+            }
+
+            var sourceIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+            await _supportEmailService.SendForgotPasswordAlertAsync(sourceIp, request?.Message, cancellationToken);
+
+            return Ok(new
+            {
+                message = "If support is available, your request has been sent."
+            });
         }
 
 
@@ -327,5 +359,11 @@ namespace CoffeeShopApi.Controllers
         [Required]
         [StringLength(20, MinimumLength = 1)]
         public required string PhoneNumber { get; set; }
+    }
+
+    public class ForgotPasswordRequest
+    {
+        [StringLength(500)]
+        public string? Message { get; set; }
     }
 }
