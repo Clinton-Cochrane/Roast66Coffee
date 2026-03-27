@@ -77,6 +77,33 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
+    public async Task PostOrder_CreatesNotificationLogEntries()
+    {
+        var order = CreateValidOrder(
+            $"Notify-{Guid.NewGuid():N}",
+            $"555{Random.Shared.Next(1000000, 9999999)}");
+        var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        post.EnsureSuccessStatusCode();
+        var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
+        Assert.NotNull(created);
+
+        var token = await GetAdminToken();
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            $"/api/admin/orders/{created!.Id}/notifications");
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var notificationsResponse = await _client.SendAsync(request);
+        notificationsResponse.EnsureSuccessStatusCode();
+        var notifications = await notificationsResponse.Content.ReadFromJsonAsync<List<NotificationLogResponse>>(JsonOptions);
+
+        Assert.NotNull(notifications);
+        Assert.NotEmpty(notifications!);
+        Assert.Contains(notifications!, n => n.EventType == "order.created");
+    }
+
+    [Fact]
     public async Task PostOrder_DuplicateOrderWithinWindow_Returns409Conflict()
     {
         var order = new Order
@@ -131,6 +158,34 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
 
         var response = await _client.SendAsync(request);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateOrderStatus_ToReadyForPickup_LogsCustomerReadyNotification()
+    {
+        var token = await GetAdminToken();
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var order = CreateValidOrder(
+            $"Ready-{Guid.NewGuid():N}",
+            $"555{Random.Shared.Next(1000000, 9999999)}");
+        var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        post.EnsureSuccessStatusCode();
+        var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
+        Assert.NotNull(created);
+
+        var firstUpdate = await _client.PutAsync($"/api/admin/updateOrderStatus/{created!.Id}/status", null);
+        firstUpdate.EnsureSuccessStatusCode();
+        var secondUpdate = await _client.PutAsync($"/api/admin/updateOrderStatus/{created.Id}/status", null);
+        secondUpdate.EnsureSuccessStatusCode();
+
+        var notificationsResponse = await _client.GetAsync($"/api/admin/orders/{created.Id}/notifications");
+        notificationsResponse.EnsureSuccessStatusCode();
+        var notifications = await notificationsResponse.Content.ReadFromJsonAsync<List<NotificationLogResponse>>(JsonOptions);
+
+        Assert.NotNull(notifications);
+        Assert.Contains(notifications!, n => n.EventType == "order.ready_for_pickup" && n.RecipientRole == "customer");
     }
 
     [Fact]
@@ -219,12 +274,12 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    private static Order CreateValidOrder()
+    private static Order CreateValidOrder(string? customerName = null, string? customerPhone = null)
     {
         return new Order
         {
-            CustomerName = "Integration Test Customer",
-            CustomerPhone = "5551234567",
+            CustomerName = customerName ?? "Integration Test Customer",
+            CustomerPhone = customerPhone ?? "5551234567",
             OrderItems =
             [
                 new OrderItem { MenuItemId = 1, Quantity = 2 }
@@ -251,5 +306,11 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         public string Message { get; set; } = string.Empty;
         public int ExistingOrderId { get; set; }
         public Order? Order { get; set; }
+    }
+
+    private class NotificationLogResponse
+    {
+        public string EventType { get; set; } = string.Empty;
+        public string RecipientRole { get; set; } = string.Empty;
     }
 }

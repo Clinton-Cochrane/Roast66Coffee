@@ -9,24 +9,28 @@ namespace CoffeeShopApi.Services
     {
         private readonly ApplicationDbContext _context = context;
 
-        public async Task<NotificationSettings?> GetNotificationSettingsAsync()
+        public async Task<NotificationSettings?> GetNotificationSettingsAsync(CancellationToken cancellationToken = default)
         {
-            return await _context.NotificationSettings.OrderBy(ns =>ns.Id).FirstOrDefaultAsync();
+            return await _context.NotificationSettings
+                .OrderBy(ns => ns.Id)
+                .FirstOrDefaultAsync(cancellationToken);
         }
 
-        public async Task SaveNotificationSettingsAsync(NotificationSettings settings)
+        public async Task SaveNotificationSettingsAsync(NotificationSettings settings, CancellationToken cancellationToken = default)
         {
-            var existingSettings = await GetNotificationSettingsAsync();
+            var existingSettings = await GetNotificationSettingsAsync(cancellationToken);
             if (existingSettings != null)
             {
-                existingSettings.PhoneNumber = settings.PhoneNumber;
+                existingSettings.AdminPhoneNumber = settings.AdminPhoneNumber;
+                existingSettings.BaristaPhoneNumber = settings.BaristaPhoneNumber;
+                existingSettings.TrailerPhoneNumber = settings.TrailerPhoneNumber;
                 _context.NotificationSettings.Update(existingSettings);
             }
             else
             {
                 _context.NotificationSettings.Add(settings);
             }
-            await _context.SaveChangesAsync();
+            await _context.SaveChangesAsync(cancellationToken);
         }
     }
 }

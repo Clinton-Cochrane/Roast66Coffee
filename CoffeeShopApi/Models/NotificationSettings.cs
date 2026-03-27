@@ -10,8 +10,16 @@ namespace CoffeeShopApi.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
-        [Column("phonenumber")]
-        public string PhoneNumber { get; set; } = string.Empty;
+        [StringLength(32)]
+        [Column("adminphonenumber")]
+        public string? AdminPhoneNumber { get; set; }
+
+        [StringLength(32)]
+        [Column("baristaphonenumber")]
+        public string? BaristaPhoneNumber { get; set; }
+
+        [StringLength(32)]
+        [Column("trailerphonenumber")]
+        public string? TrailerPhoneNumber { get; set; }
     }
 }

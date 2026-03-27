@@ -21,7 +21,7 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
     }
 
 
-    public async Task<Order?> GetOrderByIdAsync(int id)
+    public async Task<Order?> GetOrderByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         return await _context.Orders
             .Include(o => o.OrderItems)
@@ -30,7 +30,7 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
             .ThenInclude(oi => oi.AddOns!)
             .ThenInclude(a => a.MenuItem)
             .OrderBy(o => o.OrderDate)
-            .FirstOrDefaultAsync(o => o.Id == id);
+            .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
     }
 
     /// <summary>
@@ -133,7 +133,7 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         return _context.Orders.Any(e => e.Id == id);
     }
 
-    internal async Task UpdateStatus(Order order)
+    internal async Task UpdateStatus(Order order, CancellationToken cancellationToken = default)
     {
         order.OrderStatus = order.OrderStatus switch
         {
@@ -144,13 +144,13 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
             _ => OrderStatus.Received
         };
         _context.Orders.Update(order);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>Get order by ID and phone for customer lookup. Returns null if phone does not match.</summary>
-    public async Task<Order?> GetOrderForCustomerAsync(int orderId, string phone)
+    public async Task<Order?> GetOrderForCustomerAsync(int orderId, string phone, CancellationToken cancellationToken = default)
     {
-        var order = await GetOrderByIdAsync(orderId);
+        var order = await GetOrderByIdAsync(orderId, cancellationToken);
         if (order == null) return null;
         var normalizedPhone = NormalizePhone(phone);
         var orderPhone = NormalizePhone(order.CustomerPhone ?? "");

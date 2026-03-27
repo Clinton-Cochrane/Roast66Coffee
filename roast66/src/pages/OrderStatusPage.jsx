@@ -16,6 +16,7 @@ function OrderStatusPage() {
   const [orderId, setOrderId] = useState("");
   const [phone, setPhone] = useState("");
   const [order, setOrder] = useState(null);
+  const [notificationHistory, setNotificationHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [prepayLoading, setPrepayLoading] = useState(false);
 
@@ -62,7 +63,17 @@ function OrderStatusPage() {
         params: { orderId: parseInt(orderId, 10), phone: phone.trim() },
       });
       setOrder(data);
+      const notificationResponse = await axios.get(
+        `/order/${data.id}/notifications`,
+        {
+          params: { phone: phone.trim() },
+        }
+      );
+      setNotificationHistory(
+        Array.isArray(notificationResponse.data) ? notificationResponse.data : []
+      );
     } catch (err) {
+      setNotificationHistory([]);
       if (err.response?.status === 404) {
         toast.error("Order not found or phone number doesn't match.");
       } else {
@@ -112,6 +123,7 @@ function OrderStatusPage() {
   };
 
   const isPaid = Boolean(order?.paidUtc ?? order?.PaidUtc);
+  const hasSmsNotifications = notificationHistory.length > 0;
 
   return (
     <div className="p-6 max-w-lg mx-auto">
@@ -158,6 +170,26 @@ function OrderStatusPage() {
           </ul>
           <h2 className="text-xl font-bold mb-4">Status</h2>
           <OrderTracker currentStatus={order.orderStatus ?? 0} />
+          <div className="mt-4 text-sm">
+            {hasSmsNotifications ? (
+              <p className="text-green-700">
+                SMS updates are enabled for this order.
+              </p>
+            ) : (
+              <p className="text-gray-600">
+                SMS updates are not yet available for this order.
+              </p>
+            )}
+          </div>
+          {hasSmsNotifications && (
+            <p className="text-gray-600 text-sm mt-2">
+              Last SMS event:{" "}
+              {new Date(
+                notificationHistory[0].sentUtc ??
+                  notificationHistory[0].updatedUtc
+              ).toLocaleString()}
+            </p>
+          )}
 
           {ENABLE_STRIPE_PREPAY && !isPaid && (
             <div className="mt-6 pt-4 border-t border-gray-200">

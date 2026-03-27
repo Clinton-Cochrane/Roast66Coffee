@@ -55,7 +55,7 @@ public class StripePaymentService
 
         if (request.ExistingOrderId is int prepayId && prepayId > 0)
         {
-            var order = await _orderService.GetOrderByIdAsync(prepayId)
+            var order = await _orderService.GetOrderByIdAsync(prepayId, cancellationToken)
                 ?? throw new InvalidOperationException("Order not found.");
             if (order.PaidUtc != null)
             {
@@ -159,7 +159,7 @@ public class StripePaymentService
 
         if (payload.ExistingOrderId is int prepayOrderId && prepayOrderId > 0)
         {
-            var order = await _orderService.GetOrderByIdAsync(prepayOrderId);
+            var order = await _orderService.GetOrderByIdAsync(prepayOrderId, cancellationToken);
             if (order == null)
             {
                 throw new InvalidOperationException("Prepay order no longer exists.");
@@ -205,7 +205,7 @@ public class StripePaymentService
         };
 
         var createdOrder = await _orderService.CreateOrderAsync(orderNew);
-        await _notificationService.SendOrderNotificationAsync(createdOrder);
+        await _notificationService.SendOrderNotificationAsync(createdOrder, cancellationToken);
         draft.Status = "completed";
         draft.CompletedUtc = DateTime.UtcNow;
         draft.StripePaymentIntentId = paymentIntentId;

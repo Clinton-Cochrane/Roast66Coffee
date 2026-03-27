@@ -33,6 +33,9 @@ function ViewOrders() {
   const [orders, setOrders] = useState([]);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [orderNotifications, setOrderNotifications] = useState({});
+  const [loadingNotificationsByOrderId, setLoadingNotificationsByOrderId] =
+    useState({});
 
   const fetchOrders = useCallback(() => {
     axios
@@ -118,6 +121,24 @@ function ViewOrders() {
       });
   };
 
+  const fetchOrderNotifications = useCallback((id) => {
+    setLoadingNotificationsByOrderId((prev) => ({ ...prev, [id]: true }));
+    axios
+      .get(`/admin/orders/${id}/notifications`)
+      .then((response) => {
+        setOrderNotifications((prev) => ({
+          ...prev,
+          [id]: Array.isArray(response.data) ? response.data : [],
+        }));
+      })
+      .catch(() => {
+        toast.error("Failed to load notification history.");
+      })
+      .finally(() => {
+        setLoadingNotificationsByOrderId((prev) => ({ ...prev, [id]: false }));
+      });
+  }, []);
+
   const getStatusLabel = (status) =>
     ORDER_STATUS_LABELS[status] ?? STATUS_STAGES[status] ?? "Unknown";
 
@@ -151,6 +172,8 @@ function ViewOrders() {
               status === ORDER_STATUS.ReadyForPickup
                 ? "Mark complete"
                 : "Advance status";
+            const notifications = orderNotifications[id] ?? [];
+            const loadingNotifications = Boolean(loadingNotificationsByOrderId[id]);
 
             return (
             <Card
@@ -180,6 +203,12 @@ function ViewOrders() {
                     {advanceLabel}
                   </Button>
                 )}
+                <Button
+                  onClick={() => fetchOrderNotifications(id)}
+                  color="gray"
+                >
+                  {loadingNotifications ? "Loading..." : "Refresh notifications"}
+                </Button>
               </div>
               <p className="mb-1">
                 <strong>Customer:</strong> {order.customerName ?? order.CustomerName}
@@ -222,6 +251,23 @@ function ViewOrders() {
                   </li>
                 ))}
               </ul>
+              <div className="mt-4 pt-3 border-t border-gray-200">
+                <p className="font-semibold mb-2">Notification delivery</p>
+                {notifications.length === 0 ? (
+                  <p className="text-sm text-gray-500">
+                    No notification events loaded for this order yet.
+                  </p>
+                ) : (
+                  <ul className="text-sm space-y-1">
+                    {notifications.slice(0, 4).map((entry) => (
+                      <li key={entry.id}>
+                        {entry.recipientRole}: {entry.templateKey} -{" "}
+                        <span className="font-medium">{entry.status}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </Card>
             );
           })}

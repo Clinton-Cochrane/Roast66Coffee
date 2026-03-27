@@ -29,13 +29,16 @@ public class OrderController : ControllerBase
 
     /// <summary>Public lookup: get order status by order ID and phone. For customer tracking.</summary>
     [HttpGet("lookup")]
-    public async Task<ActionResult<Order>> LookupOrder([FromQuery] int orderId, [FromQuery] string phone)
+    public async Task<ActionResult<Order>> LookupOrder(
+        [FromQuery] int orderId,
+        [FromQuery] string phone,
+        CancellationToken cancellationToken)
     {
         if (orderId <= 0 || string.IsNullOrWhiteSpace(phone))
         {
             return BadRequest("Order ID and phone are required.");
         }
-        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone);
+        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, cancellationToken);
         if (order == null)
         {
             return NotFound("Order not found or phone does not match.");
@@ -45,9 +48,9 @@ public class OrderController : ControllerBase
 
     [Authorize(Roles = "Admin")]
     [HttpGet("{id}")]
-    public async Task<ActionResult<Order>> GetOrder(int id)
+    public async Task<ActionResult<Order>> GetOrder(int id, CancellationToken cancellationToken)
     {
-        var order = await _orderService.GetOrderByIdAsync(id);
+        var order = await _orderService.GetOrderByIdAsync(id, cancellationToken);
         if (order == null)
         {
             return NotFound();
@@ -58,7 +61,7 @@ public class OrderController : ControllerBase
 
     [HttpPost]
     [EnableRateLimiting("Order")]
-    public async Task<ActionResult<Order>> PostOrder(Order order)
+    public async Task<ActionResult<Order>> PostOrder(Order order, CancellationToken cancellationToken)
     {
         if (order.OrderItems == null || order.OrderItems.Count == 0)
         {
@@ -78,8 +81,40 @@ public class OrderController : ControllerBase
         }
 
         var createdOrder = await _orderService.CreateOrderAsync(order);
-        await _notificationService.SendOrderNotificationAsync(createdOrder);
+        await _notificationService.SendOrderNotificationAsync(createdOrder, cancellationToken);
         return CreatedAtAction(nameof(GetOrder), new { id = createdOrder.Id }, createdOrder);
+    }
+
+    [HttpGet("{orderId}/notifications")]
+    public async Task<IActionResult> GetCustomerNotifications(
+        int orderId,
+        [FromQuery] string phone,
+        CancellationToken cancellationToken)
+    {
+        if (orderId <= 0 || string.IsNullOrWhiteSpace(phone))
+        {
+            return BadRequest("Order ID and phone are required.");
+        }
+
+        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, cancellationToken);
+        if (order == null)
+        {
+            return NotFound("Order not found or phone does not match.");
+        }
+
+        var notifications = await _notificationService.GetCustomerNotificationsForOrderAsync(orderId, phone, cancellationToken);
+        var result = notifications.Select(n => new
+        {
+            n.Id,
+            n.EventType,
+            n.TemplateKey,
+            n.Status,
+            n.CreatedUtc,
+            n.SentUtc,
+            n.UpdatedUtc
+        });
+
+        return Ok(result);
     }
 
     [Authorize(Roles = "Admin")]
