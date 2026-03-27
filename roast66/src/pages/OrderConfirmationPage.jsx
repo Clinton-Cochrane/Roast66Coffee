@@ -10,7 +10,7 @@ function OrderConfirmationPage() {
   const navigate = useNavigate();
   const order = location.state?.order;
   const customerEmail = order?.customerEmail ?? order?.CustomerEmail ?? "";
-  const emailOptIn = Boolean(order?.customerNotificationOptIn ?? order?.CustomerNotificationOptIn);
+  const hasEmailUpdates = customerEmail.trim().length > 0;
 
   const currencyFormatter = new Intl.NumberFormat(locale, {
     style: "currency",
@@ -21,9 +21,9 @@ function OrderConfirmationPage() {
     return (
       <div className="p-6 max-w-lg mx-auto">
         <h1 className="text-2xl font-bold mb-4">{t("orderConfirmation.fallbackTitle")}</h1>
-        <p className="text-gray-600 mb-4">
+        <p className="text-[#5b4940] mb-4">
           {t("orderConfirmation.fallbackDescriptionStart")}{" "}
-          <Link to="/order-status" className="text-green-700 underline">
+          <Link to="/order-status" className="text-[#6c89a2] underline">
             {t("orderStatus.title")}
           </Link>{" "}
           {t("orderConfirmation.fallbackDescriptionEnd")}
@@ -77,14 +77,14 @@ function OrderConfirmationPage() {
 
   return (
     <div className="p-6 max-w-lg mx-auto">
-      <h1 className="text-3xl font-bold mb-2">{t("orderConfirmation.title")}</h1>
-        <p className="text-gray-600 mb-6">
+      <h1 className="text-3xl md:text-4xl font-bold mb-2 tracking-[0.01em] text-[#4a3326]">{t("orderConfirmation.title")}</h1>
+        <p className="text-[#5b4940] mb-6">
         {t("orderConfirmation.thankYou", {
           customerName: order.customerName ?? order.CustomerName,
         })}
       </p>
 
-      <div className="bg-gray-50 rounded-lg p-4 mb-6">
+      <div className="r66-panel rounded-lg p-4 mb-6">
         <p className="text-lg font-bold mb-2">
           {t("orderConfirmation.orderPrefix")} #{order.id}
         </p>
@@ -101,13 +101,13 @@ function OrderConfirmationPage() {
         <p className="font-bold">
           {t("orderConfirmation.total")}: {currencyFormatter.format(total)}
         </p>
-        {emailOptIn && customerEmail ? (
-          <p className="text-sm text-gray-600 mt-2">
+        {hasEmailUpdates ? (
+          <p className="text-sm text-[#5b4940] mt-2">
             {t("orderConfirmation.emailUpdates")} <strong>{customerEmail}</strong>.
           </p>
         ) : (
           <div className="mt-3">
-            <p className="text-sm text-gray-600 mb-2">
+            <p className="text-sm text-[#5b4940] mb-2">
               {t("orderConfirmation.emailOptional")}
             </p>
             <Button color="gray" onClick={handleDownloadSummary}>
@@ -117,13 +117,13 @@ function OrderConfirmationPage() {
         )}
       </div>
 
-      <h2 className="text-xl font-bold mb-4">{t("orderConfirmation.statusTitle")}</h2>
+      <h2 className="text-xl font-bold mb-4 text-[#4a3326]">{t("orderConfirmation.statusTitle")}</h2>
       <OrderTracker currentStatus={order.orderStatus ?? order.OrderStatus ?? 0} />
 
-      <div className="mt-8 pt-6 border-t">
-        <p className="text-sm text-gray-600 mb-2">
+      <div className="mt-8 pt-6 border-t border-[#ddcdbf]">
+        <p className="text-sm text-[#5b4940] mb-2">
           {t("orderConfirmation.laterStatusStart")}{" "}
-          <Link to="/order-status" className="text-green-700 underline">
+          <Link to="/order-status" className="text-[#6c89a2] underline">
             {t("orderStatus.title")}
           </Link>{" "}
           {t("orderConfirmation.laterStatusEnd", { orderId: order.id })}

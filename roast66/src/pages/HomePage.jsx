@@ -6,14 +6,14 @@ import Location from "../components/Customer/Location";
 
 function HomePage() {
   return (
-    <main className=" flex flex-col items-center">
-      <div className="p-2 w-full max-w-3xl">
+    <main className="flex flex-col items-center px-3 py-6">
+      <div className="w-full max-w-3xl">
         <Welcome />
       </div>
-      <div className=" p-2 w-full max-w-3xl">
+      <div className="mt-4 w-full max-w-3xl">
         <About />
       </div>
-      <div className="p-2 w-full max-w-3xl">
+      <div className="mt-4 w-full max-w-3xl">
         <Location />
       </div>
     </main>

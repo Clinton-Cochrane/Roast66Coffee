@@ -27,21 +27,22 @@ public class OrderController : ControllerBase
         return Ok(await _orderService.GetOrdersAsync());
     }
 
-    /// <summary>Public lookup: get order status by order ID and phone. For customer tracking.</summary>
+    /// <summary>Public lookup: get order status by order ID and customer name (or phone for backward compatibility).</summary>
     [HttpGet("lookup")]
     public async Task<ActionResult<Order>> LookupOrder(
         [FromQuery] int orderId,
-        [FromQuery] string phone,
+        [FromQuery] string? customerName,
+        [FromQuery] string? phone,
         CancellationToken cancellationToken)
     {
-        if (orderId <= 0 || string.IsNullOrWhiteSpace(phone))
+        if (orderId <= 0 || (string.IsNullOrWhiteSpace(phone) && string.IsNullOrWhiteSpace(customerName)))
         {
-            return BadRequest("Order ID and phone are required.");
+            return BadRequest("Order ID and customer name are required.");
         }
-        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, cancellationToken);
+        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, customerName, cancellationToken);
         if (order == null)
         {
-            return NotFound("Order not found or phone does not match.");
+            return NotFound("Order not found or customer details do not match.");
         }
         return Ok(order);
     }
@@ -96,7 +97,7 @@ public class OrderController : ControllerBase
             return BadRequest("Order ID and phone are required.");
         }
 
-        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, cancellationToken);
+        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, null, cancellationToken);
         if (order == null)
         {
             return NotFound("Order not found or phone does not match.");
@@ -128,7 +129,7 @@ public class OrderController : ControllerBase
             return BadRequest("Order ID and phone are required.");
         }
 
-        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, cancellationToken);
+        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, null, cancellationToken);
         if (order == null)
         {
             return NotFound("Order not found or phone does not match.");

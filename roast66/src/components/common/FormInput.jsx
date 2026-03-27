@@ -18,7 +18,7 @@ const FormInput = ({
   return (
     <div className="mb-2">
       {label ? (
-        <label htmlFor={inputId} className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor={inputId} className="block text-sm font-semibold text-[#4a3326] mb-1">
           {label}
         </label>
       ) : null}
@@ -30,7 +30,7 @@ const FormInput = ({
         value={value}
         onChange={onChange}
         required={required}
-        className={`w-full p-2 border rounded ${className}`.trim()}
+        className={`w-full p-2 border border-[#cbb8a8] rounded-md bg-[#fffaf3] text-[#2f2621] placeholder:text-[#8b7768] focus:outline-none focus:ring-2 focus:ring-[#99bfdd] ${className}`.trim()}
         {...rest}
       />
     </div>

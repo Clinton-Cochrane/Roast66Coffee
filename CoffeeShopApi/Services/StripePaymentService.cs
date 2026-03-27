@@ -62,9 +62,9 @@ public class StripePaymentService
                 throw new InvalidOperationException("This order is already paid.");
             }
 
-            var requestPhone = NormalizePhone(request.CustomerPhone);
+            var requestPhone = NormalizePhone(request.CustomerPhone ?? string.Empty);
             var orderPhone = NormalizePhone(order.CustomerPhone ?? "");
-            if (string.IsNullOrEmpty(requestPhone) || requestPhone != orderPhone)
+            if (!string.IsNullOrEmpty(orderPhone) && (string.IsNullOrEmpty(requestPhone) || requestPhone != orderPhone))
             {
                 throw new InvalidOperationException("Phone number does not match this order.");
             }
@@ -82,7 +82,7 @@ public class StripePaymentService
             {
                 ExistingOrderId = prepayId,
                 CustomerName = order.CustomerName,
-                CustomerPhone = order.CustomerPhone ?? request.CustomerPhone,
+                CustomerPhone = order.CustomerPhone ?? request.CustomerPhone ?? string.Empty,
                 CustomerEmail = order.CustomerEmail ?? request.CustomerEmail,
                 CustomerNotificationOptIn = order.CustomerNotificationOptIn || request.CustomerNotificationOptIn,
                 OrderItems = []
@@ -104,9 +104,12 @@ public class StripePaymentService
         var sessionService = new SessionService();
         var metadata = new Dictionary<string, string>
         {
-            ["customer_name"] = payloadToStore.CustomerName,
-            ["customer_phone"] = payloadToStore.CustomerPhone
+            ["customer_name"] = payloadToStore.CustomerName
         };
+        if (!string.IsNullOrWhiteSpace(payloadToStore.CustomerPhone))
+        {
+            metadata["customer_phone"] = payloadToStore.CustomerPhone;
+        }
         if (!string.IsNullOrWhiteSpace(payloadToStore.CustomerEmail))
         {
             metadata["customer_email"] = payloadToStore.CustomerEmail;
@@ -136,7 +139,7 @@ public class StripePaymentService
             CheckoutSessionId = session.Id,
             IdempotencyKey = idempotencyKey,
             CustomerName = payloadToStore.CustomerName,
-            CustomerPhone = payloadToStore.CustomerPhone,
+            CustomerPhone = payloadToStore.CustomerPhone ?? string.Empty,
             PayloadJson = JsonSerializer.Serialize(payloadToStore),
             Status = "pending"
         };

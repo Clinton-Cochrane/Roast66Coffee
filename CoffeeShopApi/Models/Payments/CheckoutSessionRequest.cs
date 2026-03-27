@@ -14,9 +14,8 @@ public class CheckoutSessionRequest
     [StringLength(100, MinimumLength = 1)]
     public string CustomerName { get; set; } = string.Empty;
 
-    [Required]
-    [StringLength(20, MinimumLength = 1)]
-    public string CustomerPhone { get; set; } = string.Empty;
+    [StringLength(20)]
+    public string? CustomerPhone { get; set; }
 
     [EmailAddress]
     [StringLength(320)]

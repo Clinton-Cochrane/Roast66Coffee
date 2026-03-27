@@ -16,9 +16,8 @@ function OrderStatusPage() {
   const { locale, t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const [orderId, setOrderId] = useState("");
-  const [phone, setPhone] = useState("");
+  const [customerName, setCustomerName] = useState("");
   const [order, setOrder] = useState(null);
-  const [notificationHistory, setNotificationHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [prepayLoading, setPrepayLoading] = useState(false);
 
@@ -32,7 +31,7 @@ function OrderStatusPage() {
     if (raw) {
       try {
         const parsed = JSON.parse(raw);
-        if (parsed.phone) setPhone(parsed.phone);
+        if (parsed.customerName) setCustomerName(parsed.customerName);
         if (parsed.orderId != null) setOrderId(String(parsed.orderId));
       } catch {
         /* ignore */
@@ -54,7 +53,7 @@ function OrderStatusPage() {
 
   const handleLookup = async (e) => {
     e.preventDefault();
-    if (!orderId.trim() || !phone.trim()) {
+    if (!orderId.trim() || !customerName.trim()) {
       toast.error(t("orderStatus.lookupMissingFields"));
       return;
     }
@@ -62,20 +61,10 @@ function OrderStatusPage() {
     setOrder(null);
     try {
       const { data } = await axios.get("/order/lookup", {
-        params: { orderId: parseInt(orderId, 10), phone: phone.trim() },
+        params: { orderId: parseInt(orderId, 10), customerName: customerName.trim() },
       });
       setOrder(data);
-      const notificationResponse = await axios.get(
-        `/order/${data.id}/notifications`,
-        {
-          params: { phone: phone.trim() },
-        }
-      );
-      setNotificationHistory(
-        Array.isArray(notificationResponse.data) ? notificationResponse.data : []
-      );
     } catch (err) {
-      setNotificationHistory([]);
       if (err.response?.status === 404) {
         toast.error(t("orderStatus.notFound"));
       } else {
@@ -92,7 +81,7 @@ function OrderStatusPage() {
       window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
     sessionStorage.setItem(
       STRIPE_PREPAY_RETURN_KEY,
-      JSON.stringify({ phone: phone.trim(), orderId: order.id })
+      JSON.stringify({ customerName: customerName.trim(), orderId: order.id })
     );
     setPrepayLoading(true);
     try {
@@ -101,7 +90,7 @@ function OrderStatusPage() {
         {
           existingOrderId: order.id,
           customerName: order.customerName,
-          customerPhone: phone.trim(),
+          customerPhone: order.customerPhone ?? "",
           orderItems: [],
         },
         { headers: { "X-Idempotency-Key": idempotencyKey } }
@@ -125,8 +114,6 @@ function OrderStatusPage() {
   };
 
   const isPaid = Boolean(order?.paidUtc ?? order?.PaidUtc);
-  const hasSmsNotifications = notificationHistory.length > 0;
-
   const dateTimeFormatter = new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
@@ -143,18 +130,20 @@ function OrderStatusPage() {
         <FormInput
           type="text"
           name="orderId"
-          label={t("orderStatus.orderIdPlaceholder")}
           placeholder={t("orderStatus.orderIdPlaceholder")}
+          title={t("orderStatus.orderIdPlaceholder")}
+          aria-label={t("orderStatus.orderIdPlaceholder")}
           value={orderId}
           onChange={(e) => setOrderId(e.target.value)}
         />
         <FormInput
-          type="tel"
-          name="phone"
-          label={t("orderStatus.phonePlaceholder")}
-          placeholder={t("orderStatus.phonePlaceholder")}
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          type="text"
+          name="customerName"
+          placeholder={t("order.namePlaceholder")}
+          title={t("order.namePlaceholder")}
+          aria-label={t("order.namePlaceholder")}
+          value={customerName}
+          onChange={(e) => setCustomerName(e.target.value)}
         />
         <Button type="submit" color="green" disabled={isLoading}>
           {isLoading ? t("orderStatus.lookingUp") : t("orderStatus.lookup")}
@@ -181,27 +170,6 @@ function OrderStatusPage() {
           </ul>
           <h2 className="text-xl font-bold mb-4">{t("orderStatus.statusHeader")}</h2>
           <OrderTracker currentStatus={order.orderStatus ?? 0} />
-          <div className="mt-4 text-sm">
-            {hasSmsNotifications ? (
-              <p className="text-green-700">
-                {t("orderStatus.smsEnabled")}
-              </p>
-            ) : (
-              <p className="text-gray-600">
-                {t("orderStatus.smsUnavailable")}
-              </p>
-            )}
-          </div>
-          {hasSmsNotifications && (
-            <p className="text-gray-600 text-sm mt-2">
-              {t("orderStatus.lastSmsEvent")}{" "}
-              {dateTimeFormatter.format(new Date(
-                notificationHistory[0].sentUtc ??
-                  notificationHistory[0].updatedUtc
-              ))}
-            </p>
-          )}
-
           {ENABLE_STRIPE_PREPAY && !isPaid && (
             <div className="mt-6 pt-4 border-t border-gray-200">
               <p className="text-gray-600 text-sm mb-3">

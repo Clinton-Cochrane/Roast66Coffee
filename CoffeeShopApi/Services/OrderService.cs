@@ -147,14 +147,34 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    /// <summary>Get order by ID and phone for customer lookup. Returns null if phone does not match.</summary>
-    public async Task<Order?> GetOrderForCustomerAsync(int orderId, string phone, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Get order by ID and customer identity for public lookup.
+    /// Accepts phone OR customer name, preferring phone when both are provided.
+    /// </summary>
+    public async Task<Order?> GetOrderForCustomerAsync(
+        int orderId,
+        string? phone,
+        string? customerName,
+        CancellationToken cancellationToken = default)
     {
         var order = await GetOrderByIdAsync(orderId, cancellationToken);
         if (order == null) return null;
-        var normalizedPhone = NormalizePhone(phone);
-        var orderPhone = NormalizePhone(order.CustomerPhone ?? "");
-        return string.Equals(orderPhone, normalizedPhone, StringComparison.Ordinal) ? order : null;
+
+        if (!string.IsNullOrWhiteSpace(phone))
+        {
+            var normalizedPhone = NormalizePhone(phone);
+            var orderPhone = NormalizePhone(order.CustomerPhone ?? "");
+            return string.Equals(orderPhone, normalizedPhone, StringComparison.Ordinal) ? order : null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(customerName))
+        {
+            var requestedName = NormalizeName(customerName);
+            var orderName = NormalizeName(order.CustomerName);
+            return string.Equals(orderName, requestedName, StringComparison.Ordinal) ? order : null;
+        }
+
+        return null;
     }
 
     /// <summary>Count orders created after the given UTC timestamp. Used for admin badge.</summary>
@@ -167,4 +187,13 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
 
     private static string NormalizePhone(string phone) =>
         new string(phone.Where(char.IsDigit).ToArray());
+
+    private static string NormalizeName(string name) =>
+        string.Join(
+            " ",
+            (name ?? string.Empty)
+                .Trim()
+                .ToLowerInvariant()
+                .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        );
 }

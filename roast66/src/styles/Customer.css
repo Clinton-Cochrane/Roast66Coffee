@@ -5,16 +5,20 @@
     margin: 20px auto;
     max-width: 600px;
     text-align: center;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #f9f9f9;
+    border: 1px solid #dccdbe;
+    border-radius: 10px;
+    background-color: #fffaf3;
   }
   
-  h2 {
-    color: #444;
+  .welcome h2,
+  .menu h2,
+  .order h2,
+  .order-confirmation h2 {
+    color: #4a3326;
   }
   
-  form input, form button {
+  .order form input,
+  .order form button {
     display: block;
     margin: 10px auto;
     padding: 10px;
@@ -22,8 +26,8 @@
     max-width: 300px;
   }
   
-  form button {
-    background-color: #444;
+  .order form button {
+    background-color: #4a3326;
     color: #fff;
     border: none;
     cursor: pointer;
@@ -40,7 +44,7 @@
 }
 
 .about h2 {
-  color: #444;
+  color: #4a3326;
 }
 
 .location {
@@ -54,7 +58,7 @@
 }
 
 .location h2 {
-  color: #444;
+  color: #4a3326;
 }
 
   

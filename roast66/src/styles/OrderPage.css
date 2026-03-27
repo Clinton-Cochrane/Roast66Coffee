@@ -2,7 +2,8 @@
 .customer-info-container {
     display: flex;
     gap: 1rem; /* Adds space between the inputs */
-    margin-bottom: 1rem;
+    margin-bottom: 0.25rem;
+    border-radius: 14px;
   }
   
   .customer-info-container input {
@@ -37,17 +38,25 @@
 .order-items-list {
   max-width: 600px;
   margin: 0 auto;
+  display: grid;
+  gap: 0.9rem;
 }
 
 .order-item {
   display: flex;
   flex-direction: column;
-  padding: .75rem;
-  background-color: #ffffff;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  gap: .5rem;
-  box-shadow: 0px 2px 5px rgba(0, 0, 0, .05);
+  padding: 0.95rem;
+  background-color: #fffaf3;
+  border: 1px solid #dccdbe;
+  border-radius: 10px;
+  gap: 0.65rem;
+  box-shadow: 0px 3px 8px rgba(54, 33, 19, .08);
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.order-item:hover {
+  transform: translateY(-1px);
+  box-shadow: 0px 8px 16px rgba(54, 33, 19, .12);
 }
 
 /* Order Item Header */
@@ -66,9 +75,10 @@
 
 .order-item-details {
   flex-grow: 1;
-  font-size: 2.45rem;
+  font-size: 1.15rem;
   font-weight: bold;
-  white-space: nowrap;
+  color: #4a3326;
+  letter-spacing: 0.01em;
 }
 
 /* Order Item Controls */
@@ -79,7 +89,7 @@
 }
 
 .quantity-input {
-  width: 30px;
+  width: 56px;
   padding: .25rem;
   text-align: center;
 }
@@ -87,6 +97,8 @@
 /* Add-Ons Section */
 .add-ons-section {
   margin-top: .75rem;
+  border-top: 1px dashed #ddcdbf;
+  padding-top: 0.6rem;
 }
 
 .add-on-list {
@@ -101,12 +113,13 @@
   justify-content: space-between;
   gap: .5rem;
   font-size: .9rem;
+  color: #4d3b31;
 }
 
 /* Buttons */
 .button-remove {
     background-color: transparent;
-    color: #ff4d4f;
+    color: #a64b2a;
     font-size: 1.25rem;
     padding: .25rem;
     border: none;
@@ -114,7 +127,7 @@
     position: absolute;
     width: auto;
     height: auto;
-    top: 0;
+    top: 2px;
     right: 0;
     display: inline-flex;
     align-items: center;
@@ -123,8 +136,8 @@
   
 
 .button-remove:hover {
-  background-color: #d9363e;
-  transform: scale(1.2);
+  background-color: #f1ddd0;
+  transform: scale(1.1);
   transition: transform .2s ease;
 }
 
@@ -134,4 +147,10 @@
   font-weight: bold;
   text-align: right;
   margin-top: 1rem;
+}
+
+@media (max-width: 820px) {
+  .customer-info-container {
+    flex-direction: column;
+  }
 }
