@@ -76,10 +76,6 @@ namespace CoffeeShopApi.Migrations
                 name: "notificationmessages");
 
             migrationBuilder.DropColumn(
-                name: "adminphonenumber",
-                table: "notificationsettings");
-
-            migrationBuilder.DropColumn(
                 name: "baristaphonenumber",
                 table: "notificationsettings");
 

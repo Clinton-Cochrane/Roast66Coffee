@@ -205,7 +205,7 @@ public class StripePaymentService
         };
 
         var createdOrder = await _orderService.CreateOrderAsync(orderNew);
-        await _notificationService.SendOrderNotificationAsync(createdOrder);
+        await _notificationService.SendOrderNotificationAsync(createdOrder, cancellationToken);
         draft.Status = "completed";
         draft.CompletedUtc = DateTime.UtcNow;
         draft.StripePaymentIntentId = paymentIntentId;
