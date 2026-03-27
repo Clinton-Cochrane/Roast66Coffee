@@ -355,11 +355,11 @@ namespace CoffeeShopApi.Controllers
         [HttpPost("notifications/purge-email-logs")]
         public async Task<IActionResult> PurgeEmailNotificationLogs(CancellationToken cancellationToken)
         {
-            var deleted = await _notificationRetentionService.PurgeEmailNotificationsOlderThanAsync(
+            await _notificationRetentionService.PurgeEmailNotificationsOlderThanAsync(
                 DateTime.UtcNow.AddDays(-30),
                 cancellationToken);
 
-            return Ok(new { deleted, retentionDays = 30 });
+            return NoContent();
         }
 
         [AllowAnonymous]

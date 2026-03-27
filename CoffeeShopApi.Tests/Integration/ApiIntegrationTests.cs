@@ -286,10 +286,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
         var response = await _client.SendAsync(request);
-        response.EnsureSuccessStatusCode();
-        var payload = await response.Content.ReadFromJsonAsync<PurgeResponse>(JsonOptions);
-        Assert.NotNull(payload);
-        Assert.True(payload!.Deleted > 0);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
     [Fact]
@@ -436,8 +433,4 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         public string TrackerUrl { get; set; } = string.Empty;
     }
 
-    private class PurgeResponse
-    {
-        public int Deleted { get; set; }
-    }
 }
