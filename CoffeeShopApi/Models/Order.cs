@@ -33,6 +33,14 @@ namespace CoffeeShopApi.Models
         [Column("orderstatus")]
         public OrderStatus OrderStatus { get; set; } = OrderStatus.Received;
 
+        /// <summary>When set, this order was paid in advance via Stripe Checkout.</summary>
+        [Column("paidutc")]
+        public DateTime? PaidUtc { get; set; }
+
+        [StringLength(255)]
+        [Column("stripepaymentintentid")]
+        public string? StripePaymentIntentId { get; set; }
+
         [Required]
         [MinLength(1, ErrorMessage = "At least one order item is required")]
         public required List<OrderItem> OrderItems { get; set; }

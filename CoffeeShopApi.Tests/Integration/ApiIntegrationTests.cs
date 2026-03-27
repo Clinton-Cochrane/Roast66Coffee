@@ -198,6 +198,20 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
     }
 
+    [Fact]
+    public async Task CreateCheckoutSession_EmptyOrderItemsWithoutExistingOrder_ReturnsBadRequest()
+    {
+        var payload = new
+        {
+            customerName = "Stripe Test",
+            customerPhone = "5550001234",
+            orderItems = Array.Empty<object>()
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/payments/checkout-session", payload);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     private static Order CreateValidOrder()
     {
         return new Order

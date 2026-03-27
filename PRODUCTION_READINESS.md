@@ -72,6 +72,7 @@ roast66/                  CoffeeShopApi/               PostgreSQL
   - ViewOrders → GET /api/admin/orders ← AdminController
   - Admin login → POST /api/admin/login
   - Order lookup → GET /api/order/lookup
+  - Order Status prepay → POST /api/payments/checkout-session (existingOrderId) → Stripe Checkout → webhook marks order paid
 ```
 
 Order submission uses `POST /api/admin/orders` (AdminController) with rate limiting applied.
@@ -205,6 +206,8 @@ Stripe__SecretKey=<stripe_secret_key>
 Stripe__WebhookSecret=<stripe_webhook_secret>
 Stripe__FrontendBaseUrl=https://roast66-web.onrender.com
 ```
+
+**Stripe account (production):** All card charges go to the Stripe account that issued the **secret key** you configure (`sk_live_...` for production, `sk_test_...` for sandbox). There is no separate “app link” beyond using that account’s API keys in Render. Add a **webhook endpoint** in the Stripe Dashboard (Developers → Webhooks) pointing to `https://<roast66-api-host>/api/payments/webhook`, subscribing at minimum to `checkout.session.completed` and `payment_intent.payment_failed`, and paste the endpoint signing secret into `Stripe__WebhookSecret`. For local testing, run `stripe listen --forward-to http://localhost:<port>/api/payments/webhook` and use the CLI’s webhook secret in `Stripe__WebhookSecret`.
 
 ---
 

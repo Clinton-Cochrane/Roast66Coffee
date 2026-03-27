@@ -63,3 +63,7 @@ services:
       - key: REACT_APP_API_URL
         value: "https://roast66coffee.onrender.com/api"
         sync: false
+      # Set to "true" to enable Stripe Checkout (order page) and prepay on Order Status; rebuild static site after changing.
+      - key: REACT_APP_ENABLE_STRIPE_CHECKOUT
+        value: "false"
+        sync: false
