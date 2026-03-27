@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "../axiosConfig";
 import { toast } from "react-toastify";
@@ -17,25 +17,50 @@ function OrderPage() {
   const [menuItems, setMenuItems] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
   const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
-  const [emailOptIn, setEmailOptIn] = useState(false);
+
+  const wakeInFlightRef = useRef(false);
 
   useEffect(() => {
-    fetchMenuItems();
+    ensureMenuItemsLoaded();
   }, []);
 
-  const fetchMenuItems = () => {
-    axios
-      .get("/menu")
-      .then((response) => setMenuItems(response.data))
-      .catch((error) => console.error(error));
+  const fetchMenuItems = async () => {
+    try {
+      const response = await axios.get("/menu");
+      const items = Array.isArray(response.data) ? response.data : [];
+      setMenuItems(items);
+      return items.length;
+    } catch (error) {
+      console.error(error);
+      return 0;
+    }
   };
 
-  /** Refetch menu only when empty (e.g. backend was asleep on initial load). Avoids redundant API calls when tabbing. */
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  // Retry a few times on page open to wake sleeping backend.
+  const ensureMenuItemsLoaded = async () => {
+    if (wakeInFlightRef.current) return;
+    wakeInFlightRef.current = true;
+    try {
+      const maxAttempts = 4;
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const count = await fetchMenuItems();
+        if (count > 0) return;
+        if (attempt < maxAttempts - 1) {
+          await sleep(1200);
+        }
+      }
+    } finally {
+      wakeInFlightRef.current = false;
+    }
+  };
+
+  /** Only re-wake backend on focus if menu is still empty. */
   const handleDropdownFocus = () => {
     if (menuItems.length === 0) {
-      fetchMenuItems();
+      ensureMenuItemsLoaded();
     }
   };
 
@@ -126,6 +151,8 @@ function OrderPage() {
     document.getElementById(`flavor-select-${index}`).value = "";
   };
 
+  const hasValidEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+
   const handleOrderSubmit = (e) => {
     e.preventDefault();
     if (orderItems.length === 0) {
@@ -134,9 +161,9 @@ function OrderPage() {
     }
     const orderData = {
       customerName,
-      customerPhone,
+      customerPhone: null,
       customerEmail: customerEmail.trim() || null,
-      customerNotificationOptIn: emailOptIn && customerEmail.trim().length > 0,
+      customerNotificationOptIn: hasValidEmail(customerEmail),
       orderItems: orderItems.map((item) => ({
         menuItemId: item.id,
         quantity: item.quantity,
@@ -174,9 +201,7 @@ function OrderPage() {
         const createdOrder = response.data;
         setOrderItems([]);
         setCustomerName("");
-        setCustomerPhone("");
         setCustomerEmail("");
-        setEmailOptIn(false);
         navigate("/order/confirmation", { state: { order: createdOrder } });
       })
       .catch((error) => {
@@ -185,9 +210,7 @@ function OrderPage() {
           const existingOrderId = error.response?.data?.existingOrderId;
           setOrderItems([]);
           setCustomerName("");
-          setCustomerPhone("");
           setCustomerEmail("");
-          setEmailOptIn(false);
           navigate("/order/duplicate", {
             state: { order: existingOrder, existingOrderId },
           });
@@ -208,55 +231,58 @@ function OrderPage() {
   return (
     <div className="p-6 flex flex-col items-center">
       <div className="w-full max-w-5xl">
-      <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-        <h1 className="text-3xl font-bold">{t("order.placeYourOrder")}</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+        <h1 className="text-3xl md:text-4xl font-bold tracking-[0.01em] text-[#4a3326]">{t("order.placeYourOrder")}</h1>
         <Link
           to="/order-status"
-          className="text-accent hover:underline font-medium"
+          className="text-[#6c89a2] hover:underline font-semibold"
         >
           {t("order.checkOrderStatus")} →
         </Link>
       </div>
+      <p className="r66-subtitle mb-6">
+        Build your homemade drink for the road in just a few taps.
+      </p>
 
-      <div className="customer-info-container">
-        <FormInput
-          type="text"
-          name="customerName"
-          label={t("order.namePlaceholder")}
-          placeholder={t("order.namePlaceholder")}
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          required
-        />
-        <FormInput
-          type="text"
-          name="customerPhone"
-          label={t("order.phonePlaceholder")}
-          placeholder={t("order.phonePlaceholder")}
-          value={customerPhone}
-          onChange={(e) => setCustomerPhone(e.target.value)}
-          required
-        />
-        <FormInput
-          type="email"
-          name="customerEmail"
-          label={t("order.emailPlaceholder")}
-          placeholder={t("order.emailPlaceholder")}
-          value={customerEmail}
-          onChange={(e) => setCustomerEmail(e.target.value)}
-        />
+      <div className="customer-info-container r66-panel p-4">
+        <div className="flex-1 min-w-0">
+          <FormInput
+            type="text"
+            name="customerName"
+            placeholder={t("order.namePlaceholder")}
+            title={t("order.namePlaceholder")}
+            aria-label={t("order.namePlaceholder")}
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            required
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <FormInput
+            type="email"
+            name="customerEmail"
+            placeholder={t("order.emailPlaceholder")}
+            title={t("order.emailPlaceholder")}
+            aria-label={t("order.emailPlaceholder")}
+            value={customerEmail}
+            onChange={(e) => setCustomerEmail(e.target.value)}
+          />
+          <div className="group relative -mt-1">
+            <span
+              tabIndex={0}
+              className="block w-full cursor-help overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-tight text-[#7a675a] focus:outline-none focus:text-[#5b4940]"
+              title="We only send order status updates when a valid email address is provided."
+            >
+              We only send order status updates when a valid email address is provided.
+            </span>
+            <div className="pointer-events-none absolute bottom-full left-1 z-20 mb-1 hidden w-64 rounded-md border border-[#d8c8ba] bg-[#fffaf3] px-2 py-1 text-[11px] leading-tight text-[#5b4940] shadow-md group-hover:block group-focus-within:block">
+              We only send order status updates when a valid email address is provided.
+            </div>
+          </div>
+        </div>
       </div>
-      <label className="block text-sm text-gray-600 mb-4">
-        <input
-          type="checkbox"
-          className="mr-2"
-          checked={emailOptIn}
-          onChange={(e) => setEmailOptIn(e.target.checked)}
-        />
-        {t("order.emailOptIn")}
-      </label>
 
-      <p className="text-gray-600 text-sm mb-4 text-center">
+      <p className="text-[#5b4940] text-sm mb-4 text-center">
         {t("order.instructions")}
       </p>
 
@@ -265,7 +291,7 @@ function OrderPage() {
           id="menu-select"
           onChange={handleDropDownChange}
           onFocus={handleDropdownFocus}
-          className="w-full p-2 border rounded mb-4"
+          className="w-full p-2 border border-[#cbb8a8] rounded-md mb-4 bg-[#fffaf3]"
           aria-label={t("order.selectMenuItem")}
         >
           <option value="">{t("order.selectMenuItem")}</option>
@@ -320,7 +346,7 @@ function OrderPage() {
                     handleAddFlavor(index, JSON.parse(e.target.value))
                   }
                   onFocus={handleDropdownFocus}
-                  className="w-full p-2 border rounded mb-2"
+                  className="w-full p-2 border border-[#cbb8a8] rounded-md mb-2 bg-[#fffaf3]"
                   aria-label={t("order.addFlavor")}
                 >
                   <option value="">{t("order.addFlavor")}</option>
@@ -372,7 +398,7 @@ function OrderPage() {
           ))}
         </ul>
 
-        <div className="font-bold text-lg">
+        <div className="font-bold text-xl text-[#4a3326]">
           {t("order.total")}: {currencyFormatter.format(calculateOrderTotal())}
         </div>
 
