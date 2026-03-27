@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -51,7 +51,7 @@ namespace CoffeeShopApi.Migrations
                 type: "character varying(16)",
                 maxLength: 16,
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "sms");
 
             migrationBuilder.AddColumn<string>(
                 name: "recipientemail",
@@ -59,6 +59,9 @@ namespace CoffeeShopApi.Migrations
                 type: "character varying(320)",
                 maxLength: 320,
                 nullable: true);
+
+            migrationBuilder.Sql(
+                "UPDATE notificationmessages SET channel = 'sms' WHERE channel IS NULL OR btrim(channel) = '';");
         }
 
         /// <inheritdoc />
