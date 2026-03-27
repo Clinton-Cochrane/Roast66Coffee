@@ -293,7 +293,7 @@ namespace CoffeeShopApi.Controllers
                 return NotFound("Order not found.");
             }
 
-            await _orderService.UpdateStatus(order);
+            await _orderService.UpdateStatus(order, cancellationToken);
             if (order.OrderStatus == OrderStatus.ReadyForPickup)
             {
                 await _notificationService.SendReadyForPickupNotificationAsync(order, cancellationToken);

@@ -133,7 +133,7 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         return _context.Orders.Any(e => e.Id == id);
     }
 
-    internal async Task UpdateStatus(Order order)
+    internal async Task UpdateStatus(Order order, CancellationToken cancellationToken = default)
     {
         order.OrderStatus = order.OrderStatus switch
         {
@@ -144,7 +144,7 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
             _ => OrderStatus.Received
         };
         _context.Orders.Update(order);
-        await _context.SaveChangesAsync();
+        await _context.SaveChangesAsync(cancellationToken);
     }
 
     /// <summary>Get order by ID and phone for customer lookup. Returns null if phone does not match.</summary>
