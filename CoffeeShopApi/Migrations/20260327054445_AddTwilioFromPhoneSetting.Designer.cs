@@ -3,6 +3,7 @@ using System;
 using CoffeeShopApi.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CoffeeShopApi.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260327054445_AddTwilioFromPhoneSetting")]
+    partial class AddTwilioFromPhoneSetting
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -95,12 +98,6 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("attemptcount");
 
-                    b.Property<string>("Channel")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)")
-                        .HasColumnName("channel");
-
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("createdutc");
@@ -135,11 +132,6 @@ namespace CoffeeShopApi.Migrations
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)")
                         .HasColumnName("providermessageid");
-
-                    b.Property<string>("RecipientEmail")
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)")
-                        .HasColumnName("recipientemail");
 
                     b.Property<string>("RecipientPhone")
                         .IsRequired()
@@ -189,30 +181,15 @@ namespace CoffeeShopApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("AdminEmail")
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)")
-                        .HasColumnName("adminemail");
-
                     b.Property<string>("AdminPhoneNumber")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("adminphonenumber");
 
-                    b.Property<string>("BaristaEmail")
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)")
-                        .HasColumnName("baristaemail");
-
                     b.Property<string>("BaristaPhoneNumber")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
                         .HasColumnName("baristaphonenumber");
-
-                    b.Property<string>("TrailerEmail")
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)")
-                        .HasColumnName("traileremail");
 
                     b.Property<string>("TrailerPhoneNumber")
                         .HasMaxLength(32)
@@ -238,20 +215,11 @@ namespace CoffeeShopApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("CustomerEmail")
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)")
-                        .HasColumnName("customeremail");
-
                     b.Property<string>("CustomerName")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("customername");
-
-                    b.Property<bool>("CustomerNotificationOptIn")
-                        .HasColumnType("boolean")
-                        .HasColumnName("customernotificationoptin");
 
                     b.Property<string>("CustomerPhone")
                         .HasMaxLength(20)
@@ -373,57 +341,6 @@ namespace CoffeeShopApi.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("paymentcheckoutdrafts");
-                });
-
-            modelBuilder.Entity("CoffeeShopApi.Models.StaffPushSubscription", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Auth")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("auth");
-
-                    b.Property<DateTime>("CreatedUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("createdutc");
-
-                    b.Property<string>("Endpoint")
-                        .IsRequired()
-                        .HasMaxLength(2048)
-                        .HasColumnType("character varying(2048)")
-                        .HasColumnName("endpoint");
-
-                    b.Property<string>("P256Dh")
-                        .IsRequired()
-                        .HasMaxLength(256)
-                        .HasColumnType("character varying(256)")
-                        .HasColumnName("p256dh");
-
-                    b.Property<DateTime>("UpdatedUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updatedutc");
-
-                    b.Property<string>("UserAgent")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)")
-                        .HasColumnName("useragent");
-
-                    b.Property<string>("UserIdentifier")
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("useridentifier");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Endpoint")
-                        .IsUnique();
-
-                    b.ToTable("staffpushsubscriptions");
                 });
 
             modelBuilder.Entity("CoffeeShopApi.Models.AddOn", b =>

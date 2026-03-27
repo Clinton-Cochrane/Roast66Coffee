@@ -117,6 +117,59 @@ public class OrderController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("{orderId}/summary")]
+    public async Task<IActionResult> DownloadOrderSummary(
+        int orderId,
+        [FromQuery] string phone,
+        CancellationToken cancellationToken)
+    {
+        if (orderId <= 0 || string.IsNullOrWhiteSpace(phone))
+        {
+            return BadRequest("Order ID and phone are required.");
+        }
+
+        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, cancellationToken);
+        if (order == null)
+        {
+            return NotFound("Order not found or phone does not match.");
+        }
+
+        var items = (order.OrderItems ?? [])
+            .Select(item =>
+            {
+                var addOns = item.AddOns ?? [];
+                var addOnTotal = addOns.Sum(a => (a.MenuItem?.Price ?? 0m) * a.Quantity);
+                var itemTotal = (item.MenuItem?.Price ?? 0m) * item.Quantity;
+                return new
+                {
+                    name = item.MenuItem?.Name ?? $"Item {item.MenuItemId}",
+                    quantity = item.Quantity,
+                    notes = item.Notes,
+                    lineTotal = itemTotal + addOnTotal,
+                    addOns = addOns.Select(a => new
+                    {
+                        name = a.MenuItem?.Name ?? $"Add-on {a.MenuItemId}",
+                        quantity = a.Quantity,
+                        lineTotal = (a.MenuItem?.Price ?? 0m) * a.Quantity
+                    })
+                };
+            })
+            .ToList();
+
+        var total = items.Sum(x => (decimal)x.lineTotal);
+
+        return Ok(new
+        {
+            orderId = order.Id,
+            customerName = order.CustomerName,
+            customerPhone = order.CustomerPhone,
+            trackerUrl = "/order-status",
+            status = order.OrderStatus.ToString(),
+            items,
+            total
+        });
+    }
+
     [Authorize(Roles = "Admin")]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutOrder(int id, Order order)

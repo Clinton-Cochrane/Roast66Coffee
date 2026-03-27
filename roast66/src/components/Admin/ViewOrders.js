@@ -33,6 +33,7 @@ function ViewOrders() {
   const [orders, setOrders] = useState([]);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [lastNotifiedCount, setLastNotifiedCount] = useState(0);
   const [orderNotifications, setOrderNotifications] = useState({});
   const [loadingNotificationsByOrderId, setLoadingNotificationsByOrderId] =
     useState({});
@@ -83,6 +84,25 @@ function ViewOrders() {
       window.removeEventListener("focus", handleFocus);
     };
   }, [lastRefreshedAt, fetchNewOrdersCount]);
+
+  useEffect(() => {
+    if (newOrdersCount <= 0) {
+      setLastNotifiedCount(0);
+      return;
+    }
+
+    const canNotify =
+      typeof Notification !== "undefined" && Notification.permission === "granted";
+    if (canNotify && newOrdersCount > lastNotifiedCount) {
+      new Notification("Roast66 new orders", {
+        body:
+          newOrdersCount === 1
+            ? "1 new order is waiting."
+            : `${newOrdersCount} new orders are waiting.`,
+      });
+      setLastNotifiedCount(newOrdersCount);
+    }
+  }, [newOrdersCount, lastNotifiedCount]);
 
   const sortedOrders = useMemo(() => {
     const list = Array.isArray(orders) ? [...orders] : [];

@@ -4,10 +4,31 @@
 }
 
 .notification-settings input,
+.notification-settings textarea,
 .notification-settings button {
     display: block;
     margin: 10px auto;
     padding: 10px;
     width: 80%;
     max-width: 400px;
+}
+
+.helper-text {
+    margin: 8px auto;
+    width: 80%;
+    max-width: 400px;
+    color: #4b5563;
+    font-size: 0.95rem;
+}
+
+.credentials-settings {
+    margin-top: 24px;
+    padding-top: 12px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.credentials-settings code {
+    background-color: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
 }

@@ -29,7 +29,7 @@ public class TwilioService
         !string.IsNullOrEmpty(_authToken) &&
         (!string.IsNullOrEmpty(_messagingServiceSid) || !string.IsNullOrEmpty(_twilioPhoneNumber));
 
-    public async Task<string?> SendSmsAsync(string toPhoneNumber, string message)
+    public async Task<string?> SendSmsAsync(string toPhoneNumber, string message, string? fromPhoneNumberOverride = null)
     {
         if (!IsConfigured())
         {
@@ -43,6 +43,10 @@ public class TwilioService
         if (!string.IsNullOrWhiteSpace(_messagingServiceSid))
         {
             messageOptions.MessagingServiceSid = _messagingServiceSid;
+        }
+        else if (!string.IsNullOrWhiteSpace(fromPhoneNumberOverride))
+        {
+            messageOptions.From = new PhoneNumber(fromPhoneNumberOverride);
         }
         else if (!string.IsNullOrWhiteSpace(_twilioPhoneNumber))
         {

@@ -18,6 +18,12 @@ public class CheckoutSessionRequest
     [StringLength(20, MinimumLength = 1)]
     public string CustomerPhone { get; set; } = string.Empty;
 
+    [EmailAddress]
+    [StringLength(320)]
+    public string? CustomerEmail { get; set; }
+
+    public bool CustomerNotificationOptIn { get; set; }
+
     /// <summary>Required for new orders; ignored when <see cref="ExistingOrderId"/> is set.</summary>
     public List<CheckoutOrderItemRequest> OrderItems { get; set; } = [];
 }

@@ -16,6 +16,8 @@ function OrderPage() {
   const [orderItems, setOrderItems] = useState([]);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [customerEmail, setCustomerEmail] = useState("");
+  const [emailOptIn, setEmailOptIn] = useState(false);
 
   useEffect(() => {
     fetchMenuItems();
@@ -126,6 +128,8 @@ function OrderPage() {
     const orderData = {
       customerName,
       customerPhone,
+      customerEmail: customerEmail.trim() || null,
+      customerNotificationOptIn: emailOptIn && customerEmail.trim().length > 0,
       orderItems: orderItems.map((item) => ({
         menuItemId: item.id,
         quantity: item.quantity,
@@ -164,6 +168,8 @@ function OrderPage() {
         setOrderItems([]);
         setCustomerName("");
         setCustomerPhone("");
+        setCustomerEmail("");
+        setEmailOptIn(false);
         navigate("/order/confirmation", { state: { order: createdOrder } });
       })
       .catch((error) => {
@@ -173,6 +179,8 @@ function OrderPage() {
           setOrderItems([]);
           setCustomerName("");
           setCustomerPhone("");
+          setCustomerEmail("");
+          setEmailOptIn(false);
           navigate("/order/duplicate", {
             state: { order: existingOrder, existingOrderId },
           });
@@ -218,7 +226,22 @@ function OrderPage() {
           onChange={(e) => setCustomerPhone(e.target.value)}
           required
         />
+        <FormInput
+          type="email"
+          placeholder="Email for order updates (optional)"
+          value={customerEmail}
+          onChange={(e) => setCustomerEmail(e.target.value)}
+        />
       </div>
+      <label className="block text-sm text-gray-600 mb-4">
+        <input
+          type="checkbox"
+          className="mr-2"
+          checked={emailOptIn}
+          onChange={(e) => setEmailOptIn(e.target.checked)}
+        />
+        Send me order status updates by email. We only use this for your order updates.
+      </label>
 
       <p className="text-gray-600 text-sm mb-4 text-center">
         Select a drink from the dropdown, customize it with flavors and notes, then add another from the dropdown when you&apos;re ready.

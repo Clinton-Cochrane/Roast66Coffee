@@ -2,8 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace CoffeeShopApi.Tests.Integration;
@@ -13,6 +16,7 @@ namespace CoffeeShopApi.Tests.Integration;
 /// </summary>
 public class ApiIntegrationTests : IClassFixture<WebAppFactory>
 {
+    private readonly WebAppFactory _factory;
     private readonly HttpClient _client;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -22,6 +26,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
 
     public ApiIntegrationTests(WebAppFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -161,6 +166,49 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
+    public async Task NotificationSettings_SaveAndGet_PersistsTwilioFromPhoneNumber()
+    {
+        var token = await GetAdminToken();
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var settingsPayload = new
+        {
+            adminPhoneNumber = "+15551230001",
+            baristaPhoneNumber = "+15551230002",
+            trailerPhoneNumber = "+15551230003",
+            twilioFromPhoneNumber = "+15551239999"
+        };
+
+        var saveResponse = await _client.PutAsJsonAsync("/api/admin/notificationSettings", settingsPayload, JsonOptions);
+        saveResponse.EnsureSuccessStatusCode();
+
+        var getResponse = await _client.GetAsync("/api/admin/notificationSettings");
+        getResponse.EnsureSuccessStatusCode();
+        var saved = await getResponse.Content.ReadFromJsonAsync<NotificationSettingsResponse>(JsonOptions);
+        Assert.NotNull(saved);
+        Assert.Equal(settingsPayload.adminPhoneNumber, saved!.AdminPhoneNumber);
+        Assert.Equal(settingsPayload.twilioFromPhoneNumber, saved.TwilioFromPhoneNumber);
+    }
+
+    [Fact]
+    public async Task CredentialSettings_WithAdminToken_ReturnsEnvKeyMetadata()
+    {
+        var token = await GetAdminToken();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/admin/credential-settings");
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var info = await response.Content.ReadFromJsonAsync<CredentialSettingsResponse>(JsonOptions);
+
+        Assert.NotNull(info);
+        Assert.Equal("Admin__Username", info!.UsernameEnvKey);
+        Assert.Equal("Admin__Password", info.PasswordEnvKey);
+    }
+
+    [Fact]
     public async Task UpdateOrderStatus_ToReadyForPickup_LogsCustomerReadyNotification()
     {
         var token = await GetAdminToken();
@@ -186,6 +234,59 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
 
         Assert.NotNull(notifications);
         Assert.Contains(notifications!, n => n.EventType == "order.ready_for_pickup" && n.RecipientRole == "customer");
+    }
+
+    [Fact]
+    public async Task GetOrderSummary_WithMatchingPhone_ReturnsSummaryPayload()
+    {
+        var order = CreateValidOrder(
+            $"Summary-{Guid.NewGuid():N}",
+            $"555{Random.Shared.Next(1000000, 9999999)}");
+        var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        post.EnsureSuccessStatusCode();
+        var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
+        Assert.NotNull(created);
+
+        var summary = await _client.GetAsync($"/api/order/{created!.Id}/summary?phone={order.CustomerPhone}");
+        summary.EnsureSuccessStatusCode();
+        var summaryPayload = await summary.Content.ReadFromJsonAsync<OrderSummaryResponse>(JsonOptions);
+        Assert.NotNull(summaryPayload);
+        Assert.Equal(created.Id, summaryPayload!.OrderId);
+        Assert.Equal("/order-status", summaryPayload.TrackerUrl);
+    }
+
+    [Fact]
+    public async Task PurgeEmailNotificationLogs_RemovesOldEmailRows()
+    {
+        var order = CreateValidOrder(
+            $"Purge-{Guid.NewGuid():N}",
+            $"555{Random.Shared.Next(1000000, 9999999)}");
+        order.CustomerEmail = "customer@example.com";
+        order.CustomerNotificationOptIn = true;
+        var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        post.EnsureSuccessStatusCode();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var emailRows = await db.NotificationMessages
+                .Where(n => n.Channel == "email")
+                .ToListAsync();
+            Assert.NotEmpty(emailRows);
+            foreach (var row in emailRows)
+            {
+                row.CreatedUtc = DateTime.UtcNow.AddDays(-40);
+            }
+            await db.SaveChangesAsync();
+        }
+
+        var token = await GetAdminToken();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/notifications/purge-email-logs");
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
     [Fact]
@@ -313,4 +414,23 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         public string EventType { get; set; } = string.Empty;
         public string RecipientRole { get; set; } = string.Empty;
     }
+
+    private class NotificationSettingsResponse
+    {
+        public string? AdminPhoneNumber { get; set; }
+        public string? TwilioFromPhoneNumber { get; set; }
+    }
+
+    private class CredentialSettingsResponse
+    {
+        public string UsernameEnvKey { get; set; } = string.Empty;
+        public string PasswordEnvKey { get; set; } = string.Empty;
+    }
+
+    private class OrderSummaryResponse
+    {
+        public int OrderId { get; set; }
+        public string TrackerUrl { get; set; } = string.Empty;
+    }
+
 }

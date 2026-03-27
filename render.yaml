@@ -65,6 +65,14 @@ services:
         sync: false
       - key: Twilio__StatusCallbackUrl
         sync: false
+      - key: Notifications__SmsEnabled
+        value: "false"
+      - key: Push__Subject
+        value: "mailto:support@example.com"
+      - key: Push__VapidPublicKey
+        sync: false
+      - key: Push__VapidPrivateKey
+        sync: false
       - key: Resend__ApiKey
         sync: false
       - key: Resend__From
@@ -84,4 +92,6 @@ services:
       # Set to "true" to enable Stripe Checkout (order page) and prepay on Order Status; rebuild static site after changing.
       - key: REACT_APP_ENABLE_STRIPE_CHECKOUT
         value: "false"
+        sync: false
+      - key: REACT_APP_VAPID_PUBLIC_KEY
         sync: false

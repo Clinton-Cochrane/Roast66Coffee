@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/layout/Header";
 import Button from "../components/common/Button";
 import ViewOrders from "../components/Admin/ViewOrders";
+import StaffDevicePrompt from "../components/Admin/StaffDevicePrompt";
 
 function CashPage() {
   const navigate = useNavigate();
@@ -36,6 +37,7 @@ function CashPage() {
             Log out
           </Button>
         </div>
+        <StaffDevicePrompt />
 
         <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
           <ViewOrders />

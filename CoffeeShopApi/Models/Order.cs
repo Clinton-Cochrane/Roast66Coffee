@@ -27,6 +27,13 @@ namespace CoffeeShopApi.Models
         [Column("customerphone")]
         public string? CustomerPhone { get; set; }
 
+        [StringLength(320)]
+        [Column("customeremail")]
+        public string? CustomerEmail { get; set; }
+
+        [Column("customernotificationoptin")]
+        public bool CustomerNotificationOptIn { get; set; }
+
         [Column("orderdate")]
         public DateTime OrderDate { get; set; } = DateTime.UtcNow;
 

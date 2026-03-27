@@ -83,6 +83,8 @@ public class StripePaymentService
                 ExistingOrderId = prepayId,
                 CustomerName = order.CustomerName,
                 CustomerPhone = order.CustomerPhone ?? request.CustomerPhone,
+                CustomerEmail = order.CustomerEmail ?? request.CustomerEmail,
+                CustomerNotificationOptIn = order.CustomerNotificationOptIn || request.CustomerNotificationOptIn,
                 OrderItems = []
             };
         }
@@ -105,6 +107,11 @@ public class StripePaymentService
             ["customer_name"] = payloadToStore.CustomerName,
             ["customer_phone"] = payloadToStore.CustomerPhone
         };
+        if (!string.IsNullOrWhiteSpace(payloadToStore.CustomerEmail))
+        {
+            metadata["customer_email"] = payloadToStore.CustomerEmail;
+        }
+        metadata["customer_notification_opt_in"] = payloadToStore.CustomerNotificationOptIn ? "true" : "false";
         if (payloadToStore.ExistingOrderId is int oid && oid > 0)
         {
             metadata["existing_order_id"] = oid.ToString();
@@ -191,6 +198,8 @@ public class StripePaymentService
         {
             CustomerName = payload.CustomerName,
             CustomerPhone = payload.CustomerPhone,
+            CustomerEmail = payload.CustomerEmail,
+            CustomerNotificationOptIn = payload.CustomerNotificationOptIn,
             OrderItems = payload.OrderItems.Select(item => new OrderItem
             {
                 MenuItemId = item.MenuItemId,
