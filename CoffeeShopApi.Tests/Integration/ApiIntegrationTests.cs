@@ -2,8 +2,11 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace CoffeeShopApi.Tests.Integration;
@@ -13,6 +16,7 @@ namespace CoffeeShopApi.Tests.Integration;
 /// </summary>
 public class ApiIntegrationTests : IClassFixture<WebAppFactory>
 {
+    private readonly WebAppFactory _factory;
     private readonly HttpClient _client;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -22,6 +26,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
 
     public ApiIntegrationTests(WebAppFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
@@ -232,6 +237,62 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
+    public async Task GetOrderSummary_WithMatchingPhone_ReturnsSummaryPayload()
+    {
+        var order = CreateValidOrder(
+            $"Summary-{Guid.NewGuid():N}",
+            $"555{Random.Shared.Next(1000000, 9999999)}");
+        var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        post.EnsureSuccessStatusCode();
+        var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
+        Assert.NotNull(created);
+
+        var summary = await _client.GetAsync($"/api/order/{created!.Id}/summary?phone={order.CustomerPhone}");
+        summary.EnsureSuccessStatusCode();
+        var summaryPayload = await summary.Content.ReadFromJsonAsync<OrderSummaryResponse>(JsonOptions);
+        Assert.NotNull(summaryPayload);
+        Assert.Equal(created.Id, summaryPayload!.OrderId);
+        Assert.Equal("/order-status", summaryPayload.TrackerUrl);
+    }
+
+    [Fact]
+    public async Task PurgeEmailNotificationLogs_RemovesOldEmailRows()
+    {
+        var order = CreateValidOrder(
+            $"Purge-{Guid.NewGuid():N}",
+            $"555{Random.Shared.Next(1000000, 9999999)}");
+        order.CustomerEmail = "customer@example.com";
+        order.CustomerNotificationOptIn = true;
+        var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        post.EnsureSuccessStatusCode();
+
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var emailRows = await db.NotificationMessages
+                .Where(n => n.Channel == "email")
+                .ToListAsync();
+            Assert.NotEmpty(emailRows);
+            foreach (var row in emailRows)
+            {
+                row.CreatedUtc = DateTime.UtcNow.AddDays(-40);
+            }
+            await db.SaveChangesAsync();
+        }
+
+        var token = await GetAdminToken();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/notifications/purge-email-logs");
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var payload = await response.Content.ReadFromJsonAsync<PurgeResponse>(JsonOptions);
+        Assert.NotNull(payload);
+        Assert.True(payload!.Deleted > 0);
+    }
+
+    [Fact]
     public async Task AdminMenuCrud_CreateUpdateDelete_WithToken()
     {
         var token = await GetAdminToken();
@@ -367,5 +428,16 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     {
         public string UsernameEnvKey { get; set; } = string.Empty;
         public string PasswordEnvKey { get; set; } = string.Empty;
+    }
+
+    private class OrderSummaryResponse
+    {
+        public int OrderId { get; set; }
+        public string TrackerUrl { get; set; } = string.Empty;
+    }
+
+    private class PurgeResponse
+    {
+        public int Deleted { get; set; }
     }
 }

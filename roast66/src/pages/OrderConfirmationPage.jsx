@@ -7,6 +7,8 @@ function OrderConfirmationPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const order = location.state?.order;
+  const customerEmail = order?.customerEmail ?? order?.CustomerEmail ?? "";
+  const emailOptIn = Boolean(order?.customerNotificationOptIn ?? order?.CustomerNotificationOptIn);
 
   if (!order) {
     return (
@@ -39,6 +41,33 @@ function OrderConfirmationPage() {
     0
   );
 
+  const handleDownloadSummary = () => {
+    const summary = {
+      orderNumber: order.id ?? order.Id,
+      customerName: order.customerName ?? order.CustomerName,
+      customerPhone: order.customerPhone ?? order.CustomerPhone,
+      trackerUrl: `${window.location.origin}/order-status`,
+      items: items.map((item) => ({
+        name: item.menuItem?.name ?? "Item",
+        quantity: item.quantity ?? 1,
+        addOns: (item.addOns ?? []).map((a) => ({
+          name: a.menuItem?.name ?? "Add-on",
+          quantity: a.quantity ?? 1,
+        })),
+        notes: item.notes ?? "",
+      })),
+      total,
+    };
+
+    const blob = new Blob([JSON.stringify(summary, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `roast66-order-${order.id ?? order.Id}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="p-6 max-w-lg mx-auto">
       <h1 className="text-3xl font-bold mb-2">Order Confirmed!</h1>
@@ -60,6 +89,20 @@ function OrderConfirmationPage() {
           ))}
         </ul>
         <p className="font-bold">Total: ${total.toFixed(2)}</p>
+        {emailOptIn && customerEmail ? (
+          <p className="text-sm text-gray-600 mt-2">
+            We will send order status updates to <strong>{customerEmail}</strong>.
+          </p>
+        ) : (
+          <div className="mt-3">
+            <p className="text-sm text-gray-600 mb-2">
+              Email updates are optional. Download your order summary for your records.
+            </p>
+            <Button color="gray" onClick={handleDownloadSummary}>
+              Download Order Summary
+            </Button>
+          </div>
+        )}
       </div>
 
       <h2 className="text-xl font-bold mb-4">Order Status</h2>

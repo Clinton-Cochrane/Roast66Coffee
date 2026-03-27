@@ -27,6 +27,7 @@ namespace CoffeeShopApi.Controllers
         private readonly IConfiguration _configuration;
         private readonly NotificationSettingsService _notificationSettingsService;
         private readonly SupportEmailService _supportEmailService;
+        private readonly NotificationRetentionService _notificationRetentionService;
 
 
         public AdminController(
@@ -36,7 +37,8 @@ namespace CoffeeShopApi.Controllers
             NotificationService notificationService,
             IConfiguration configuration,
             NotificationSettingsService notificationSettingsService,
-            SupportEmailService supportEmailService)
+            SupportEmailService supportEmailService,
+            NotificationRetentionService notificationRetentionService)
         {
             _context = context;
             _orderService = orderService;
@@ -45,6 +47,7 @@ namespace CoffeeShopApi.Controllers
             _configuration = configuration;
             _notificationSettingsService = notificationSettingsService;
             _supportEmailService = supportEmailService;
+            _notificationRetentionService = notificationRetentionService;
         }
 
         [HttpPost("login")]
@@ -275,6 +278,9 @@ namespace CoffeeShopApi.Controllers
                 AdminPhoneNumber = model.AdminPhoneNumber,
                 BaristaPhoneNumber = model.BaristaPhoneNumber,
                 TrailerPhoneNumber = model.TrailerPhoneNumber,
+                AdminEmail = model.AdminEmail,
+                BaristaEmail = model.BaristaEmail,
+                TrailerEmail = model.TrailerEmail,
                 TwilioFromPhoneNumber = model.TwilioFromPhoneNumber
             };
             await _notificationSettingsService.SaveNotificationSettingsAsync(settings, cancellationToken);
@@ -329,8 +335,10 @@ namespace CoffeeShopApi.Controllers
             {
                 n.Id,
                 n.EventType,
+                n.Channel,
                 n.RecipientRole,
                 n.RecipientPhone,
+                n.RecipientEmail,
                 n.TemplateKey,
                 n.Status,
                 n.AttemptCount,
@@ -341,6 +349,17 @@ namespace CoffeeShopApi.Controllers
                 n.UpdatedUtc
             });
             return Ok(result);
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPost("notifications/purge-email-logs")]
+        public async Task<IActionResult> PurgeEmailNotificationLogs(CancellationToken cancellationToken)
+        {
+            var deleted = await _notificationRetentionService.PurgeEmailNotificationsOlderThanAsync(
+                DateTime.UtcNow.AddDays(-30),
+                cancellationToken);
+
+            return Ok(new { deleted, retentionDays = 30 });
         }
 
         [AllowAnonymous]
@@ -437,6 +456,18 @@ namespace CoffeeShopApi.Controllers
 
         [StringLength(32)]
         public string? TrailerPhoneNumber { get; set; }
+
+        [EmailAddress]
+        [StringLength(320)]
+        public string? AdminEmail { get; set; }
+
+        [EmailAddress]
+        [StringLength(320)]
+        public string? BaristaEmail { get; set; }
+
+        [EmailAddress]
+        [StringLength(320)]
+        public string? TrailerEmail { get; set; }
 
         [StringLength(32)]
         public string? TwilioFromPhoneNumber { get; set; }

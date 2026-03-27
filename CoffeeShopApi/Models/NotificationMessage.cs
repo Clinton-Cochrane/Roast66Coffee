@@ -27,6 +27,15 @@ public class NotificationMessage
     [Column("recipientphone")]
     public string RecipientPhone { get; set; } = string.Empty;
 
+    [StringLength(320)]
+    [Column("recipientemail")]
+    public string? RecipientEmail { get; set; }
+
+    [Required]
+    [StringLength(16)]
+    [Column("channel")]
+    public string Channel { get; set; } = "sms";
+
     [Required]
     [StringLength(64)]
     [Column("templatekey")]

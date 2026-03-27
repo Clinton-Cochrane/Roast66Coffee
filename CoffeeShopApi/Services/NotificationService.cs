@@ -16,24 +16,30 @@ public class NotificationService
     private readonly ApplicationDbContext _context;
     private readonly NotificationSettingsService _settingsService;
     private readonly TwilioService _twilioService;
+    private readonly OrderEmailNotificationService _orderEmailNotificationService;
+    private readonly StaffPushNotificationService _staffPushNotificationService;
 
     public NotificationService(
         IConfiguration configuration,
         ApplicationDbContext context,
         NotificationSettingsService settingsService,
-        TwilioService twilioService)
+        TwilioService twilioService,
+        OrderEmailNotificationService orderEmailNotificationService,
+        StaffPushNotificationService staffPushNotificationService)
     {
         _configuration = configuration;
         _context = context;
         _settingsService = settingsService;
         _twilioService = twilioService;
+        _orderEmailNotificationService = orderEmailNotificationService;
+        _staffPushNotificationService = staffPushNotificationService;
     }
 
     public async Task SendOrderNotificationAsync(Order order, CancellationToken cancellationToken = default)
     {
         var itemCount = order.OrderItems?.Sum(oi => oi.Quantity) ?? 0;
         var staffBody = $"Roast 66: New order #{order.Id} from {order.CustomerName} ({order.CustomerPhone}), {itemCount} item(s).";
-        var customerBody = $"Roast 66: We received your order #{order.Id}. We will text you when it is ready for pickup.";
+        var customerBody = $"Roast 66: We received your order #{order.Id}. Track status at /order-status.";
         var settings = await _settingsService.GetNotificationSettingsAsync(cancellationToken);
         var twilioFromPhone = NormalizePhone(settings?.TwilioFromPhoneNumber ?? string.Empty);
 
@@ -41,9 +47,11 @@ public class NotificationService
         foreach (var recipient in recipients)
         {
             await SendWithLoggingAsync(
+                channel: "sms",
                 eventType: EventOrderCreated,
                 recipientRole: recipient.Role,
                 recipientPhone: recipient.Phone,
+                recipientEmail: null,
                 templateKey: "staff_new_order",
                 body: staffBody,
                 orderId: order.Id,
@@ -56,9 +64,11 @@ public class NotificationService
         if (!string.IsNullOrWhiteSpace(customerPhone))
         {
             await SendWithLoggingAsync(
+                channel: "sms",
                 eventType: EventOrderCreated,
                 recipientRole: "customer",
                 recipientPhone: customerPhone,
+                recipientEmail: null,
                 templateKey: "customer_order_received",
                 body: customerBody,
                 orderId: order.Id,
@@ -66,29 +76,64 @@ public class NotificationService
                 fromPhoneNumber: twilioFromPhone,
                 cancellationToken: cancellationToken);
         }
+
+        if (order.CustomerNotificationOptIn && !string.IsNullOrWhiteSpace(order.CustomerEmail))
+        {
+            await SendWithLoggingAsync(
+                channel: "email",
+                eventType: EventOrderCreated,
+                recipientRole: "customer",
+                recipientPhone: string.Empty,
+                recipientEmail: order.CustomerEmail,
+                templateKey: "customer_order_received_email",
+                body: string.Empty,
+                orderId: order.Id,
+                payload: new { orderId = order.Id, order.CustomerName, order.CustomerEmail, itemCount },
+                fromPhoneNumber: string.Empty,
+                cancellationToken: cancellationToken);
+        }
+
+        await _staffPushNotificationService.SendNewOrderAlertAsync(order, cancellationToken);
     }
 
     public async Task SendReadyForPickupNotificationAsync(Order order, CancellationToken cancellationToken = default)
     {
         var customerPhone = NormalizePhone(order.CustomerPhone ?? string.Empty);
-        if (string.IsNullOrWhiteSpace(customerPhone))
-        {
-            return;
-        }
         var settings = await _settingsService.GetNotificationSettingsAsync(cancellationToken);
         var twilioFromPhone = NormalizePhone(settings?.TwilioFromPhoneNumber ?? string.Empty);
 
-        var body = $"Roast 66: Your order #{order.Id} is ready for pickup.";
-        await SendWithLoggingAsync(
-            eventType: EventOrderReady,
-            recipientRole: "customer",
-            recipientPhone: customerPhone,
-            templateKey: "customer_ready_for_pickup",
-            body: body,
-            orderId: order.Id,
-            payload: new { orderId = order.Id, order.CustomerName, order.CustomerPhone, status = order.OrderStatus.ToString() },
-            fromPhoneNumber: twilioFromPhone,
-            cancellationToken: cancellationToken);
+        if (!string.IsNullOrWhiteSpace(customerPhone))
+        {
+            var body = $"Roast 66: Your order #{order.Id} is ready for pickup.";
+            await SendWithLoggingAsync(
+                channel: "sms",
+                eventType: EventOrderReady,
+                recipientRole: "customer",
+                recipientPhone: customerPhone,
+                recipientEmail: null,
+                templateKey: "customer_ready_for_pickup",
+                body: body,
+                orderId: order.Id,
+                payload: new { orderId = order.Id, order.CustomerName, order.CustomerPhone, status = order.OrderStatus.ToString() },
+                fromPhoneNumber: twilioFromPhone,
+                cancellationToken: cancellationToken);
+        }
+
+        if (order.CustomerNotificationOptIn && !string.IsNullOrWhiteSpace(order.CustomerEmail))
+        {
+            await SendWithLoggingAsync(
+                channel: "email",
+                eventType: EventOrderReady,
+                recipientRole: "customer",
+                recipientPhone: string.Empty,
+                recipientEmail: order.CustomerEmail,
+                templateKey: "customer_ready_for_pickup_email",
+                body: string.Empty,
+                orderId: order.Id,
+                payload: new { orderId = order.Id, order.CustomerName, order.CustomerEmail, status = order.OrderStatus.ToString() },
+                fromPhoneNumber: string.Empty,
+                cancellationToken: cancellationToken);
+        }
     }
 
     public async Task<IReadOnlyList<NotificationMessage>> GetNotificationsForOrderAsync(int orderId, CancellationToken cancellationToken = default)
@@ -143,9 +188,11 @@ public class NotificationService
     }
 
     private async Task SendWithLoggingAsync(
+        string channel,
         string eventType,
         string recipientRole,
         string recipientPhone,
+        string? recipientEmail,
         string templateKey,
         string body,
         int orderId,
@@ -154,12 +201,14 @@ public class NotificationService
         CancellationToken cancellationToken)
     {
         var normalizedPhone = NormalizePhone(recipientPhone);
-        if (string.IsNullOrWhiteSpace(normalizedPhone))
+        var normalizedEmail = NormalizeEmail(recipientEmail);
+        var destination = channel == "email" ? normalizedEmail : normalizedPhone;
+        if (string.IsNullOrWhiteSpace(destination))
         {
             return;
         }
 
-        var dedupKey = BuildDedupKey(eventType, recipientRole, normalizedPhone, templateKey, orderId);
+        var dedupKey = BuildDedupKey(eventType, recipientRole, destination, templateKey, orderId);
         var existing = await _context.NotificationMessages
             .FirstOrDefaultAsync(x => x.DedupKey == dedupKey, cancellationToken);
         if (existing != null)
@@ -172,6 +221,8 @@ public class NotificationService
             EventType = eventType,
             RecipientRole = recipientRole,
             RecipientPhone = normalizedPhone,
+            RecipientEmail = normalizedEmail,
+            Channel = channel,
             TemplateKey = templateKey,
             OrderId = orderId,
             PayloadJson = JsonSerializer.Serialize(payload),
@@ -184,10 +235,17 @@ public class NotificationService
         _context.NotificationMessages.Add(message);
         await _context.SaveChangesAsync(cancellationToken);
 
-        if (!_twilioService.IsConfigured())
+        if (channel == "email")
+        {
+            await SendEmailWithRetryAsync(message, orderId, cancellationToken);
+            return;
+        }
+
+        var smsEnabled = _configuration.GetValue("Notifications:SmsEnabled", false);
+        if (!smsEnabled || !_twilioService.IsConfigured())
         {
             message.Status = "skipped";
-            message.LastError = "Twilio is not configured.";
+            message.LastError = !smsEnabled ? "SMS channel is disabled." : "Twilio is not configured.";
             message.UpdatedUtc = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
             return;
@@ -200,6 +258,72 @@ public class NotificationService
             try
             {
                 message.ProviderMessageId = await _twilioService.SendSmsAsync(normalizedPhone, body, fromPhoneNumber);
+                message.Status = "sent";
+                message.LastError = null;
+                message.SentUtc = DateTime.UtcNow;
+                message.UpdatedUtc = DateTime.UtcNow;
+                await _context.SaveChangesAsync(cancellationToken);
+                return;
+            }
+            catch (Exception ex)
+            {
+                message.Status = attempt == maxAttempts ? "failed" : "retrying";
+                message.LastError = ex.Message;
+                message.UpdatedUtc = DateTime.UtcNow;
+                await _context.SaveChangesAsync(cancellationToken);
+
+                if (attempt < maxAttempts)
+                {
+                    await Task.Delay(TimeSpan.FromMilliseconds(250 * attempt), cancellationToken);
+                }
+            }
+        }
+    }
+
+    private async Task SendEmailWithRetryAsync(NotificationMessage message, int orderId, CancellationToken cancellationToken)
+    {
+        var order = await _context.Orders
+            .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.MenuItem)
+            .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.AddOns!)
+            .ThenInclude(a => a.MenuItem)
+            .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+
+        if (order == null)
+        {
+            message.Status = "failed";
+            message.LastError = "Order not found for email notification.";
+            message.UpdatedUtc = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        if (!_orderEmailNotificationService.IsConfigured())
+        {
+            message.Status = "skipped";
+            message.LastError = "Order email provider is not configured.";
+            message.UpdatedUtc = DateTime.UtcNow;
+            await _context.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        const int maxAttempts = 3;
+        for (var attempt = 1; attempt <= maxAttempts; attempt++)
+        {
+            message.AttemptCount = attempt;
+            try
+            {
+                if (message.EventType == EventOrderReady)
+                {
+                    await _orderEmailNotificationService.SendReadyForPickupAsync(order, cancellationToken);
+                }
+                else
+                {
+                    await _orderEmailNotificationService.SendOrderReceivedAsync(order, cancellationToken);
+                }
+
+                message.ProviderMessageId = $"email-{Guid.NewGuid():N}";
                 message.Status = "sent";
                 message.LastError = null;
                 message.SentUtc = DateTime.UtcNow;
@@ -268,5 +392,11 @@ public class NotificationService
         }
 
         return digits.StartsWith('+') ? digits : $"+{digits}";
+    }
+
+    private static string? NormalizeEmail(string? email)
+    {
+        var trimmed = email?.Trim();
+        return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed.ToLowerInvariant();
     }
 }

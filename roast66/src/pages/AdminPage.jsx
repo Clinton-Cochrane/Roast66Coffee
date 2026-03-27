@@ -7,6 +7,7 @@ import ViewOrders from "../components/Admin/ViewOrders";
 import Header from "../components/layout/Header";
 import "../styles/AdminPage.css";
 import NotificationSettings from "../components/Admin/NotificationSettings";
+import StaffDevicePrompt from "../components/Admin/StaffDevicePrompt";
 import Loading from "../components/common/Loading";
 import Button from "../components/common/Button";
 import useKeepAliveHeartbeat from "../hooks/useKeepAliveHeartbeat";
@@ -61,6 +62,7 @@ function AdminPage() {
             Log out
           </Button>
         </div>
+        <StaffDevicePrompt />
 
         <div
           className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden"
