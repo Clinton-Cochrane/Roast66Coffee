@@ -19,7 +19,9 @@ namespace CoffeeShopApi.Services
             var existingSettings = await GetNotificationSettingsAsync();
             if (existingSettings != null)
             {
-                existingSettings.PhoneNumber = settings.PhoneNumber;
+                existingSettings.AdminPhoneNumber = settings.AdminPhoneNumber;
+                existingSettings.BaristaPhoneNumber = settings.BaristaPhoneNumber;
+                existingSettings.TrailerPhoneNumber = settings.TrailerPhoneNumber;
                 _context.NotificationSettings.Update(existingSettings);
             }
             else

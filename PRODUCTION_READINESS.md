@@ -212,6 +212,16 @@ Stripe__WebhookSecret=<stripe_webhook_secret>
 Stripe__FrontendBaseUrl=https://roast66-web.onrender.com
 ```
 
+**SMS notifications (roast66-api)**
+```
+Twilio__AccountSID=<twilio_account_sid>
+Twilio__AuthToken=<twilio_auth_token>
+Twilio__FromPhoneNumber=<twilio_long_code_or_toll_free>
+Twilio__AdminPhoneNumber=<fallback_admin_phone>
+Twilio__MessagingServiceSid=<twilio_messaging_service_sid>
+Twilio__StatusCallbackUrl=https://<api-host>/api/admin/notifications/twilio-status-callback
+```
+
 **Stripe account (production):** All card charges go to the Stripe account that issued the **secret key** you configure (`sk_live_...` for production, `sk_test_...` for sandbox). There is no separate “app link” beyond using that account’s API keys in Render. Add a **webhook endpoint** in the Stripe Dashboard (Developers → Webhooks) pointing to `https://<roast66-api-host>/api/payments/webhook`, subscribing at minimum to `checkout.session.completed` and `payment_intent.payment_failed`, and paste the endpoint signing secret into `Stripe__WebhookSecret`. For local testing, run `stripe listen --forward-to http://localhost:<port>/api/payments/webhook` and use the CLI’s webhook secret in `Stripe__WebhookSecret`.
 
 **Forgot password alerts (roast66-api):**
@@ -263,6 +273,32 @@ Support__AlertEmail=<family_tech_email>
 - **Primary owner:** Application maintainer / business operator.
 - **Payment owner:** business account owner with Stripe dashboard access.
 - **Escalation path:** hosting provider support -> payment provider support.
+
+---
+
+## 12. Notifications (Twilio) Rollout
+
+### Twilio onboarding checklist
+
+- Create/secure Twilio production account (2FA enabled).
+- Buy sender (US long code recommended for this volume).
+- Complete A2P 10DLC brand + campaign registration.
+- Configure Messaging Service and attach sender.
+- Set status callback URL to `/api/admin/notifications/twilio-status-callback`.
+
+### Notification behavior (production)
+
+- New order: sends to admin/barista/trailer (from notification settings) and customer confirmation.
+- Status update to `ReadyForPickup`: sends customer pickup SMS.
+- Delivery attempts are logged per order with status (`pending`, `sent`, `failed`, `retrying`, `skipped`).
+
+### Cost estimate (US, ~500 orders/month)
+
+- Estimated monthly Twilio spend: **$25-$60** (messages + number + carrier/A2P fees).
+- Estimated Twilio upfront fees: **$20-$120** one-time (A2P onboarding/vetting range).
+- Recommended client budget line item:
+  - One-time implementation: **$3,000-$6,500**
+  - Ongoing SMS platform: **$25-$60/month**
 
 ---
 

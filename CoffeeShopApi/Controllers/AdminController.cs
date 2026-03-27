@@ -12,6 +12,7 @@ using System.Text;
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
+using System.Linq;
 
 namespace CoffeeShopApi.Controllers
 {
@@ -216,7 +217,7 @@ namespace CoffeeShopApi.Controllers
 
         [HttpPost("orders")]
         [EnableRateLimiting("Order")]
-        public async Task<ActionResult<Order>> PostOrder(Order order)
+        public async Task<ActionResult<Order>> PostOrder(Order order, CancellationToken cancellationToken)
         {
             if (order.OrderItems == null || order.OrderItems.Count == 0)
             {
@@ -233,7 +234,7 @@ namespace CoffeeShopApi.Controllers
                 });
             }
             var newOrder = await _orderService.CreateOrderAsync(order);
-            await _notificationService.SendOrderNotificationAsync(newOrder);
+            await _notificationService.SendOrderNotificationAsync(newOrder, cancellationToken);
             return CreatedAtAction(nameof(GetOrders), new { id = newOrder.Id }, newOrder);
         }
 
@@ -255,10 +256,19 @@ namespace CoffeeShopApi.Controllers
         {
             var settings = new NotificationSettings
             {
-                PhoneNumber = model.PhoneNumber
+                AdminPhoneNumber = model.AdminPhoneNumber,
+                BaristaPhoneNumber = model.BaristaPhoneNumber,
+                TrailerPhoneNumber = model.TrailerPhoneNumber
             };
             await _notificationSettingsService.SaveNotificationSettingsAsync(settings);
             return Ok();
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPut("notificationSettings")]
+        public async Task<IActionResult> UpdateNotificationSettings([FromBody] NotificationSettingsModel model)
+        {
+            return await SaveNotificationSettings(model);
         }
 
         [HttpGet("ping")]
@@ -270,7 +280,7 @@ namespace CoffeeShopApi.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPut("updateOrderStatus/{id}/status")]
-        public async Task<IActionResult> UpdateOrderStatus(int id)
+        public async Task<IActionResult> UpdateOrderStatus(int id, CancellationToken cancellationToken)
         {
             var order = await _orderService.GetOrderByIdAsync(id);
             if (order == null)
@@ -279,12 +289,56 @@ namespace CoffeeShopApi.Controllers
             }
 
             await _orderService.UpdateStatus(order);
+            if (order.OrderStatus == OrderStatus.ReadyForPickup)
+            {
+                await _notificationService.SendReadyForPickupNotificationAsync(order, cancellationToken);
+            }
             return Ok(new
             {
                 message = "Order status updated successfully.",
                 orderId = order.Id,
                 newStatus = order.OrderStatus.ToString()
             });
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpGet("orders/{id}/notifications")]
+        public async Task<IActionResult> GetOrderNotifications(int id, CancellationToken cancellationToken)
+        {
+            var notifications = await _notificationService.GetNotificationsForOrderAsync(id, cancellationToken);
+            var result = notifications.Select(n => new
+            {
+                n.Id,
+                n.EventType,
+                n.RecipientRole,
+                n.RecipientPhone,
+                n.TemplateKey,
+                n.Status,
+                n.AttemptCount,
+                n.ProviderMessageId,
+                n.LastError,
+                n.CreatedUtc,
+                n.SentUtc,
+                n.UpdatedUtc
+            });
+            return Ok(result);
+        }
+
+        [AllowAnonymous]
+        [HttpPost("notifications/twilio-status-callback")]
+        public async Task<IActionResult> TwilioStatusCallback(
+            [FromForm(Name = "MessageSid")] string? messageSid,
+            [FromForm(Name = "MessageStatus")] string? messageStatus,
+            [FromForm(Name = "ErrorMessage")] string? errorMessage,
+            CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(messageSid) || string.IsNullOrWhiteSpace(messageStatus))
+            {
+                return Ok();
+            }
+
+            await _notificationService.UpdateProviderStatusAsync(messageSid, messageStatus, errorMessage, cancellationToken);
+            return Ok();
         }
 
         /// <summary>
@@ -356,9 +410,14 @@ namespace CoffeeShopApi.Controllers
 
     public class NotificationSettingsModel
     {
-        [Required]
-        [StringLength(20, MinimumLength = 1)]
-        public required string PhoneNumber { get; set; }
+        [StringLength(32)]
+        public string? AdminPhoneNumber { get; set; }
+
+        [StringLength(32)]
+        public string? BaristaPhoneNumber { get; set; }
+
+        [StringLength(32)]
+        public string? TrailerPhoneNumber { get; set; }
     }
 
     public class ForgotPasswordRequest
