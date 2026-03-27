@@ -172,13 +172,23 @@ This project includes a `render.yaml` Blueprint for one-click deployment to Rend
 3. Set the following environment variables in the Render Dashboard. Values marked `sync: false` in `render.yaml` must be entered manually; others are set by the Blueprint.
 
    **Backend (roast66-api):**
+   - `ASPNETCORE_ENVIRONMENT=Production`
+   - `ConnectionStrings__DefaultConnection` - PostgreSQL connection string
    - `Admin__Username` - Admin login username
    - `Admin__Password` - Admin login password (use a strong password)
    - `Jwt__Key` - Render auto-generates this from the Blueprint (`generateValue: true`) when the Blueprint is applied. If it is still unset, the API generates a random signing key at startup and logs a warning (sessions invalidate on every restart). For production, set a stable secret of at least 32 characters in the dashboard (e.g. `openssl rand -base64 48`).
+   - `Jwt__Issuer` - `Roast66Coffee`
+   - `Jwt__Audience` - `Roast66Coffee`
+   - `Jwt__TokenExpiryInHours` - `16`
    - `AllowedOrigins` - Comma-separated frontend URLs, e.g. `https://roast66-web.onrender.com,https://yourdomain.com`
+   - `Order__DuplicateDetectionWindowMinutes` - `2`
+   - Optional payments/alerts:
+     - `Stripe__SecretKey`, `Stripe__WebhookSecret`, `Stripe__FrontendBaseUrl`
+     - `Resend__ApiKey`, `Resend__From`, `Support__AlertEmail`
 
    **Frontend (roast66-web):**
-   - `REACT_APP_API_URL` - Backend API URL, e.g. `https://roast66-api.onrender.com/api`
+   - `REACT_APP_API_URL` - Backend API URL, e.g. `https://roast66coffee.onrender.com/api`
+   - `REACT_APP_ENABLE_STRIPE_CHECKOUT` - `false` (set `true` when ready)
 
 4. After the first deploy, you may need to redeploy the backend so `AllowedOrigins` includes the actual frontend URL, and redeploy the frontend so `REACT_APP_API_URL` points to the actual backend URL.
 5. Seed the database: Log in to Admin at `/admin`, then use "Seed Default Menu" in Bulk Menu Operations. Or call `GET /api/Admin/seed-menu?confirm=true` with admin auth.
@@ -196,6 +206,20 @@ This project includes a `render.yaml` Blueprint for one-click deployment to Rend
   - Set frontend env var: `REACT_APP_ENABLE_STRIPE_CHECKOUT=true`.
   - Frontend calls `POST /api/payments/checkout-session`; webhook endpoint is `POST /api/payments/webhook`.
   - Orders are finalized only after `checkout.session.completed`.
+
+### Updating Admin Password and JWT Key
+
+Use these steps any time you want to rotate login credentials.
+
+1. In Render Dashboard, open service `roast66-api` -> **Environment**.
+2. Update `Admin__Username` and/or `Admin__Password`.
+3. (Recommended on security events) rotate `Jwt__Key` too.
+4. Save changes and redeploy `roast66-api`.
+5. Staff sign in again using the new credentials.
+
+Notes:
+- Rotating `Admin__Password` changes future login credentials.
+- Rotating `Jwt__Key` immediately invalidates all active sessions (`/admin` and `/cash`).
 
 ### Production Operations Runbook
 

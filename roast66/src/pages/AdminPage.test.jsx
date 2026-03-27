@@ -3,6 +3,12 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AdminPage from "./AdminPage";
 
+const mockNavigate = jest.fn();
+jest.mock("react-router-dom", () => ({
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => mockNavigate,
+}));
+
 jest.mock("../hooks/useKeepAliveHeartbeat", () => jest.fn());
 
 jest.mock("../components/Admin/ViewOrders", () => function MockViewOrders() {
@@ -39,6 +45,7 @@ function renderAdminPage() {
 
 describe("AdminPage", () => {
   beforeEach(() => {
+    mockNavigate.mockReset();
     localStorage.setItem("token", "test-token");
   });
 
@@ -66,5 +73,12 @@ describe("AdminPage", () => {
     fireEvent.click(screen.getByRole("tab", { name: /^settings$/i }));
     expect(screen.getByTestId("mock-notification-settings")).toBeInTheDocument();
     expect(screen.queryByTestId("mock-view-orders")).not.toBeInTheDocument();
+  });
+
+  it("logs out and routes back to /admin", () => {
+    renderAdminPage();
+    fireEvent.click(screen.getByRole("button", { name: /log out/i }));
+    expect(localStorage.getItem("token")).toBeNull();
+    expect(mockNavigate).toHaveBeenCalledWith("/admin", { replace: true });
   });
 });
