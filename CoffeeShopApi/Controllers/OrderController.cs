@@ -29,13 +29,16 @@ public class OrderController : ControllerBase
 
     /// <summary>Public lookup: get order status by order ID and phone. For customer tracking.</summary>
     [HttpGet("lookup")]
-    public async Task<ActionResult<Order>> LookupOrder([FromQuery] int orderId, [FromQuery] string phone)
+    public async Task<ActionResult<Order>> LookupOrder(
+        [FromQuery] int orderId,
+        [FromQuery] string phone,
+        CancellationToken cancellationToken)
     {
         if (orderId <= 0 || string.IsNullOrWhiteSpace(phone))
         {
             return BadRequest("Order ID and phone are required.");
         }
-        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone);
+        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, cancellationToken);
         if (order == null)
         {
             return NotFound("Order not found or phone does not match.");
@@ -45,9 +48,9 @@ public class OrderController : ControllerBase
 
     [Authorize(Roles = "Admin")]
     [HttpGet("{id}")]
-    public async Task<ActionResult<Order>> GetOrder(int id)
+    public async Task<ActionResult<Order>> GetOrder(int id, CancellationToken cancellationToken)
     {
-        var order = await _orderService.GetOrderByIdAsync(id);
+        var order = await _orderService.GetOrderByIdAsync(id, cancellationToken);
         if (order == null)
         {
             return NotFound();
@@ -93,7 +96,7 @@ public class OrderController : ControllerBase
             return BadRequest("Order ID and phone are required.");
         }
 
-        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone);
+        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, cancellationToken);
         if (order == null)
         {
             return NotFound("Order not found or phone does not match.");

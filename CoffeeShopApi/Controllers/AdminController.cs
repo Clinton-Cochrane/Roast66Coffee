@@ -240,9 +240,10 @@ namespace CoffeeShopApi.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpGet("notificationSettings")]
-        public async Task<ActionResult<NotificationSettings>> GetNotificationSettings()
+        public async Task<ActionResult<NotificationSettings>> GetNotificationSettings(
+            CancellationToken cancellationToken)
         {
-            var settings = await _notificationSettingsService.GetNotificationSettingsAsync();
+            var settings = await _notificationSettingsService.GetNotificationSettingsAsync(cancellationToken);
             if (settings == null)
             {
                 return NotFound();
@@ -252,7 +253,9 @@ namespace CoffeeShopApi.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPost("notificationSettings")]
-        public async Task<IActionResult> SaveNotificationSettings([FromBody] NotificationSettingsModel model)
+        public async Task<IActionResult> SaveNotificationSettings(
+            [FromBody] NotificationSettingsModel model,
+            CancellationToken cancellationToken)
         {
             var settings = new NotificationSettings
             {
@@ -260,15 +263,17 @@ namespace CoffeeShopApi.Controllers
                 BaristaPhoneNumber = model.BaristaPhoneNumber,
                 TrailerPhoneNumber = model.TrailerPhoneNumber
             };
-            await _notificationSettingsService.SaveNotificationSettingsAsync(settings);
+            await _notificationSettingsService.SaveNotificationSettingsAsync(settings, cancellationToken);
             return Ok();
         }
 
         [Authorize(Roles = "Admin")]
         [HttpPut("notificationSettings")]
-        public async Task<IActionResult> UpdateNotificationSettings([FromBody] NotificationSettingsModel model)
+        public async Task<IActionResult> UpdateNotificationSettings(
+            [FromBody] NotificationSettingsModel model,
+            CancellationToken cancellationToken)
         {
-            return await SaveNotificationSettings(model);
+            return await SaveNotificationSettings(model, cancellationToken);
         }
 
         [HttpGet("ping")]
@@ -282,7 +287,7 @@ namespace CoffeeShopApi.Controllers
         [HttpPut("updateOrderStatus/{id}/status")]
         public async Task<IActionResult> UpdateOrderStatus(int id, CancellationToken cancellationToken)
         {
-            var order = await _orderService.GetOrderByIdAsync(id);
+            var order = await _orderService.GetOrderByIdAsync(id, cancellationToken);
             if (order == null)
             {
                 return NotFound("Order not found.");

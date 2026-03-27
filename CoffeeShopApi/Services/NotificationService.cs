@@ -217,7 +217,7 @@ public class NotificationService
     private async Task<IReadOnlyList<(string Role, string Phone)>> GetStaffRecipientsAsync(CancellationToken cancellationToken)
     {
         var recipients = new List<(string Role, string Phone)>();
-        var settings = await _settingsService.GetNotificationSettingsAsync();
+        var settings = await _settingsService.GetNotificationSettingsAsync(cancellationToken);
 
         AddIfPresent(recipients, "admin", settings?.AdminPhoneNumber ?? _configuration["Twilio:AdminPhoneNumber"]);
         AddIfPresent(recipients, "barista", settings?.BaristaPhoneNumber);
