@@ -1,0 +1,30 @@
+# Weekly dependency update PRs (security and compatibility).
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/roast66"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "frontend"
+
+  - package-ecosystem: "nuget"
+    directory: "/CoffeeShopApi"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+      - "backend"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    labels:
+      - "dependencies"
+      - "ci"

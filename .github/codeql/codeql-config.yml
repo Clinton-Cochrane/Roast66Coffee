@@ -1,0 +1,9 @@
+name: Roast66
+paths:
+  - CoffeeShopApi
+  - roast66/src
+paths-ignore:
+  - "**/bin/**"
+  - "**/obj/**"
+  - "**/node_modules/**"
+  - roast66/build

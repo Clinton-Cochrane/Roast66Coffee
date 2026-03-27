@@ -231,6 +231,8 @@ openssl rand -base64 48
 
 - Database backups: verify retention policy in Render dashboard.
 - Health check endpoint: `GET /api/health`
+- **GitHub automation (free):** CI runs backend and frontend tests on push/PR to `main`; Dependabot opens weekly dependency PRs; CodeQL scans C# and JavaScript for security issues. Workflows live under `.github/workflows/`.
+- **External uptime (recommended):** Use a free monitor (e.g. UptimeRobot) against `https://<your-api-host>/api/health` so you get alerted when the API is down. See `PRODUCTION_READINESS.md` §5 for Neon/Fly optional redundancy.
 - Keepalive mode (free-tier mitigation):
   - Admin dashboard sends `POST /api/ops/keepalive/heartbeat` while open.
   - API warmup runs in configured `KeepAlive:*` window.

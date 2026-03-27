@@ -1,0 +1,50 @@
+# Continuous integration: backend and frontend tests on every push and PR to main.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (.NET)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore and test
+        run: |
+          dotnet restore Roast66.sln
+          dotnet test Roast66.sln --configuration Release --verbosity minimal
+
+  frontend:
+    name: Frontend (React)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: roast66/package-lock.json
+
+      - name: Install and test
+        working-directory: roast66
+        env:
+          CI: true
+        run: |
+          npm ci
+          npm test -- --watchAll=false
