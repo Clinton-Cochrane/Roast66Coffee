@@ -90,6 +90,10 @@ function Navigation() {
     setIsMenuOpen(!isMenuOpen);
   };
 
+  const hasActiveTrackedOrder =
+    orderTrackingSession != null &&
+    orderTrackingSession.orderStatus !== ORDER_STATUS.Completed;
+
   return (
     <nav className="p-4 border-b border-[#d8c8ba] bg-[#f7efe6]/95 backdrop-blur-sm">
       <div className="container mx-auto flex items-center justify-between p-4 rounded-xl border border-[#e2d4c7] bg-[#fff9f2] shadow-sm">
@@ -154,7 +158,7 @@ function Navigation() {
                 {t("nav.order")}
               </span>
             </NavLink>
-            {orderTrackingSession ? (
+            {hasActiveTrackedOrder ? (
               <Link
                 to="/order-status"
                 className="inline-flex items-center justify-center min-h-[2.5rem] min-w-[1.25rem] shrink-0 p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a64b2a] focus-visible:ring-offset-2"
@@ -162,11 +166,7 @@ function Navigation() {
                 title={t("nav.orderTrackingActive")}
               >
                 <span
-                  className={`block h-2.5 w-2.5 rounded-full ${
-                    orderTrackingSession.orderStatus === ORDER_STATUS.Completed
-                      ? "bg-gray-400"
-                      : "bg-amber-500 ring-2 ring-amber-200"
-                  }`}
+                  className="block h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-amber-200"
                   aria-hidden
                 />
               </Link>

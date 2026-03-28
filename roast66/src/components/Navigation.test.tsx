@@ -4,6 +4,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Navigation from "./Navigation";
 import { LanguageProvider } from "../i18n/LanguageContext";
+import { ORDER_STATUS } from "../constants/orderStatus";
 import { ORDER_STATUS_LOOKUP_SESSION_KEY } from "../constants/orderStatusSession";
 import { fetchOrderLookup } from "../lib/orderStatusLookup";
 
@@ -49,5 +50,24 @@ describe("Navigation", () => {
     await waitFor(() => {
       expect(vi.mocked(fetchOrderLookup)).toHaveBeenCalled();
     });
+  });
+
+  it("does not show order tracking dot when session order is completed", () => {
+    sessionStorage.setItem(
+      ORDER_STATUS_LOOKUP_SESSION_KEY,
+      JSON.stringify({
+        orderId: "9",
+        customerName: "Sam",
+        orderStatus: ORDER_STATUS.Completed,
+      })
+    );
+    render(
+      <LanguageProvider>
+        <MemoryRouter>
+          <Navigation />
+        </MemoryRouter>
+      </LanguageProvider>
+    );
+    expect(screen.queryByRole("link", { name: /return to order status/i })).toBeNull();
   });
 });
