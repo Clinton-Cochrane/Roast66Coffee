@@ -4,11 +4,14 @@ import { FaInstagram, FaBars, FaTimes, FaTshirt, FaShoppingCart, FaMugHot } from
 
 import logo from "../logo.png";
 import { ORDER_STATUS } from "../constants/orderStatus";
+import { getOrderStatusFromDto } from "../constants/orderStatusParse";
 import {
   ORDER_STATUS_SESSION_UPDATED_EVENT,
   readOrderStatusSession,
+  writeOrderStatusSession,
   type OrderStatusLookupSessionPayload,
 } from "../constants/orderStatusSession";
+import { fetchOrderLookup } from "../lib/orderStatusLookup";
 import { useI18n } from "../i18n/LanguageContext";
 
 function Navigation() {
@@ -29,6 +32,59 @@ function Navigation() {
     window.addEventListener(ORDER_STATUS_SESSION_UPDATED_EVENT, sync);
     return () => window.removeEventListener(ORDER_STATUS_SESSION_UPDATED_EVENT, sync);
   }, []);
+
+  /** Refresh stored status from the server so the nav dot matches staff updates when not on Order Status. */
+  useEffect(() => {
+    if (location.pathname === "/order-status") {
+      return;
+    }
+
+    const session = readOrderStatusSession();
+    if (!session) {
+      return;
+    }
+    if (session.orderStatus === ORDER_STATUS.Completed) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const pull = async () => {
+      if (cancelled) {
+        return;
+      }
+      try {
+        const data = await fetchOrderLookup(parseInt(session.orderId, 10), session.customerName);
+        if (cancelled) {
+          return;
+        }
+        const next = getOrderStatusFromDto(data);
+        writeOrderStatusSession(session.orderId, session.customerName, next);
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const interval = window.setInterval(() => void pull(), 90_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void pull();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    void pull();
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [
+    location.pathname,
+    orderTrackingSession?.orderId,
+    orderTrackingSession?.customerName,
+    orderTrackingSession?.orderStatus,
+  ]);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);

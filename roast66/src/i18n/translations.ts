@@ -84,6 +84,8 @@ export const translations = {
       lookingUp: "Looking up...",
       lookupMissingFields: "Please enter both order ID and name.",
       notFound: "Order not found or name does not match.",
+      restoreNotFound:
+        "We could not reload your order. Check your order ID and name, then tap Check Status.",
       lookupFailed: "Failed to look up order.",
       paymentReceived: "Payment received. Thank you!",
       paymentCancelled: "Payment was cancelled.",
@@ -237,6 +239,8 @@ export const translations = {
       lookupMissingFields:
         "Ingresa tanto el ID del pedido como tu nombre.",
       notFound: "No se encontro el pedido o el nombre no coincide.",
+      restoreNotFound:
+        "No pudimos recargar tu pedido. Verifica el ID y tu nombre, luego toca Ver Estado.",
       lookupFailed: "No se pudo consultar el pedido.",
       paymentReceived: "Pago recibido. Gracias.",
       paymentCancelled: "El pago fue cancelado.",

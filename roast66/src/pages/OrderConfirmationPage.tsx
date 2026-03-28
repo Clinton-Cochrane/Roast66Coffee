@@ -3,6 +3,7 @@ import { useLocation, useNavigate, Link } from "react-router-dom";
 import OrderTracker from "../components/Customer/OrderTracker";
 import Button from "../components/common/Button";
 import { useI18n } from "../i18n/LanguageContext";
+import { getOrderStatusFromDto } from "../constants/orderStatusParse";
 import type { OrderDto, OrderLineItemDto } from "../types/api";
 
 function OrderConfirmationPage() {
@@ -80,7 +81,7 @@ function OrderConfirmationPage() {
   };
 
   const orderId = order.id ?? order.Id ?? 0;
-  const statusVal = order.orderStatus ?? order.OrderStatus ?? 0;
+  const statusVal = getOrderStatusFromDto(order);
 
   return (
     <div className="p-6 max-w-lg mx-auto">

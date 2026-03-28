@@ -7,6 +7,7 @@ import OrderTracker from "../components/Customer/OrderTracker";
 import FormInput from "../components/common/FormInput";
 import Button from "../components/common/Button";
 import { ORDER_STATUS } from "../constants/orderStatus";
+import { getOrderStatusFromDto } from "../constants/orderStatusParse";
 import {
   clearOrderStatusSession,
   readOrderStatusSession,
@@ -95,7 +96,7 @@ function OrderStatusPage() {
         writeOrderStatusSession(
           session.orderId,
           session.customerName,
-          data.orderStatus ?? undefined
+          getOrderStatusFromDto(data)
         );
       } catch (err: unknown) {
         if (
@@ -103,7 +104,7 @@ function OrderStatusPage() {
           axios.isAxiosError(err) &&
           err.response?.status === 404
         ) {
-          clearOrderStatusSession();
+          toast.error(t("orderStatus.restoreNotFound"));
         }
       } finally {
         if (lookupEpochRef.current === epochAtRestoreStart) {
@@ -128,7 +129,7 @@ function OrderStatusPage() {
       const data = await fetchOrderLookup(parseInt(orderId, 10), customerName);
       setOrder(data);
       setLastUpdatedAt(new Date());
-      writeOrderStatusSession(orderId, customerName, data.orderStatus ?? undefined);
+      writeOrderStatusSession(orderId, customerName, getOrderStatusFromDto(data));
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {
         clearOrderStatusSession();
@@ -187,8 +188,58 @@ function OrderStatusPage() {
   });
 
   const lineItems: OrderLineItemDto[] = order?.orderItems ?? order?.OrderItems ?? [];
-  const statusValue = order?.orderStatus ?? 0;
+  const statusValue = order ? getOrderStatusFromDto(order) : ORDER_STATUS.Received;
   const isCompleted = statusValue === ORDER_STATUS.Completed;
+
+  /** Keep customer view in sync when staff advances status (admin). */
+  useEffect(() => {
+    if (!order) {
+      return;
+    }
+    if (getOrderStatusFromDto(order) === ORDER_STATUS.Completed) {
+      return;
+    }
+
+    const id = orderId.trim();
+    const name = customerName.trim();
+    if (!id || !name) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const refresh = async () => {
+      if (cancelled) {
+        return;
+      }
+      const epochAtRequest = lookupEpochRef.current;
+      try {
+        const data = await fetchOrderLookup(parseInt(id, 10), name);
+        if (cancelled || lookupEpochRef.current !== epochAtRequest) {
+          return;
+        }
+        setOrder(data);
+        setLastUpdatedAt(new Date());
+        writeOrderStatusSession(id, name, getOrderStatusFromDto(data));
+      } catch {
+        /* ignore — user can use Check Status */
+      }
+    };
+
+    const interval = window.setInterval(() => void refresh(), 45_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        void refresh();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [order, orderId, customerName]);
 
   return (
     <div className="p-6 max-w-lg mx-auto">

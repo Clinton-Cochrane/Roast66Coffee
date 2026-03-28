@@ -5,17 +5,14 @@ import { toast } from "react-toastify";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import { ORDER_STATUS, ORDER_STATUS_LABELS, type OrderStatusValue } from "../../constants/orderStatus";
+import { getOrderStatusFromDto } from "../../constants/orderStatusParse";
 import type { NotificationLogEntry, OrderDto, OrderLineItemDto } from "../../types/api";
 
 const STATUS_STAGES = ["Received", "Preparing", "ReadyForPickup", "Completed"];
 const POLL_INTERVAL_MS = 60000;
 
 function orderStatusValue(order: OrderDto): OrderStatusValue {
-  const raw = order.orderStatus ?? order.OrderStatus;
-  if (typeof raw === "string" && raw !== "" && !Number.isNaN(Number(raw))) {
-    return Number(raw) as OrderStatusValue;
-  }
-  return Number(raw) as OrderStatusValue;
+  return getOrderStatusFromDto(order);
 }
 
 function orderId(order: OrderDto): number {
