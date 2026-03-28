@@ -291,7 +291,9 @@ function OrderStatusPage() {
 
       {order ? (
         <div className="bg-gray-50 rounded-lg p-4">
-          <p className="text-lg font-bold mb-2">Order #{order.id}</p>
+          <p className="text-lg font-bold mb-2">
+            {t("orderConfirmation.orderPrefix")} #{order.id}
+          </p>
           <p className="text-gray-600 mb-4">
             {order.customerName} • {dateTimeFormatter.format(new Date(order.orderDate ?? ""))}
           </p>

@@ -1,4 +1,5 @@
 import React from "react";
+import { useI18n } from "../../i18n/LanguageContext";
 import Button from "./Button";
 
 export type OrderLineItem = {
@@ -14,6 +15,7 @@ type OrderListProps = {
 };
 
 const OrderList = ({ items, onQuantityChange, onRemove }: OrderListProps) => {
+  const { t } = useI18n();
   return (
     <ul className="space-y-2">
       {items.map((item, index) => (
@@ -30,7 +32,7 @@ const OrderList = ({ items, onQuantityChange, onRemove }: OrderListProps) => {
               className="w-16 p-1 border rounded"
             />
             <Button onClick={() => onRemove(index)} color="red">
-              Remove
+              {t("common.remove")}
             </Button>
           </div>
         </li>
