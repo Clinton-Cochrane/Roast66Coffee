@@ -261,7 +261,7 @@ function OrderPage() {
             {t("order.checkOrderStatus")} →
           </Link>
         </div>
-        <p className="r66-subtitle mb-6">Build your homemade drink for the road in just a few taps.</p>
+        <p className="r66-subtitle mb-6">{t("order.pageSubtitle")}</p>
 
         <div className="customer-info-container r66-panel p-4">
           <div className="flex-1 min-w-0">
@@ -290,12 +290,12 @@ function OrderPage() {
               <span
                 tabIndex={0}
                 className="block w-full cursor-help overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-tight text-[#7a675a] focus:outline-none focus:text-[#5b4940]"
-                title="We only send order status updates when a valid email address is provided."
+                title={t("order.emailHelpText")}
               >
-                We only send order status updates when a valid email address is provided.
+                {t("order.emailHelpText")}
               </span>
               <div className="pointer-events-none absolute bottom-full left-1 z-20 mb-1 hidden w-64 rounded-md border border-[#d8c8ba] bg-[#fffaf3] px-2 py-1 text-[11px] leading-tight text-[#5b4940] shadow-md group-hover:block group-focus-within:block">
-                We only send order status updates when a valid email address is provided.
+                {t("order.emailHelpText")}
               </div>
             </div>
           </div>

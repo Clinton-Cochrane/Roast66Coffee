@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type ChangeEvent, type FormEvent } from "react";
+import React, { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import axios from "../../axiosConfig";
 import { toast } from "react-toastify";
 import "../../styles/ManageMenu.css";
@@ -6,6 +6,7 @@ import FormInput from "../common/FormInput";
 import Button from "../common/Button";
 import Card from "../common/Card";
 import type { MenuItemDto } from "../../types/api";
+import { useI18n } from "../../i18n/LanguageContext";
 
 type CategoryOption = { id: number; name: string };
 
@@ -17,6 +18,7 @@ type MenuItemFormState = {
 };
 
 function ManageMenu() {
+  const { t } = useI18n();
   const [menuItems, setMenuItems] = useState<MenuItemDto[]>([]);
   const [selectedMenuItemId, setSelectedMenuItemId] = useState("");
   const [categories, setCategories] = useState<CategoryOption[]>([]);
@@ -27,24 +29,24 @@ function ManageMenu() {
     categoryType: 0,
   });
 
-  const fetchMenuItems = () => {
+  const fetchMenuItems = useCallback(() => {
     axios
       .get<MenuItemDto[]>("/admin/menu")
       .then((response) => setMenuItems(response.data))
-      .catch(() => toast.error("Error fetching menu items"));
-  };
+      .catch(() => toast.error(t("adminMenu.fetchMenuError")));
+  }, [t]);
 
-  const fetchCategories = () => {
+  const fetchCategories = useCallback(() => {
     axios
       .get<CategoryOption[]>("/admin/categories")
       .then((response) => setCategories(response.data))
-      .catch(() => toast.error("Error fetching categories"));
-  };
+      .catch(() => toast.error(t("adminMenu.fetchCategoriesError")));
+  }, [t]);
 
   useEffect(() => {
     fetchMenuItems();
     fetchCategories();
-  }, []);
+  }, [fetchMenuItems, fetchCategories]);
 
   const handleSelectChange = (e: ChangeEvent<HTMLSelectElement>) => {
     const selectedId = e.target.value;
@@ -100,22 +102,22 @@ function ManageMenu() {
       axios
         .post("/admin/menu", formData)
         .then(() => {
-          toast.success("Menu item added.");
+          toast.success(t("adminMenu.added"));
           fetchMenuItems();
           setMenuItemForm({ name: "", price: "", description: "", categoryType: 0 });
           setSelectedMenuItemId("");
         })
-        .catch(() => toast.error("Failed to add menu item"));
+        .catch(() => toast.error(t("adminMenu.failedAdd")));
     } else {
       axios
         .put(`/admin/menu/${selectedMenuItemId}`, formData)
         .then(() => {
-          toast.success("Menu item updated.");
+          toast.success(t("adminMenu.updated"));
           fetchMenuItems();
           setMenuItemForm({ name: "", price: "", description: "", categoryType: 0 });
           setSelectedMenuItemId("");
         })
-        .catch(() => toast.error("Failed to update menu item"));
+        .catch(() => toast.error(t("adminMenu.failedUpdate")));
     }
   };
 
@@ -123,15 +125,15 @@ function ManageMenu() {
     axios
       .delete(`/admin/menu/${id}`)
       .then(() => {
-        toast.success("Menu item deleted.");
+        toast.success(t("adminMenu.deleted"));
         fetchMenuItems();
       })
-      .catch(() => toast.error("Failed to delete menu item"));
+      .catch(() => toast.error(t("adminMenu.failedDelete")));
   };
 
   return (
     <div className="manage-menu space-y-4">
-      <h2 className="text-2xl font-bold mb-4">Manage Menu</h2>
+      <h2 className="text-2xl font-bold mb-4">{t("adminMenu.title")}</h2>
 
       <Card>
         <select
@@ -139,8 +141,8 @@ function ManageMenu() {
           onChange={handleSelectChange}
           className="w-full p-2 border rounded mb-4 top-select"
         >
-          <option value="">Select a menu item</option>
-          <option value="new">Add New Item</option>
+          <option value="">{t("adminMenu.selectPlaceholder")}</option>
+          <option value="new">{t("adminMenu.addNewOption")}</option>
           {menuItems.map((item) => (
             <option key={item.id} value={item.id}>
               {item.name}
@@ -152,7 +154,7 @@ function ManageMenu() {
           <FormInput
             type="text"
             name="name"
-            placeholder="Name"
+            placeholder={t("adminMenu.namePlaceholder")}
             value={menuItemForm.name}
             onChange={handleFormChange}
             required
@@ -160,7 +162,7 @@ function ManageMenu() {
           <FormInput
             type="number"
             name="price"
-            placeholder="Price"
+            placeholder={t("adminMenu.pricePlaceholder")}
             step="0.01"
             value={menuItemForm.price}
             onChange={handleFormChange}
@@ -169,7 +171,7 @@ function ManageMenu() {
           <FormInput
             type="text"
             name="description"
-            placeholder="Description"
+            placeholder={t("adminMenu.descriptionPlaceholder")}
             value={menuItemForm.description}
             onChange={handleFormChange}
             required
@@ -181,7 +183,7 @@ function ManageMenu() {
             className="w-full p-2 border rounded"
             required
           >
-            <option value="">Select Category</option>
+            <option value="">{t("adminMenu.selectCategory")}</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
@@ -190,12 +192,12 @@ function ManageMenu() {
           </select>
 
           <Button type="submit" color="green">
-            {selectedMenuItemId === "new" ? "Add Menu Item" : "Update Menu Item"}
+            {selectedMenuItemId === "new" ? t("adminMenu.submitAdd") : t("adminMenu.submitUpdate")}
           </Button>
         </form>
       </Card>
 
-      <Card title="Menu Items">
+      <Card title={t("adminMenu.listTitle")}>
         <ul className="space-y-2">
           {menuItems.map((item) => (
             <li key={item.id} className="flex justify-between items-center border-b pb-2">
@@ -203,7 +205,7 @@ function ManageMenu() {
                 {item.name} - ${item.price} - {item.description}
               </span>
               <Button onClick={() => handleDelete(item.id)} color="red">
-                Delete
+                {t("adminMenu.delete")}
               </Button>
             </li>
           ))}

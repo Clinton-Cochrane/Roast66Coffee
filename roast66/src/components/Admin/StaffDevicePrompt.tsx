@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Button from "../common/Button";
 import { API_BASE_URL } from "../../config";
+import { useI18n } from "../../i18n/LanguageContext";
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
@@ -149,21 +150,17 @@ function StaffDevicePrompt() {
     <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4 mb-4 space-y-3">
       {shouldShowPermissionPrompt ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-yellow-900">
-            Enable notifications on this staff device so new order alerts can appear right away.
-          </p>
+          <p className="text-sm text-yellow-900">{t("staffDevice.promptNotifications")}</p>
           <Button color="blue" onClick={() => void requestPermission()}>
-            Enable Notifications
+            {t("staffDevice.enableNotifications")}
           </Button>
         </div>
       ) : null}
       {shouldShowInstallPrompt ? (
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-yellow-900">
-            Install this app on your device for faster access during service.
-          </p>
+          <p className="text-sm text-yellow-900">{t("staffDevice.promptInstall")}</p>
           <Button color="green" onClick={() => void handleInstall()}>
-            Install App
+            {t("staffDevice.installApp")}
           </Button>
         </div>
       ) : null}

@@ -3,8 +3,10 @@ import axios from "../../axiosConfig";
 import FormInput from "../common/FormInput";
 import Button from "../common/Button";
 import Card from "../common/Card";
+import { useI18n } from "../../i18n/LanguageContext";
 
 function Order() {
+  const { t } = useI18n();
   const [order, setOrder] = useState({
     customerName: "",
     menuItemId: "",
@@ -20,18 +22,20 @@ function Order() {
     e.preventDefault();
     axios
       .post("/orders", order)
-      .then(() => setMessage("Order placed successfully!"))
-      .catch(() => setMessage("Failed to place order."));
+      .then(() => setMessage(t("order.legacySuccessMessage")))
+      .catch(() => setMessage(t("order.legacyErrorMessage")));
   };
+
+  const success = message === t("order.legacySuccessMessage");
 
   return (
     <div className="min-h-screen bg-gray-100 p-6">
-      <Card title="Place Order">
+      <Card title={t("order.legacyCardTitle")}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <FormInput
             type="text"
             name="customerName"
-            placeholder="Your Name"
+            placeholder={t("order.namePlaceholder")}
             value={order.customerName}
             onChange={handleChange}
             required
@@ -39,7 +43,7 @@ function Order() {
           <FormInput
             type="number"
             name="menuItemId"
-            placeholder="Menu Item ID"
+            placeholder={t("order.legacyMenuItemIdPlaceholder")}
             value={order.menuItemId}
             onChange={handleChange}
             required
@@ -47,20 +51,18 @@ function Order() {
           <FormInput
             type="number"
             name="quantity"
-            placeholder="Quantity"
+            placeholder={t("order.legacyQuantityPlaceholder")}
             value={order.quantity}
             onChange={handleChange}
             min={1}
             required
           />
           <Button type="submit" color="green">
-            Place Order
+            {t("order.placeOrder")}
           </Button>
         </form>
         {message ? (
-          <p
-            className={`mt-4 text-center ${message.includes("successfully") ? "text-green-500" : "text-red-500"}`}
-          >
+          <p className={`mt-4 text-center ${success ? "text-green-500" : "text-red-500"}`}>
             {message}
           </p>
         ) : null}

@@ -4,11 +4,11 @@ import axiosInstance from "../../axiosConfig";
 import { toast } from "react-toastify";
 import Card from "../common/Card";
 import Button from "../common/Button";
-import { ORDER_STATUS, ORDER_STATUS_LABELS, type OrderStatusValue } from "../../constants/orderStatus";
+import { ORDER_STATUS, type OrderStatusValue } from "../../constants/orderStatus";
 import { getOrderStatusFromDto } from "../../constants/orderStatusParse";
+import { useI18n } from "../../i18n/LanguageContext";
 import type { NotificationLogEntry, OrderDto, OrderLineItemDto } from "../../types/api";
 
-const STATUS_STAGES = ["Received", "Preparing", "ReadyForPickup", "Completed"];
 const POLL_INTERVAL_MS = 60000;
 
 function orderStatusValue(order: OrderDto): OrderStatusValue {
@@ -27,6 +27,7 @@ function orderDateMs(order: OrderDto): number {
 }
 
 function ViewOrders() {
+  const { t } = useI18n();
   const [orders, setOrders] = useState<OrderDto[]>([]);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<Date | null>(null);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
@@ -37,6 +38,17 @@ function ViewOrders() {
   const [loadingNotificationsByOrderId, setLoadingNotificationsByOrderId] = useState<
     Record<number, boolean>
   >({});
+
+  const statusLabelKeys = useMemo(
+    () =>
+      ({
+        [ORDER_STATUS.Received]: "orderStatus.trackerReceivedLabel",
+        [ORDER_STATUS.Preparing]: "orderStatus.trackerPreparingLabel",
+        [ORDER_STATUS.ReadyForPickup]: "orderStatus.trackerReadyLabel",
+        [ORDER_STATUS.Completed]: "orderStatus.trackerCompletedLabel",
+      }) satisfies Record<OrderStatusValue, string>,
+    []
+  );
 
   const fetchOrders = useCallback(() => {
     axiosInstance
@@ -49,12 +61,10 @@ function ViewOrders() {
       .catch((err: unknown) => {
         const status = axios.isAxiosError(err) ? err.response?.status : undefined;
         toast.error(
-          status === 401
-            ? "Not signed in or session expired — sign out and log in again."
-            : "Failed to fetch orders"
+          status === 401 ? t("adminOrders.fetchOrders401") : t("adminOrders.fetchOrdersFailed")
         );
       });
-  }, []);
+  }, [t]);
 
   const fetchNewOrdersCount = useCallback(() => {
     if (!lastRefreshedAt) return;
@@ -94,15 +104,15 @@ function ViewOrders() {
     const canNotify =
       typeof Notification !== "undefined" && Notification.permission === "granted";
     if (canNotify && newOrdersCount > lastNotifiedCount) {
-      new Notification("Roast66 new orders", {
+      new Notification(t("adminOrders.desktopNotificationTitle"), {
         body:
           newOrdersCount === 1
-            ? "1 new order is waiting."
-            : `${newOrdersCount} new orders are waiting.`,
+            ? t("adminOrders.desktopNotificationBodyOne")
+            : t("adminOrders.desktopNotificationBodyMany", { count: newOrdersCount }),
       });
       setLastNotifiedCount(newOrdersCount);
     }
-  }, [newOrdersCount, lastNotifiedCount]);
+  }, [newOrdersCount, lastNotifiedCount, t]);
 
   const sortedOrders = useMemo(() => {
     const list = Array.isArray(orders) ? [...orders] : [];
@@ -125,9 +135,9 @@ function ViewOrders() {
       .then((res) => {
         const next = res.data?.newStatus;
         if (next === "Completed") {
-          toast.success("Order marked complete.");
+          toast.success(t("adminOrders.orderMarkedComplete"));
         } else {
-          toast.success("Order status updated.");
+          toast.success(t("adminOrders.orderStatusUpdated"));
         }
         fetchOrders();
       })
@@ -141,53 +151,56 @@ function ViewOrders() {
               : axios.isAxiosError(err)
                 ? err.response?.statusText
                 : undefined;
-        toast.error(message || "Failed to update status");
+        toast.error(message || t("adminOrders.failedUpdateStatus"));
       });
   };
 
-  const fetchOrderNotifications = useCallback((id: number) => {
-    setLoadingNotificationsByOrderId((prev) => ({ ...prev, [id]: true }));
-    axiosInstance
-      .get<NotificationLogEntry[]>(`/admin/orders/${id}/notifications`)
-      .then((response) => {
-        setOrderNotifications((prev) => ({
-          ...prev,
-          [id]: Array.isArray(response.data) ? response.data : [],
-        }));
-      })
-      .catch(() => {
-        toast.error("Failed to load notification history.");
-      })
-      .finally(() => {
-        setLoadingNotificationsByOrderId((prev) => ({ ...prev, [id]: false }));
-      });
-  }, []);
+  const fetchOrderNotifications = useCallback(
+    (id: number) => {
+      setLoadingNotificationsByOrderId((prev) => ({ ...prev, [id]: true }));
+      axiosInstance
+        .get<NotificationLogEntry[]>(`/admin/orders/${id}/notifications`)
+        .then((response) => {
+          setOrderNotifications((prev) => ({
+            ...prev,
+            [id]: Array.isArray(response.data) ? response.data : [],
+          }));
+        })
+        .catch(() => {
+          toast.error(t("adminOrders.failedLoadNotifications"));
+        })
+        .finally(() => {
+          setLoadingNotificationsByOrderId((prev) => ({ ...prev, [id]: false }));
+        });
+    },
+    [t]
+  );
 
-  const getStatusLabel = (status: number) =>
-    ORDER_STATUS_LABELS[status as OrderStatusValue] ??
-    STATUS_STAGES[status] ??
-    "Unknown";
+  const getStatusLabel = (status: number) => {
+    const key = statusLabelKeys[status as OrderStatusValue];
+    return key ? t(key) : t("adminOrders.statusUnknown");
+  };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">View Orders</h1>
+        <h1 className="text-3xl font-bold">{t("adminOrders.title")}</h1>
         <div className="relative inline-block">
           <Button onClick={fetchOrders} color="blue">
-            Refresh
+            {t("adminOrders.refresh")}
           </Button>
           {newOrdersCount > 0 && (
             <span
               className="absolute -top-1 -right-1 min-w-[1.25rem] h-5 px-1 inline-flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full"
-              aria-label={`${newOrdersCount} new orders`}
+              aria-label={t("adminOrders.newOrdersBadgeAria", { count: newOrdersCount })}
             >
-              {newOrdersCount > 99 ? "99+" : newOrdersCount}
+              {newOrdersCount > 99 ? t("adminOrders.badgeOver99") : newOrdersCount}
             </span>
           )}
         </div>
       </div>
       {orders.length === 0 ? (
-        <p className="text-gray-500">No orders available</p>
+        <p className="text-gray-500">{t("adminOrders.emptyState")}</p>
       ) : (
         <div className="space-y-4">
           {sortedOrders.map((order) => {
@@ -195,13 +208,15 @@ function ViewOrders() {
             const status = orderStatusValue(order);
             const isComplete = status === ORDER_STATUS.Completed;
             const advanceLabel =
-              status === ORDER_STATUS.ReadyForPickup ? "Mark complete" : "Advance status";
+              status === ORDER_STATUS.ReadyForPickup
+                ? t("adminOrders.advanceMarkComplete")
+                : t("adminOrders.advanceStatus");
             const notifications = orderNotifications[id] ?? [];
             const loadingNotifications = Boolean(loadingNotificationsByOrderId[id]);
             const lineItems: OrderLineItemDto[] = order.orderItems || order.OrderItems || [];
 
             return (
-              <Card key={id} title={`Order #${id}`} className="mb-2">
+              <Card key={id} title={t("adminOrders.orderCardTitle", { id })} className="mb-2">
                 <div className="flex items-center gap-2 mb-4 flex-wrap">
                   <span
                     className={`px-2 py-1 rounded text-sm font-medium ${
@@ -212,7 +227,7 @@ function ViewOrders() {
                   </span>
                   {isComplete ? (
                     <span className="text-sm font-medium text-green-800">
-                      Completed — no further action
+                      {t("adminOrders.completedNoAction")}
                     </span>
                   ) : (
                     <Button onClick={() => advanceStatus(id)} color="green">
@@ -220,19 +235,21 @@ function ViewOrders() {
                     </Button>
                   )}
                   <Button onClick={() => fetchOrderNotifications(id)} color="gray">
-                    {loadingNotifications ? "Loading..." : "Refresh notifications"}
+                    {loadingNotifications ? t("adminOrders.loading") : t("adminOrders.refreshNotifications")}
                   </Button>
                 </div>
                 <p className="mb-1">
-                  <strong>Customer:</strong> {order.customerName ?? order.CustomerName}
+                  <strong>{t("adminOrders.customerLabel")}</strong>{" "}
+                  {order.customerName ?? order.CustomerName}
                 </p>
                 {(order.customerPhone ?? order.CustomerPhone) ? (
                   <p className="mb-1">
-                    <strong>Phone:</strong> {order.customerPhone ?? order.CustomerPhone}
+                    <strong>{t("adminOrders.phoneLabel")}</strong>{" "}
+                    {order.customerPhone ?? order.CustomerPhone}
                   </p>
                 ) : null}
                 <p className="mb-4">
-                  <strong>Date:</strong>{" "}
+                  <strong>{t("adminOrders.dateLabel")}</strong>{" "}
                   {new Date(order.orderDate ?? order.OrderDate ?? 0).toLocaleString()}
                 </p>
 
@@ -242,31 +259,30 @@ function ViewOrders() {
                       {item.menuItem?.name || item.MenuItem?.name ? (
                         <>
                           <span>
-                            <strong>Item:</strong> {item.menuItem?.name ?? item.MenuItem?.name}
+                            <strong>{t("adminOrders.itemLabel")}</strong>{" "}
+                            {item.menuItem?.name ?? item.MenuItem?.name}
                           </span>
                           <span>
                             {" "}
-                            <strong>Qty:</strong> {item.quantity}
+                            <strong>{t("adminOrders.qtyLabel")}</strong> {item.quantity}
                           </span>
                           {item.notes ? (
                             <span>
                               {" "}
-                              <strong>Notes:</strong> {item.notes}
+                              <strong>{t("adminOrders.notesLabel")}</strong> {item.notes}
                             </span>
                           ) : null}
                         </>
                       ) : (
-                        <span className="text-red-500">Item data unavailable</span>
+                        <span className="text-red-500">{t("adminOrders.itemUnavailable")}</span>
                       )}
                     </li>
                   ))}
                 </ul>
                 <div className="mt-4 pt-3 border-t border-gray-200">
-                  <p className="font-semibold mb-2">Notification delivery</p>
+                  <p className="font-semibold mb-2">{t("adminOrders.notificationDelivery")}</p>
                   {notifications.length === 0 ? (
-                    <p className="text-sm text-gray-500">
-                      No notification events loaded for this order yet.
-                    </p>
+                    <p className="text-sm text-gray-500">{t("adminOrders.noNotificationsYet")}</p>
                   ) : (
                     <ul className="text-sm space-y-1">
                       {notifications.slice(0, 4).map((entry) => (

@@ -1,6 +1,8 @@
 import React, { useEffect, useState, type FormEvent } from "react";
 import axios from "../../axiosConfig";
+import { toast } from "react-toastify";
 import "./NotificationSettings.css";
+import { useI18n } from "../../i18n/LanguageContext";
 
 type CredentialInfo = {
   username?: string;
@@ -9,6 +11,7 @@ type CredentialInfo = {
 };
 
 function NotificationSettings() {
+  const { t } = useI18n();
   const [adminEmail, setAdminEmail] = useState("");
   const [baristaEmail, setBaristaEmail] = useState("");
   const [trailerEmail, setTrailerEmail] = useState("");
@@ -50,7 +53,7 @@ function NotificationSettings() {
         baristaEmail: baristaEmail.trim(),
         trailerEmail: trailerEmail.trim(),
       })
-      .then(() => alert("Notification settings saved successfully!"))
+      .then(() => toast.success(t("notificationSettings.settingsSaved")))
       .catch((error: unknown) => console.error(error));
   };
 
@@ -62,62 +65,62 @@ function NotificationSettings() {
         message: credentialRequestMessage.trim(),
       })
       .then(() => {
-        alert("Credential update request sent to support.");
+        toast.success(t("notificationSettings.credentialRequestSent"));
         setCredentialRequestMessage("");
       })
       .catch((error: unknown) => console.error(error))
       .finally(() => setIsSubmittingCredentialRequest(false));
   };
 
+  const usernameKey = credentialInfo?.usernameEnvKey ?? t("notificationSettings.defaultUsernameKey");
+  const passwordKey = credentialInfo?.passwordEnvKey ?? t("notificationSettings.defaultPasswordKey");
+
   return (
     <div className="notification-settings">
-      <h2>Notification Settings</h2>
+      <h2>{t("notificationSettings.title")}</h2>
       <form onSubmit={handleSaveSettings}>
-        <p className="helper-text">
-          Set who receives email notifications for order updates. SMS is currently disabled.
-        </p>
+        <p className="helper-text">{t("notificationSettings.helperSms")}</p>
         <input
           type="email"
-          placeholder="Admin notification email"
+          placeholder={t("notificationSettings.placeholderAdmin")}
           value={adminEmail}
           onChange={(e) => setAdminEmail(e.target.value)}
         />
         <input
           type="email"
-          placeholder="Barista notification email"
+          placeholder={t("notificationSettings.placeholderBarista")}
           value={baristaEmail}
           onChange={(e) => setBaristaEmail(e.target.value)}
         />
         <input
           type="email"
-          placeholder="Trailer notification email"
+          placeholder={t("notificationSettings.placeholderTrailer")}
           value={trailerEmail}
           onChange={(e) => setTrailerEmail(e.target.value)}
         />
-        <button type="submit"> Save Settings</button>
+        <button type="submit">{t("notificationSettings.saveButton")}</button>
       </form>
       <section className="credentials-settings">
-        <h2>Username / Password Settings</h2>
+        <h2>{t("notificationSettings.credentialsTitle")}</h2>
+        <p className="helper-text">{t("notificationSettings.credentialsHelper")}</p>
         <p className="helper-text">
-          Credentials are managed through environment variables and are not edited directly in the app.
+          {t("notificationSettings.currentUsername")}{" "}
+          <strong>{credentialInfo?.username ?? t("notificationSettings.unavailable")}</strong>
         </p>
         <p className="helper-text">
-          Current username: <strong>{credentialInfo?.username ?? "Unavailable"}</strong>
-        </p>
-        <p className="helper-text">
-          Update <code>{credentialInfo?.usernameEnvKey ?? "Admin__Username"}</code> and{" "}
-          <code>{credentialInfo?.passwordEnvKey ?? "Admin__Password"}</code> in your deploy provider,
-          then redeploy the API.
+          {t("notificationSettings.updateEnvVars", { usernameKey, passwordKey })}
         </p>
         <form onSubmit={handleCredentialRequest}>
           <textarea
-            placeholder="Optional message to support for credential update request"
+            placeholder={t("notificationSettings.credentialMessagePlaceholder")}
             value={credentialRequestMessage}
             onChange={(e) => setCredentialRequestMessage(e.target.value)}
             rows={3}
           />
           <button type="submit" disabled={isSubmittingCredentialRequest}>
-            {isSubmittingCredentialRequest ? "Sending..." : "Request Credential Update"}
+            {isSubmittingCredentialRequest
+              ? t("notificationSettings.sending")
+              : t("notificationSettings.requestCredentialUpdate")}
           </button>
         </form>
       </section>
