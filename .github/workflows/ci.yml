@@ -46,10 +46,12 @@ jobs:
           cache: npm
           cache-dependency-path: roast66/package-lock.json
 
-      - name: Install and test
+      - name: Install, test, lint, and build
         working-directory: roast66
         env:
           CI: true
         run: |
           npm ci
-          npm test -- --watchAll=false
+          npm test
+          npm run lint
+          npm run build

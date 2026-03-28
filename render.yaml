@@ -84,14 +84,14 @@ services:
     name: roast66-web
     runtime: static
     buildCommand: cd roast66 && npm install && npm run build
-    staticPublishPath: roast66/build
+    staticPublishPath: roast66/dist
     envVars:
-      - key: REACT_APP_API_URL
+      - key: VITE_API_URL
         value: "https://roast66coffee.onrender.com/api"
         sync: false
       # Set to "true" to enable Stripe Checkout (order page) and prepay on Order Status; rebuild static site after changing.
-      - key: REACT_APP_ENABLE_STRIPE_CHECKOUT
+      - key: VITE_ENABLE_STRIPE_CHECKOUT
         value: "false"
         sync: false
-      - key: REACT_APP_VAPID_PUBLIC_KEY
+      - key: VITE_VAPID_PUBLIC_KEY
         sync: false
