@@ -1,12 +1,18 @@
 // src/components/Customer/Menu.jsx
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import axios from "../../axiosConfig";
 import Card from "../common/Card";
+import Button from "../common/Button";
 import CategoryType from "../../constants/categories";
 import Loading from "../common/Loading";
+import { useI18n } from "../../i18n/LanguageContext";
+import { canOrderMenuItemDirectly } from "../../utils/canOrderMenuItemDirectly";
 import { FaRoute, FaStar } from "react-icons/fa";
 
 function Menu() {
+  const navigate = useNavigate();
+  const { t } = useI18n();
   const [menuItems, setMenuItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -76,7 +82,20 @@ function Menu() {
                         {item.name}
                       </h3>
                       <p className="text-[#a64b2a] font-semibold">${item.price.toFixed(2)}</p>
-                      <p className="text-[#5b4940]">{item.description}</p>
+                      <p className="text-[#5b4940] mb-3">{item.description}</p>
+                      {canOrderMenuItemDirectly(item) && (
+                        <Button
+                          type="button"
+                          color="green"
+                          onClick={() =>
+                            navigate("/order", {
+                              state: { menuItemId: item.id },
+                            })
+                          }
+                        >
+                          {t("menu.addToOrder")}
+                        </Button>
+                      )}
                     </Card>
                   ))}
                 </div>

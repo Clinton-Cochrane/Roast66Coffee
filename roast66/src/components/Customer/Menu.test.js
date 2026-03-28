@@ -1,6 +1,8 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import CategoryType from "../../constants/categories";
+import { LanguageProvider } from "../../i18n/LanguageContext";
 
 jest.mock("../../axiosConfig", () => ({
   __esModule: true,
@@ -9,8 +11,26 @@ jest.mock("../../axiosConfig", () => ({
   },
 }));
 
+const mockNavigate = jest.fn();
+
+jest.mock("react-router-dom", () => ({
+  __esModule: true,
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => mockNavigate,
+}));
+
 import Menu from "./Menu";
 import axios from "../../axiosConfig";
+
+function renderMenu() {
+  return render(
+    <LanguageProvider>
+      <MemoryRouter>
+        <Menu />
+      </MemoryRouter>
+    </LanguageProvider>
+  );
+}
 
 describe("Menu", () => {
   const mockMenuItems = [
@@ -36,13 +56,13 @@ describe("Menu", () => {
 
   it("shows loading state initially", () => {
     axios.get.mockImplementation(() => new Promise(() => {}));
-    render(<Menu />);
+    renderMenu();
     expect(screen.getByText("☕")).toBeInTheDocument();
   });
 
   it("renders menu items after loading", async () => {
     axios.get.mockResolvedValueOnce({ data: mockMenuItems });
-    render(<Menu />);
+    renderMenu();
 
     await waitFor(() => {
       expect(screen.getByText("Our Menu")).toBeInTheDocument();
@@ -55,7 +75,7 @@ describe("Menu", () => {
 
   it("groups items by category", async () => {
     axios.get.mockResolvedValueOnce({ data: mockMenuItems });
-    render(<Menu />);
+    renderMenu();
 
     await waitFor(() => {
       const headings = screen.getAllByRole("heading", { level: 3 });
@@ -67,10 +87,31 @@ describe("Menu", () => {
 
   it("fetches menu from /menu endpoint", async () => {
     axios.get.mockResolvedValueOnce({ data: [] });
-    render(<Menu />);
+    renderMenu();
 
     await waitFor(() => {
       expect(axios.get).toHaveBeenCalledWith("/menu");
+    });
+  });
+
+  it("navigates to order with menuItemId for orderable items only", async () => {
+    axios.get.mockResolvedValueOnce({ data: mockMenuItems });
+    renderMenu();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /order this item/i })
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getAllByRole("button", { name: /order this item/i })
+    ).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole("button", { name: /order this item/i }));
+
+    expect(mockNavigate).toHaveBeenCalledWith("/order", {
+      state: { menuItemId: 1 },
     });
   });
 });

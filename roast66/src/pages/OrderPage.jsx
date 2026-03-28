@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import axios from "../axiosConfig";
 import { toast } from "react-toastify";
 import "../styles/OrderPage.css";
@@ -7,6 +7,7 @@ import FormInput from "../components/common/FormInput";
 import Button from "../components/common/Button";
 import CategoryType from "../constants/categories";
 import { useI18n } from "../i18n/LanguageContext";
+import { canOrderMenuItemDirectly } from "../utils/canOrderMenuItemDirectly";
 
 const ENABLE_STRIPE_CHECKOUT =
   process.env.REACT_APP_ENABLE_STRIPE_CHECKOUT === "true";
@@ -14,12 +15,14 @@ const ENABLE_STRIPE_CHECKOUT =
 function OrderPage() {
   const { locale, t } = useI18n();
   const navigate = useNavigate();
+  const location = useLocation();
   const [menuItems, setMenuItems] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
 
   const wakeInFlightRef = useRef(false);
+  const prefillAppliedForLocationKeyRef = useRef(null);
 
   useEffect(() => {
     ensureMenuItemsLoaded();
@@ -64,14 +67,6 @@ function OrderPage() {
     }
   };
 
-  const canOrderDirectly = (item) => {
-    return (
-      item.categoryType === CategoryType.COFFEE ||
-      item.categoryType === CategoryType.DRINKS ||
-      item.categoryType === CategoryType.SPECIALS
-    );
-  };
-
   const handleDropDownChange = (e) => {
     const value = e.target.value;
     if (!value) {
@@ -82,15 +77,51 @@ function OrderPage() {
   };
 
   const addItemToOrder = (item) => {
-    if (canOrderDirectly(item)) {
-      setOrderItems([
-        ...orderItems,
+    if (canOrderMenuItemDirectly(item)) {
+      setOrderItems((prev) => [
+        ...prev,
         { ...item, quantity: 1, notes: "", addOns: [] },
       ]);
     } else {
       toast.warning(t("order.flavorStandaloneWarning"));
     }
   };
+
+  useEffect(() => {
+    const menuItemId = location.state?.menuItemId;
+    if (menuItemId == null || menuItems.length === 0) {
+      return;
+    }
+    if (prefillAppliedForLocationKeyRef.current === location.key) {
+      return;
+    }
+
+    const id = Number(menuItemId);
+    const item = menuItems.find((m) => m.id === id);
+
+    const clearPrefillState = () => {
+      navigate("/order", { replace: true, state: {} });
+    };
+
+    if (!item) {
+      prefillAppliedForLocationKeyRef.current = location.key;
+      clearPrefillState();
+      return;
+    }
+    if (!canOrderMenuItemDirectly(item)) {
+      toast.warning(t("order.flavorStandaloneWarning"));
+      prefillAppliedForLocationKeyRef.current = location.key;
+      clearPrefillState();
+      return;
+    }
+
+    prefillAppliedForLocationKeyRef.current = location.key;
+    setOrderItems((prev) => [
+      ...prev,
+      { ...item, quantity: 1, notes: "", addOns: [] },
+    ]);
+    clearPrefillState();
+  }, [menuItems, location.key, location.state, navigate, t]);
 
   const currencyFormatter = new Intl.NumberFormat(locale, {
     style: "currency",
@@ -296,7 +327,7 @@ function OrderPage() {
         >
           <option value="">{t("order.selectMenuItem")}</option>
           {menuItems
-            .filter((item) => canOrderDirectly(item))
+            .filter((item) => canOrderMenuItemDirectly(item))
             .map((item) => (
               <option key={item.id} value={JSON.stringify(item)}>
                 {item.name} - {currencyFormatter.format(item.price)} - {item.description}

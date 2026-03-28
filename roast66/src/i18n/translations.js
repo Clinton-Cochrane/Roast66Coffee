@@ -30,6 +30,9 @@ export const translations = {
       instagramTitle: "Follow us on Instagram",
       instagram: "Instagram",
     },
+    menu: {
+      addToOrder: "Order this item",
+    },
     home: {
       welcomeTitle: "Welcome to Roast 66 Coffee",
       logoAlt: "Roast 66 Coffee logo",
@@ -174,6 +177,9 @@ export const translations = {
       rightsReserved: "Todos los derechos reservados.",
       instagramTitle: "Siguenos en Instagram",
       instagram: "Instagram",
+    },
+    menu: {
+      addToOrder: "Pedir este articulo",
     },
     home: {
       welcomeTitle: "Bienvenido a Roast 66 Coffee",
