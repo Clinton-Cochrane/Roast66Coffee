@@ -33,6 +33,8 @@ function OrderStatusPage() {
   const restoreRanRef = useRef(false);
   /** Bumps when a manual lookup starts so in-flight restore cannot overwrite state or sessionStorage. */
   const lookupEpochRef = useRef(0);
+  /** Credentials last used for a successful load; polling reads this so typing in the form does not change poll requests. */
+  const pollCredentialsRef = useRef<{ orderId: string; customerName: string } | null>(null);
 
   useEffect(() => {
     const checkout = searchParams.get("checkout");
@@ -93,6 +95,10 @@ function OrderStatusPage() {
         }
         setOrder(data);
         setLastUpdatedAt(new Date());
+        pollCredentialsRef.current = {
+          orderId: session.orderId,
+          customerName: session.customerName,
+        };
         writeOrderStatusSession(
           session.orderId,
           session.customerName,
@@ -123,12 +129,17 @@ function OrderStatusPage() {
       return;
     }
     lookupEpochRef.current += 1;
+    pollCredentialsRef.current = null;
     setIsLoading(true);
     setOrder(null);
     try {
       const data = await fetchOrderLookup(parseInt(orderId, 10), customerName);
       setOrder(data);
       setLastUpdatedAt(new Date());
+      pollCredentialsRef.current = {
+        orderId: orderId.trim(),
+        customerName: customerName.trim(),
+      };
       writeOrderStatusSession(orderId, customerName, getOrderStatusFromDto(data));
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {
@@ -194,14 +205,16 @@ function OrderStatusPage() {
   /** Keep customer view in sync when staff advances status (admin). */
   useEffect(() => {
     if (!order) {
+      pollCredentialsRef.current = null;
       return;
     }
-    if (getOrderStatusFromDto(order) === ORDER_STATUS.Completed) {
+    if (isCompleted) {
       return;
     }
 
-    const id = orderId.trim();
-    const name = customerName.trim();
+    const creds = pollCredentialsRef.current;
+    const id = creds?.orderId.trim() ?? "";
+    const name = creds?.customerName.trim() ?? "";
     if (!id || !name) {
       return;
     }
@@ -213,14 +226,20 @@ function OrderStatusPage() {
         return;
       }
       const epochAtRequest = lookupEpochRef.current;
+      const active = pollCredentialsRef.current;
+      const pollId = active?.orderId.trim() ?? "";
+      const pollName = active?.customerName.trim() ?? "";
+      if (!pollId || !pollName) {
+        return;
+      }
       try {
-        const data = await fetchOrderLookup(parseInt(id, 10), name);
+        const data = await fetchOrderLookup(parseInt(pollId, 10), pollName);
         if (cancelled || lookupEpochRef.current !== epochAtRequest) {
           return;
         }
         setOrder(data);
         setLastUpdatedAt(new Date());
-        writeOrderStatusSession(id, name, getOrderStatusFromDto(data));
+        writeOrderStatusSession(pollId, pollName, getOrderStatusFromDto(data));
       } catch {
         /* ignore — user can use Check Status */
       }
@@ -239,7 +258,7 @@ function OrderStatusPage() {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [order, orderId, customerName]);
+  }, [order?.id, isCompleted]);
 
   return (
     <div className="p-6 max-w-lg mx-auto">

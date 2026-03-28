@@ -127,4 +127,47 @@ describe("OrderStatusPage", () => {
     expect(storedAfterStaleRestore.orderId).toBe("99");
     expect(storedAfterStaleRestore.customerName).toBe("Bob");
   });
+
+  it("polling uses last successful lookup credentials, not in-progress form edits", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+
+    const { container } = render(
+      <LanguageProvider>
+        <MemoryRouter>
+          <OrderStatusPage />
+        </MemoryRouter>
+      </LanguageProvider>
+    );
+
+    const form = container.querySelector("form");
+    if (!form) {
+      throw new Error("form not found");
+    }
+
+    const orderIdInput = screen.getByRole("textbox", { name: /Order ID/i });
+    const nameInput = screen.getByRole("textbox", { name: /Your Name/i });
+
+    fireEvent.change(orderIdInput, { target: { value: "42" } });
+    fireEvent.change(nameInput, { target: { value: "Alex" } });
+    fireEvent.submit(form);
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith("/order/lookup", {
+        params: { orderId: 42, customerName: "Alex" },
+      });
+    });
+
+    mockGet.mockClear();
+
+    fireEvent.change(orderIdInput, { target: { value: "1" } });
+
+    await vi.advanceTimersByTimeAsync(45_000);
+
+    expect(mockGet).toHaveBeenCalledTimes(1);
+    expect(mockGet).toHaveBeenCalledWith("/order/lookup", {
+      params: { orderId: 42, customerName: "Alex" },
+    });
+
+    vi.useRealTimers();
+  });
 });
