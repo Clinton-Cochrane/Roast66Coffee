@@ -1,6 +1,8 @@
 /**
  * English (en) UI strings. Single source for keys used by `t()` via translations.
  */
+import type { WidenStrings } from "./messageTypes";
+
 export const en = {
   app: {
     skipToMain: "Skip to main content",
@@ -302,4 +304,4 @@ export const en = {
   },
 } as const;
 
-export type Messages = typeof en;
+export type Messages = WidenStrings<typeof en>;

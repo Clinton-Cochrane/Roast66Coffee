@@ -54,6 +54,7 @@ async function syncSubscriptionToServer(subscription: PushSubscription): Promise
 }
 
 function StaffDevicePrompt() {
+  const { t } = useI18n();
   const [notificationPermission, setNotificationPermission] = useState(
     typeof Notification !== "undefined" ? Notification.permission : "default"
   );
