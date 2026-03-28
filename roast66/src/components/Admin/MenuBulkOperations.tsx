@@ -8,33 +8,33 @@ import Button from "../common/Button";
 import Card from "../common/Card";
 import { toast } from "react-toastify";
 import type { MenuItemDto } from "../../types/api";
+import { useI18n } from "../../i18n/LanguageContext";
 
 type MenuBulkOperationsProps = {
   onMenuUpdated?: () => void;
 };
 
 function MenuBulkOperations({ onMenuUpdated }: MenuBulkOperationsProps) {
+  const { t } = useI18n();
   const [isSeeding, setIsSeeding] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importError, setImportError] = useState("");
 
   const handleSeedMenu = async () => {
-    if (
-      !window.confirm("This will replace all menu items with the default seed. Continue?")
-    ) {
+    if (!window.confirm(t("adminBulk.seedConfirm"))) {
       return;
     }
     setIsSeeding(true);
     try {
       await axiosInstance.get("/admin/seed-menu?confirm=true");
-      toast.success("Menu seeded successfully.");
+      toast.success(t("adminBulk.seedSuccess"));
       onMenuUpdated?.();
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err)
         ? (err.response?.data as { message?: string })?.message
         : undefined;
-      toast.error(msg || "Failed to seed menu.");
+      toast.error(msg || t("adminBulk.seedFailed"));
     } finally {
       setIsSeeding(false);
     }
@@ -53,12 +53,12 @@ function MenuBulkOperations({ onMenuUpdated }: MenuBulkOperationsProps) {
       a.download = `roast66-menu-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast.success("Menu downloaded.");
+      toast.success(t("adminBulk.downloadSuccess"));
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err)
         ? (err.response?.data as { message?: string })?.message
         : undefined;
-      toast.error(msg || "Failed to download menu.");
+      toast.error(msg || t("adminBulk.downloadFailed"));
     } finally {
       setIsExporting(false);
     }
@@ -73,7 +73,7 @@ function MenuBulkOperations({ onMenuUpdated }: MenuBulkOperationsProps) {
       try {
         const text = event.target?.result;
         if (typeof text !== "string") {
-          setImportError("Could not read file.");
+          setImportError(t("adminBulk.couldNotReadFile"));
           return;
         }
         const json = JSON.parse(text) as unknown;
@@ -85,20 +85,20 @@ function MenuBulkOperations({ onMenuUpdated }: MenuBulkOperationsProps) {
               ? (json as { items: MenuItemDto[] }).items
               : [];
         if (!Array.isArray(items) || items.length === 0) {
-          setImportError("File must contain an array of menu items.");
+          setImportError(t("adminBulk.fileMustContainArray"));
           return;
         }
         setIsImporting(true);
         await axiosInstance.post("/admin/menu/import", items);
-        toast.success(`Imported ${items.length} menu items.`);
+        toast.success(t("adminBulk.importCountSuccess", { count: items.length }));
         onMenuUpdated?.();
       } catch (err: unknown) {
         const msg =
           err instanceof SyntaxError
-            ? "Invalid JSON file."
+            ? t("adminBulk.invalidJson")
             : axios.isAxiosError(err)
-              ? (err.response?.data as { message?: string })?.message || "Import failed."
-              : "Import failed.";
+              ? (err.response?.data as { message?: string })?.message || t("adminBulk.importFailed")
+              : t("adminBulk.importFailed");
         setImportError(msg);
         toast.error(msg);
       } finally {
@@ -110,17 +110,14 @@ function MenuBulkOperations({ onMenuUpdated }: MenuBulkOperationsProps) {
   };
 
   return (
-    <Card title="Bulk Menu Operations">
-      <p className="text-sm text-gray-600 mb-4">
-        Download menu as JSON to edit offline, or upload a JSON file to replace the entire menu. Use
-        the form below for small edits.
-      </p>
+    <Card title={t("adminBulk.title")}>
+      <p className="text-sm text-gray-600 mb-4">{t("adminBulk.description")}</p>
       <div className="flex flex-wrap gap-3">
         <Button onClick={handleSeedMenu} disabled={isSeeding} color="blue">
-          {isSeeding ? "Seeding…" : "Seed Default Menu"}
+          {isSeeding ? t("adminBulk.seeding") : t("adminBulk.seedDefault")}
         </Button>
         <Button onClick={handleDownloadMenu} disabled={isExporting} color="green">
-          {isExporting ? "Downloading…" : "Download Menu (JSON)"}
+          {isExporting ? t("adminBulk.downloading") : t("adminBulk.downloadJson")}
         </Button>
         <label className="cursor-pointer inline-block">
           <input
@@ -135,7 +132,7 @@ function MenuBulkOperations({ onMenuUpdated }: MenuBulkOperationsProps) {
               isImporting ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            {isImporting ? "Importing…" : "Upload Menu (JSON)"}
+            {isImporting ? t("adminBulk.importing") : t("adminBulk.uploadJson")}
           </span>
         </label>
       </div>

@@ -25,7 +25,7 @@ const Footer = ({ year = 2024 }: FooterProps) => {
             }
             className="h-8 w-8 rounded-full border border-[#8a7364] text-[10px] font-bold tracking-[0.08em] text-[#f7efe6] hover:border-[#99bfdd] focus:outline-none focus:ring-2 focus:ring-[#99bfdd]"
           >
-            {locale === "en" ? "EN" : "ES"}
+            {locale === "en" ? t("language.localeCodeEn") : t("language.localeCodeEs")}
           </button>
           <a
             href="https://www.instagram.com/roast66coffee"

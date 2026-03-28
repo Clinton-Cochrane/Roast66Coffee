@@ -1,10 +1,13 @@
 import React from "react";
+import { useI18n } from "../../i18n/LanguageContext";
 
 function OrderConfirmation() {
+  const { t } = useI18n();
+
   return (
     <div className="order-confirmation">
-      <h2>OrderConfirmation</h2>
-      <p>Thank you for your order! We will prepare it shortly</p>
+      <h2>{t("orderConfirmation.standaloneLegacyTitle")}</h2>
+      <p>{t("orderConfirmation.standaloneLegacyThankYou")}</p>
     </div>
   );
 }

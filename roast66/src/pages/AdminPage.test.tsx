@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import AdminPage from "./AdminPage";
+import { LanguageProvider } from "../i18n/LanguageContext";
 
 const mockNavigate = vi.fn();
 
@@ -70,6 +71,7 @@ describe("AdminPage", () => {
 
   afterEach(() => {
     localStorage.removeItem("token");
+    localStorage.removeItem("roast66_locale");
   });
 
   it("shows Orders tab by default", () => {
@@ -99,5 +101,41 @@ describe("AdminPage", () => {
     fireEvent.click(screen.getByRole("button", { name: /log out/i }));
     expect(localStorage.getItem("token")).toBeNull();
     expect(mockNavigate).toHaveBeenCalledWith("/admin", { replace: true });
+  });
+});
+
+describe("AdminPage (es-MX locale)", () => {
+  beforeEach(() => {
+    mockNavigate.mockReset();
+    localStorage.setItem("token", "test-token");
+    localStorage.setItem("roast66_locale", "es");
+  });
+
+  afterEach(() => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("roast66_locale");
+  });
+
+  function renderAdminPageEs() {
+    return render(
+      <MemoryRouter>
+        <LanguageProvider>
+          <AdminPage />
+        </LanguageProvider>
+      </MemoryRouter>
+    );
+  }
+
+  it("renders Spanish tab labels and logout", () => {
+    renderAdminPageEs();
+    expect(screen.getByRole("tab", { name: /^pedidos$/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /cerrar sesión/i })).toBeInTheDocument();
+    expect(screen.getByTestId("admin-header")).toHaveTextContent("Panel de administración");
+  });
+
+  it("switches to menu tab using Spanish label", () => {
+    renderAdminPageEs();
+    fireEvent.click(screen.getByRole("tab", { name: /gestión del menú/i }));
+    expect(screen.getByTestId("mock-menu-bulk")).toBeInTheDocument();
   });
 });

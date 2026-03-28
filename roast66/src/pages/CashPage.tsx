@@ -4,8 +4,10 @@ import Header from "../components/layout/Header";
 import Button from "../components/common/Button";
 import ViewOrders from "../components/Admin/ViewOrders";
 import StaffDevicePrompt from "../components/Admin/StaffDevicePrompt";
+import { useI18n } from "../i18n/LanguageContext";
 
 function CashPage() {
+  const { t } = useI18n();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,14 +29,14 @@ function CashPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        <Header color="bg-blue-900" title="Counter Dashboard" />
+        <Header color="bg-blue-900" title={t("cash.dashboardTitle")} />
 
         <div className="flex flex-wrap gap-3">
           <Button color="green" onClick={handleNewOrder}>
-            New Order
+            {t("cash.newOrder")}
           </Button>
           <Button color="gray" onClick={handleLogout}>
-            Log out
+            {t("common.logOut")}
           </Button>
         </div>
         <StaffDevicePrompt />

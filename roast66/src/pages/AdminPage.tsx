@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import ManageMenu from "../components/Admin/ManageMenu";
 import MenuBulkOperations from "../components/Admin/MenuBulkOperations";
@@ -10,6 +10,7 @@ import StaffDevicePrompt from "../components/Admin/StaffDevicePrompt";
 import Loading from "../components/common/Loading";
 import Button from "../components/common/Button";
 import useKeepAliveHeartbeat from "../hooks/useKeepAliveHeartbeat";
+import { useI18n } from "../i18n/LanguageContext";
 
 const ADMIN_TAB_IDS = {
   ORDERS: "orders",
@@ -17,13 +18,17 @@ const ADMIN_TAB_IDS = {
   SETTINGS: "settings",
 } as const;
 
-const ADMIN_TABS = Object.freeze([
-  { id: ADMIN_TAB_IDS.ORDERS, label: "Orders" },
-  { id: ADMIN_TAB_IDS.MENU, label: "Menu management" },
-  { id: ADMIN_TAB_IDS.SETTINGS, label: "Settings" },
-]);
-
 function AdminPage() {
+  const { t } = useI18n();
+  const adminTabs = useMemo(
+    () =>
+      [
+        { id: ADMIN_TAB_IDS.ORDERS, label: t("admin.tabOrders") },
+        { id: ADMIN_TAB_IDS.MENU, label: t("admin.tabMenu") },
+        { id: ADMIN_TAB_IDS.SETTINGS, label: t("admin.tabSettings") },
+      ] as const,
+    [t]
+  );
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [menuRefreshKey, setMenuRefreshKey] = useState(0);
@@ -55,10 +60,10 @@ function AdminPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        <Header color="bg-red-800" title="Admin Dashboard" />
+        <Header color="bg-red-800" title={t("admin.dashboardTitle")} />
         <div className="flex justify-end">
           <Button color="gray" onClick={handleLogout}>
-            Log out
+            {t("common.logOut")}
           </Button>
         </div>
         <StaffDevicePrompt />
@@ -72,7 +77,7 @@ function AdminPage() {
             aria-label="Admin sections"
             className="flex flex-wrap gap-0 border-b border-gray-200 bg-gray-50 px-2 pt-2"
           >
-            {ADMIN_TABS.map(({ id, label }) => {
+            {adminTabs.map(({ id, label }) => {
               const selected = activeTab === id;
               return (
                 <button
