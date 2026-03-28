@@ -10,21 +10,6 @@ function Menu() {
   const [menuItems, setMenuItems] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const getCategoryName = (categoryType) => {
-    switch (categoryType) {
-      case CategoryType.COFFEE:
-        return "Coffee";
-      case CategoryType.SPECIALS:
-        return "Specials";
-      case CategoryType.FLAVORS:
-        return "Flavors";
-      case CategoryType.DRINKS:
-        return "Drink";
-      default:
-        return "Unknown";
-    }
-  };
-
   useEffect(() => {
     axios
       .get("/menu")
@@ -92,9 +77,6 @@ function Menu() {
                       </h3>
                       <p className="text-[#a64b2a] font-semibold">${item.price.toFixed(2)}</p>
                       <p className="text-[#5b4940]">{item.description}</p>
-                      <p className="text-[#6c89a2] text-sm font-semibold mt-2">
-                        {getCategoryName(item.categoryType)}
-                      </p>
                     </Card>
                   ))}
                 </div>

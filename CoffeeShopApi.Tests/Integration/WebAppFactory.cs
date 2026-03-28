@@ -16,9 +16,13 @@ public class WebAppFactory : WebApplicationFactory<Program>
         // Ensure CORS startup succeeds even if the host process sets a non-Testing environment.
         builder.ConfigureAppConfiguration((_, config) =>
         {
+            // CI and fresh clones have no gitignored appsettings.json; login requires Jwt:Key (32+ chars).
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["AllowedOrigins"] = "http://localhost"
+                ["AllowedOrigins"] = "http://localhost",
+                ["Jwt:Key"] = "IntegrationTestSigningKey_NotForProduction_Min32Chars___",
+                ["Jwt:Issuer"] = "Roast66Coffee",
+                ["Jwt:Audience"] = "Roast66Coffee"
             });
         });
     }

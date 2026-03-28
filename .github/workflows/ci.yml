@@ -24,9 +24,6 @@ jobs:
           dotnet-version: "8.0.x"
 
       - name: Restore and test
-        env:
-          ASPNETCORE_ENVIRONMENT: Testing
-          AllowedOrigins: http://localhost
         run: |
           dotnet restore Roast66.sln
           dotnet test Roast66.sln --configuration Release --verbosity minimal
