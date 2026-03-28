@@ -1,7 +1,8 @@
 # Periodic HTTP GET from GitHub's network to reduce Render free-tier cold starts.
 # Configure repository secrets (Settings → Secrets and variables → Actions):
-#   HEALTH_CHECK_URL — required for API ping, e.g. https://your-api.onrender.com/api/health
-#   SUPABASE_WAKE_URL — optional, e.g. your Supabase project REST base URL if the plan pauses on idle
+#   API_HEALTH_CHECK_URL — API liveness, e.g. https://your-api.onrender.com/api/health
+#   HEALTH_CHECK_URL — frontend static site, e.g. https://your-app.onrender.com/
+#   SUPABASE_WAKE_URL — optional; e.g. Supabase REST base if your plan pauses on idle
 #
 # Scheduled workflows use the version of this file on the default branch (usually main).
 # GitHub may disable schedules after ~60 days of repository inactivity; push any commit or
@@ -22,10 +23,20 @@ jobs:
     steps:
       - name: Ping API health
         env:
+          url: ${{ secrets.API_HEALTH_CHECK_URL }}
+        run: |
+          if [ -z "$url" ]; then
+            echo "API_HEALTH_CHECK_URL secret not set; skipping API ping."
+            exit 0
+          fi
+          curl -fsS --max-time 90 "$url"
+
+      - name: Ping frontend (static site)
+        env:
           url: ${{ secrets.HEALTH_CHECK_URL }}
         run: |
           if [ -z "$url" ]; then
-            echo "HEALTH_CHECK_URL secret not set; skipping API ping."
+            echo "HEALTH_CHECK_URL secret not set; skipping frontend ping."
             exit 0
           fi
           curl -fsS --max-time 90 "$url"

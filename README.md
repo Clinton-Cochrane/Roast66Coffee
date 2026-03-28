@@ -232,7 +232,8 @@ openssl rand -base64 48
 - Database backups: verify retention policy in Render dashboard.
 - Health check endpoint: `GET /api/health`
 - **GitHub automation (free):** CI runs backend and frontend tests on push/PR to `main`; Dependabot opens weekly dependency PRs; CodeQL scans C# and JavaScript for security issues. Workflows live under `.github/workflows/`.
-- **External uptime (recommended):** Use a free monitor (e.g. UptimeRobot) against `https://<your-api-host>/api/health` so you get alerted when the API is down. See `PRODUCTION_READINESS.md` §5 for Neon/Fly optional redundancy.
+- **Scheduled health ping (optional):** `scheduled-health-ping.yml` runs every five minutes. Set Actions secrets **`API_HEALTH_CHECK_URL`** (e.g. `https://<api-host>/api/health`) and **`HEALTH_CHECK_URL`** (frontend static URL). Optional **`SUPABASE_WAKE_URL`**. Schedules run from the default branch; GitHub may pause them after long repo inactivity—any push or re-enabling Actions refreshes that.
+- **External uptime (recommended):** Use a free monitor (e.g. Better Stack, UptimeRobot) if you want alerts when the API is down; the scheduled ping does not notify on failure by default. See `PRODUCTION_READINESS.md` §5 for Neon/Fly optional redundancy.
 - Keepalive mode (free-tier mitigation):
   - Admin dashboard sends `POST /api/ops/keepalive/heartbeat` while open.
   - API warmup runs in configured `KeepAlive:*` window.
