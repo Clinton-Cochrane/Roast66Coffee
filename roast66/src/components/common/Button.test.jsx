@@ -30,4 +30,16 @@ describe("Button", () => {
     render(<Button type="submit">Submit</Button>);
     expect(screen.getByRole("button")).toHaveAttribute("type", "submit");
   });
+
+  it("renders link variant without solid button background classes", () => {
+    render(
+      <Button variant="link" color="green">
+        Order this item
+      </Button>
+    );
+    const btn = screen.getByRole("button", { name: /order this item/i });
+    expect(btn.className).toContain("bg-transparent");
+    expect(btn.className).toContain("underline");
+    expect(btn.className).not.toContain("shadow-[0_2px_0");
+  });
 });

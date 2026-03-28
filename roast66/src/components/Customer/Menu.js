@@ -77,24 +77,27 @@ function Menu() {
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {items.map((item) => (
-                    <Card key={item.id} className="h-full">
+                    <Card key={item.id} className="h-full flex flex-col">
                       <h3 className="text-xl font-semibold mb-2 text-[#4a3326]">
                         {item.name}
                       </h3>
                       <p className="text-[#a64b2a] font-semibold">${item.price.toFixed(2)}</p>
-                      <p className="text-[#5b4940] mb-3">{item.description}</p>
+                      <p className="text-[#5b4940]">{item.description}</p>
                       {canOrderMenuItemDirectly(item) && (
-                        <Button
-                          type="button"
-                          color="green"
-                          onClick={() =>
-                            navigate("/order", {
-                              state: { menuItemId: item.id },
-                            })
-                          }
-                        >
-                          {t("menu.orderThisItem")}
-                        </Button>
+                        <div className="mt-auto pt-4">
+                          <Button
+                            type="button"
+                            variant="link"
+                            color="green"
+                            onClick={() =>
+                              navigate("/order", {
+                                state: { menuItemId: item.id },
+                              })
+                            }
+                          >
+                            {t("menu.orderThisItem")}
+                          </Button>
+                        </div>
                       )}
                     </Card>
                   ))}

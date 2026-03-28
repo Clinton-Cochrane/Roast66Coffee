@@ -16,6 +16,9 @@ on:
     - cron: "*/5 * * * *"
   workflow_dispatch:
 
+# No checkout or GitHub API use; curl-only steps use repository secrets.
+permissions: {}
+
 jobs:
   ping:
     runs-on: ubuntu-latest
