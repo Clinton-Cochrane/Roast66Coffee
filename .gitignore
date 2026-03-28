@@ -3,6 +3,7 @@ node_modules/
 
 # Build outputs
 /roast66/build/
+/roast66/dist/
 /build
 
 # .NET

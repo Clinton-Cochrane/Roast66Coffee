@@ -30,11 +30,13 @@ Roast 66 Coffee is a full-stack web application for managing a coffee shop menu,
 
 ### Frontend
 
-- React
+- React (Vite)
+- TypeScript
 - React Router
 - Axios
 - Tailwind CSS
 - React Icons
+- Vitest + Testing Library
 
 ### Backend
 
@@ -100,7 +102,8 @@ npm install
 Copy `roast66/.env.example` to `roast66/.env`.
 
 ```env
-REACT_APP_API_URL=http://localhost:5001/api
+VITE_API_URL=http://localhost:5001/api
+VITE_ENABLE_STRIPE_CHECKOUT=false
 ```
 
 ### Backend Configuration (local appsettings)
@@ -216,13 +219,16 @@ openssl rand -base64 48
 
 ### Frontend Environment Variables (`roast66-web`)
 
-- `REACT_APP_API_URL` (example: `https://roast66coffee.onrender.com/api`)
-- `REACT_APP_ENABLE_STRIPE_CHECKOUT=false` (set `true` when ready)
+- `VITE_API_URL` (example: `https://roast66coffee.onrender.com/api`)
+- `VITE_ENABLE_STRIPE_CHECKOUT=false` (set `true` when ready)
+- `VITE_VAPID_PUBLIC_KEY` (optional; web push for staff devices)
+
+Static site output is `roast66/dist/` (configure `staticPublishPath` accordingly).
 
 ### Post-Deploy Checks
 
 1. Redeploy backend if `AllowedOrigins` needs actual frontend URL updates.
-2. Redeploy frontend if `REACT_APP_API_URL` changed.
+2. Redeploy frontend if `VITE_API_URL` or other `VITE_*` vars changed (they are baked in at build time).
 3. Seed menu data via admin UI or `GET /api/Admin/seed-menu?confirm=true`.
 
 ## Production Operations

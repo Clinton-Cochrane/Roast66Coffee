@@ -6,4 +6,4 @@ paths-ignore:
   - "**/bin/**"
   - "**/obj/**"
   - "**/node_modules/**"
-  - roast66/build
+  - roast66/dist
