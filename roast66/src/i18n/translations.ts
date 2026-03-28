@@ -24,6 +24,7 @@ export const translations = {
       instagram: "Instagram",
       merchTitle: "Buy our merch",
       instagramTitle: "Follow us on Instagram",
+      orderTrackingActive: "Return to order status",
     },
     footer: {
       rightsReserved: "All rights reserved.",
@@ -106,6 +107,9 @@ export const translations = {
       trackerPreparingDescription: "Our baristas are making your drinks.",
       trackerReadyDescription: "Your order is ready. Come pick it up.",
       trackerCompletedDescription: "Thanks for visiting Roast 66.",
+      liveBadge: "Live",
+      trackingCompleteBadge: "Complete",
+      lastUpdated: "Last updated {{time}}",
     },
     orderConfirmation: {
       fallbackTitle: "View Order Status",
@@ -172,6 +176,7 @@ export const translations = {
       instagram: "Instagram",
       merchTitle: "Comprar mercancia",
       instagramTitle: "Siguenos en Instagram",
+      orderTrackingActive: "Seguimiento de pedido activo",
     },
     footer: {
       rightsReserved: "Todos los derechos reservados.",
@@ -256,6 +261,9 @@ export const translations = {
       trackerPreparingDescription: "Nuestros baristas estan preparando tus bebidas.",
       trackerReadyDescription: "Tu pedido esta listo. Ven a recogerlo.",
       trackerCompletedDescription: "Gracias por visitar Roast 66.",
+      liveBadge: "En vivo",
+      trackingCompleteBadge: "Completo",
+      lastUpdated: "Actualizado {{time}}",
     },
     orderConfirmation: {
       fallbackTitle: "Ver Estado del Pedido",
