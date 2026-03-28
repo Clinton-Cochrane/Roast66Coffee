@@ -1,4 +1,4 @@
-// src/components/Customer/Menu.jsx
+// src/components/Customer/Menu.js
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "../../axiosConfig";
@@ -93,7 +93,7 @@ function Menu() {
                             })
                           }
                         >
-                          {t("menu.addToOrder")}
+                          {t("menu.orderThisItem")}
                         </Button>
                       )}
                     </Card>

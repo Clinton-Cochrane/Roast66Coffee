@@ -31,7 +31,7 @@ export const translations = {
       instagram: "Instagram",
     },
     menu: {
-      addToOrder: "Order this item",
+      orderThisItem: "Order this item",
     },
     home: {
       welcomeTitle: "Welcome to Roast 66 Coffee",
@@ -179,7 +179,7 @@ export const translations = {
       instagram: "Instagram",
     },
     menu: {
-      addToOrder: "Pedir este articulo",
+      orderThisItem: "Pedir este articulo",
     },
     home: {
       welcomeTitle: "Bienvenido a Roast 66 Coffee",

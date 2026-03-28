@@ -1,5 +1,11 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import CategoryType from "../../constants/categories";
 import { LanguageProvider } from "../../i18n/LanguageContext";
@@ -92,6 +98,29 @@ describe("Menu", () => {
     await waitFor(() => {
       expect(axios.get).toHaveBeenCalledWith("/menu");
     });
+  });
+
+  it("does not show an order button in the Flavors section", async () => {
+    axios.get.mockResolvedValueOnce({ data: mockMenuItems });
+    renderMenu();
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Flavors" })).toBeInTheDocument();
+    });
+
+    const flavorsGroup = screen
+      .getByRole("heading", { name: "Flavors" })
+      .closest(".mb-8");
+    expect(
+      within(flavorsGroup).queryByRole("button", { name: /order this item/i })
+    ).not.toBeInTheDocument();
+
+    const drinksGroup = screen
+      .getByRole("heading", { name: "Drinks" })
+      .closest(".mb-8");
+    expect(
+      within(drinksGroup).getByRole("button", { name: /order this item/i })
+    ).toBeInTheDocument();
   });
 
   it("navigates to order with menuItemId for orderable items only", async () => {

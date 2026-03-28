@@ -1,9 +1,8 @@
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import CategoryType from "../constants/categories";
 import { LanguageProvider } from "../i18n/LanguageContext";
-import OrderPage from "./OrderPage";
 
 jest.mock("../axiosConfig", () => ({
   __esModule: true,
@@ -22,7 +21,17 @@ jest.mock("react-toastify", () => ({
   },
 }));
 
+const mockNavigate = jest.fn();
+
+jest.mock("react-router-dom", () => ({
+  __esModule: true,
+  ...jest.requireActual("react-router-dom"),
+  useNavigate: () => mockNavigate,
+}));
+
 import axios from "../axiosConfig";
+import { toast } from "react-toastify";
+import OrderPage from "./OrderPage";
 
 const menuPayload = [
   {
@@ -31,6 +40,17 @@ const menuPayload = [
     price: 2.5,
     description: "Strong coffee",
     categoryType: CategoryType.COFFEE,
+  },
+];
+
+const menuPayloadWithFlavor = [
+  ...menuPayload,
+  {
+    id: 2,
+    name: "Vanilla",
+    price: 0.5,
+    description: "Sweet flavor",
+    categoryType: CategoryType.FLAVORS,
   },
 ];
 
@@ -60,6 +80,13 @@ describe("OrderPage", () => {
       expect(document.querySelectorAll(".order-item")).toHaveLength(1);
     });
     expect(document.querySelector(".order-item")).toHaveTextContent("Espresso");
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/order", {
+        replace: true,
+        state: {},
+      });
+    });
   });
 
   it("does not prefill when menuItemId is missing from state", async () => {
@@ -69,6 +96,48 @@ describe("OrderPage", () => {
 
     await waitFor(() => {
       expect(axios.get).toHaveBeenCalledWith("/menu");
+    });
+
+    expect(document.querySelectorAll(".order-item")).toHaveLength(0);
+  });
+
+  it("clears prefill state when menuItemId does not match any menu item", async () => {
+    axios.get.mockResolvedValue({ data: menuPayload });
+
+    renderOrderPage({ pathname: "/order", state: { menuItemId: 999 } });
+
+    await waitFor(() => {
+      expect(axios.get).toHaveBeenCalledWith("/menu");
+    });
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/order", {
+        replace: true,
+        state: {},
+      });
+    });
+
+    expect(document.querySelectorAll(".order-item")).toHaveLength(0);
+  });
+
+  it("does not prefill flavor items and shows a warning", async () => {
+    axios.get.mockResolvedValue({ data: menuPayloadWithFlavor });
+
+    renderOrderPage({ pathname: "/order", state: { menuItemId: 2 } });
+
+    await waitFor(() => {
+      expect(axios.get).toHaveBeenCalledWith("/menu");
+    });
+
+    await waitFor(() => {
+      expect(toast.warning).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/order", {
+        replace: true,
+        state: {},
+      });
     });
 
     expect(document.querySelectorAll(".order-item")).toHaveLength(0);
