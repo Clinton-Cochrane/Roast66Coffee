@@ -117,7 +117,7 @@ function MenuBulkOperations({ onMenuUpdated }) {
               isImporting ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            {isImporting ? "Importing…" : "Upload JSON"}
+            {isImporting ? "Importing…" : "Upload Menu (JSON)"}
           </span>
         </label>
       </div>

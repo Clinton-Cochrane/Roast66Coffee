@@ -5,15 +5,22 @@
 #   SUPABASE_WAKE_URL — optional; e.g. Supabase REST base if your plan pauses on idle
 #
 # Scheduled workflows use the version of this file on the default branch (usually main).
-# GitHub may disable schedules after ~60 days of repository inactivity; push any commit or
-# re-enable Actions in Settings to refresh.
+#
+# If this workflow never runs on schedule, check:
+#   • Actions tab → "Scheduled health ping" is enabled (not disabled). Public repos: GitHub
+#     auto-disables scheduled workflows after ~60 days with no repo activity; re-enable there
+#     or push a commit that changes the cron below (that also reactivates the schedule).
+#   • Fork: enable Actions on the fork (Settings → Actions → allow workflows).
+#   • Billing: private repos need Actions minutes; exhausted minutes can block runs.
+#   • Schedules are best-effort UTC; GitHub may delay or drop jobs when load is high, especially
+#     at :00 and :30 — this file uses minute offsets to reduce that.
 
 name: Scheduled health ping
 
 on:
   schedule:
-    # Every 5 minutes (UTC). GitHub may delay runs slightly under load.
-    - cron: "*/5 * * * *"
+    # Twelve times per hour (~every 5 min), minutes 2/7/12/…/57 — avoids firing exactly on :00/:30.
+    - cron: "2,7,12,17,22,27,32,37,42,47,52,57 * * * *"
   workflow_dispatch:
 
 # No checkout or GitHub API use; curl-only steps use repository secrets.

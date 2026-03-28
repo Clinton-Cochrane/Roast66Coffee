@@ -1,0 +1,1 @@
+const r={COFFEE:0,SPECIALS:1,FLAVORS:2,DRINKS:3};function y(e){return!e||e.categoryType==null?!1:e.categoryType===r.COFFEE||e.categoryType===r.DRINKS||e.categoryType===r.SPECIALS}export{r as C,y as c};

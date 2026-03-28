@@ -1,0 +1,5 @@
+import{h as l,j as u}from"./index-Y-dAZoR4.js";var a={exports:{}};/*!
+	Copyright (c) 2018 Jed Watson.
+	Licensed under the MIT License (MIT), see
+	http://jedwatson.github.io/classnames
+*/var f;function p(){return f||(f=1,(function(n){(function(){var o={}.hasOwnProperty;function s(){for(var r="",t=0;t<arguments.length;t++){var e=arguments[t];e&&(r=i(r,c(e)))}return r}function c(r){if(typeof r=="string"||typeof r=="number")return r;if(typeof r!="object")return"";if(Array.isArray(r))return s.apply(null,r);if(r.toString!==Object.prototype.toString&&!r.toString.toString().includes("[native code]"))return r.toString();var t="";for(var e in r)o.call(r,e)&&r[e]&&(t=i(t,e));return t}function i(r,t){return t?r?r+" "+t:r+t:r}n.exports?(s.default=s,n.exports=s):window.classNames=s})()})(a)),a.exports}var m=p();const x=l(m),h=({title:n,children:o,className:s})=>u.jsxs("div",{className:x("r66-panel p-5 w-full",s),children:[n?u.jsx("h2",{className:"text-[1.35rem] font-bold mb-2 tracking-[0.01em] text-[#4a3326]",children:n}):null,o]});export{h as C};
