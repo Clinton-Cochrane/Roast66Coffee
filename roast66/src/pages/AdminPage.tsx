@@ -74,7 +74,7 @@ function AdminPage() {
         >
           <div
             role="tablist"
-            aria-label="Admin sections"
+            aria-label={t("admin.tablistAriaLabel")}
             className="flex flex-wrap gap-0 border-b border-gray-200 bg-gray-50 px-2 pt-2"
           >
             {adminTabs.map(({ id, label }) => {

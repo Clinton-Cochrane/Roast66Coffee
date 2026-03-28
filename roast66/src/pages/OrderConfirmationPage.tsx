@@ -104,9 +104,14 @@ function OrderConfirmationPage() {
               {item.quantity}x{" "}
               {item.menuItem?.name ?? item.MenuItem?.name ?? t("orderConfirmation.itemFallback")}
               {(item.addOns || []).length > 0
-                ? ` + ${item.addOns?.map((a) => a.menuItem?.name ?? a.MenuItem?.name).filter(Boolean).join(", ")}`
+                ? `${t("orderConfirmation.addOnsLeadIn")}${(item.addOns ?? [])
+                    .map((a) => a.menuItem?.name ?? a.MenuItem?.name)
+                    .filter(Boolean)
+                    .join(t("orderConfirmation.addOnListSeparator"))}`
                 : ""}
-              {item.notes ? ` (${item.notes})` : ""}
+              {item.notes
+                ? t("orderConfirmation.notesSuffix", { notes: item.notes })
+                : ""}
             </li>
           ))}
         </ul>

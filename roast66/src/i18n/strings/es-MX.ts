@@ -7,6 +7,11 @@ export const esMx: Messages = {
   app: {
     skipToMain: "Saltar al contenido principal",
   },
+  meta: {
+    pageTitle: "Roast 66 Coffee",
+    description:
+      "Roast 66 Coffee — ordena bebidas, sigue tu pedido y visita nuestra tienda.",
+  },
   language: {
     english: "English",
     spanish: "Español",
@@ -147,6 +152,9 @@ export const esMx: Messages = {
     orderPrefix: "Pedido",
     itemFallback: "Artículo",
     addOnFallback: "Extra",
+    addOnsLeadIn: " + ",
+    addOnListSeparator: ", ",
+    notesSuffix: " ({{notes}})",
     total: "Total",
     emailUpdates: "Enviaremos actualizaciones del pedido a",
     emailOptional:
@@ -189,6 +197,7 @@ export const esMx: Messages = {
   },
   common: {
     logOut: "Cerrar sesión",
+    remove: "Quitar",
   },
   admin: {
     dashboardTitle: "Panel de administración",

@@ -7,6 +7,11 @@ export const en = {
   app: {
     skipToMain: "Skip to main content",
   },
+  meta: {
+    pageTitle: "Roast 66 Coffee",
+    description:
+      "Roast 66 Coffee — order drinks, track your order, and visit our shop.",
+  },
   language: {
     english: "English",
     spanish: "Español",
@@ -143,6 +148,9 @@ export const en = {
     orderPrefix: "Order",
     itemFallback: "Item",
     addOnFallback: "Add-on",
+    addOnsLeadIn: " + ",
+    addOnListSeparator: ", ",
+    notesSuffix: " ({{notes}})",
     total: "Total",
     emailUpdates: "We will send order status updates to",
     emailOptional: "Email updates are optional. Download your order summary for your records.",
@@ -180,6 +188,7 @@ export const en = {
   },
   common: {
     logOut: "Log out",
+    remove: "Remove",
   },
   admin: {
     dashboardTitle: "Admin Dashboard",

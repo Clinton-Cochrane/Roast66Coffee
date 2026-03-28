@@ -84,8 +84,31 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(LANGUAGE_STORAGE_KEY, locale);
     }
-    if (typeof document !== "undefined") {
-      document.documentElement.lang = locale;
+    if (typeof document === "undefined") {
+      return;
+    }
+    document.documentElement.lang = locale;
+    const bundle = translations[locale as keyof typeof translations];
+    const titleRaw = getNestedValue(bundle, "meta.pageTitle");
+    const titleFallback = getNestedValue(translations[DEFAULT_LOCALE], "meta.pageTitle");
+    const title =
+      typeof titleRaw === "string"
+        ? titleRaw
+        : typeof titleFallback === "string"
+          ? titleFallback
+          : "Roast 66 Coffee";
+    document.title = title;
+    const descRaw = getNestedValue(bundle, "meta.description");
+    const descFallback = getNestedValue(translations[DEFAULT_LOCALE], "meta.description");
+    const desc =
+      typeof descRaw === "string"
+        ? descRaw
+        : typeof descFallback === "string"
+          ? descFallback
+          : "";
+    const metaDesc = document.querySelector('meta[name="description"]');
+    if (metaDesc && desc) {
+      metaDesc.setAttribute("content", desc);
     }
   }, [locale]);
 

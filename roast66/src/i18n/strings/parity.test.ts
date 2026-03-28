@@ -33,7 +33,7 @@ describe("i18n string bundles", () => {
     const esPaths = new Set(collectLeafPaths(esMx));
     const onlyEn = [...enPaths].filter((p) => !esPaths.has(p));
     const onlyEs = [...esPaths].filter((p) => !enPaths.has(p));
-    expect(onlyEn, `Keys only in en: ${onlyEn.join(", ")}`).toEqual([]);
-    expect(onlyEs, `Keys only in es-MX: ${onlyEs.join(", ")}`).toEqual([]);
+    expect(onlyEn).toHaveLength(0);
+    expect(onlyEs).toHaveLength(0);
   });
 });
