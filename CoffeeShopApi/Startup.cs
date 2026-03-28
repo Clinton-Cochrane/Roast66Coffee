@@ -130,7 +130,7 @@ namespace CoffeeShopApi
                                          .AllowAnyMethod()
                                          .AllowAnyHeader());
                 }
-                else if (_env.IsDevelopment())
+                else if (_env.IsDevelopment() || _env.IsEnvironment("Testing"))
                 {
                     options.AddPolicy("CorsPolicy",
                         builder => builder.AllowAnyOrigin()
