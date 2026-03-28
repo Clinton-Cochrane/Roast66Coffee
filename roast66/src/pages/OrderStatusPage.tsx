@@ -1,4 +1,4 @@
-import React, { useEffect, useState, type FormEvent } from "react";
+import React, { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import axiosInstance from "../axiosConfig";
@@ -6,7 +6,14 @@ import { toast } from "react-toastify";
 import OrderTracker from "../components/Customer/OrderTracker";
 import FormInput from "../components/common/FormInput";
 import Button from "../components/common/Button";
+import { ORDER_STATUS } from "../constants/orderStatus";
+import {
+  clearOrderStatusSession,
+  readOrderStatusSession,
+  writeOrderStatusSession,
+} from "../constants/orderStatusSession";
 import { useI18n } from "../i18n/LanguageContext";
+import { fetchOrderLookup } from "../lib/orderStatusLookup";
 import type { OrderDto, OrderLineItemDto } from "../types/api";
 
 const ENABLE_STRIPE_PREPAY = import.meta.env.VITE_ENABLE_STRIPE_CHECKOUT === "true";
@@ -19,8 +26,12 @@ function OrderStatusPage() {
   const [orderId, setOrderId] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [order, setOrder] = useState<OrderDto | null>(null);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [prepayLoading, setPrepayLoading] = useState(false);
+  const restoreRanRef = useRef(false);
+  /** Bumps when a manual lookup starts so in-flight restore cannot overwrite state or sessionStorage. */
+  const lookupEpochRef = useRef(0);
 
   useEffect(() => {
     const checkout = searchParams.get("checkout");
@@ -52,21 +63,75 @@ function OrderStatusPage() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, t]);
 
+  useEffect(() => {
+    const checkout = searchParams.get("checkout");
+    if (checkout === "success" || checkout === "cancelled") {
+      return;
+    }
+    if (restoreRanRef.current) {
+      return;
+    }
+    restoreRanRef.current = true;
+
+    const session = readOrderStatusSession();
+    if (!session) {
+      return;
+    }
+
+    setOrderId(session.orderId);
+    setCustomerName(session.customerName);
+
+    const runRestore = async () => {
+      const epochAtRestoreStart = lookupEpochRef.current;
+      setIsLoading(true);
+      setOrder(null);
+      try {
+        const data = await fetchOrderLookup(parseInt(session.orderId, 10), session.customerName);
+        if (lookupEpochRef.current !== epochAtRestoreStart) {
+          return;
+        }
+        setOrder(data);
+        setLastUpdatedAt(new Date());
+        writeOrderStatusSession(
+          session.orderId,
+          session.customerName,
+          data.orderStatus ?? undefined
+        );
+      } catch (err: unknown) {
+        if (
+          lookupEpochRef.current === epochAtRestoreStart &&
+          axios.isAxiosError(err) &&
+          err.response?.status === 404
+        ) {
+          clearOrderStatusSession();
+        }
+      } finally {
+        if (lookupEpochRef.current === epochAtRestoreStart) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void runRestore();
+  }, [searchParams]);
+
   const handleLookup = async (e: FormEvent) => {
     e.preventDefault();
     if (!orderId.trim() || !customerName.trim()) {
       toast.error(t("orderStatus.lookupMissingFields"));
       return;
     }
+    lookupEpochRef.current += 1;
     setIsLoading(true);
     setOrder(null);
     try {
-      const { data } = await axiosInstance.get<OrderDto>("/order/lookup", {
-        params: { orderId: parseInt(orderId, 10), customerName: customerName.trim() },
-      });
+      const data = await fetchOrderLookup(parseInt(orderId, 10), customerName);
       setOrder(data);
+      setLastUpdatedAt(new Date());
+      writeOrderStatusSession(orderId, customerName, data.orderStatus ?? undefined);
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {
+        clearOrderStatusSession();
         toast.error(t("orderStatus.notFound"));
       } else {
         toast.error(t("orderStatus.lookupFailed"));
@@ -122,6 +187,8 @@ function OrderStatusPage() {
   });
 
   const lineItems: OrderLineItemDto[] = order?.orderItems ?? order?.OrderItems ?? [];
+  const statusValue = order?.orderStatus ?? 0;
+  const isCompleted = statusValue === ORDER_STATUS.Completed;
 
   return (
     <div className="p-6 max-w-lg mx-auto">
@@ -169,8 +236,26 @@ function OrderStatusPage() {
               </li>
             ))}
           </ul>
-          <h2 className="text-xl font-bold mb-4">{t("orderStatus.statusHeader")}</h2>
-          <OrderTracker currentStatus={order.orderStatus ?? 0} />
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <h2 className="text-xl font-bold">{t("orderStatus.statusHeader")}</h2>
+            <span
+              className={`text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded ${
+                isCompleted
+                  ? "bg-gray-200 text-gray-600"
+                  : "bg-emerald-100 text-emerald-800"
+              }`}
+            >
+              {isCompleted ? t("orderStatus.trackingCompleteBadge") : t("orderStatus.liveBadge")}
+            </span>
+            {lastUpdatedAt ? (
+              <span className="text-xs text-gray-400 w-full sm:w-auto sm:ml-auto">
+                {t("orderStatus.lastUpdated", {
+                  time: dateTimeFormatter.format(lastUpdatedAt),
+                })}
+              </span>
+            ) : null}
+          </div>
+          <OrderTracker currentStatus={statusValue} />
           {ENABLE_STRIPE_PREPAY && !isPaid ? (
             <div className="mt-6 pt-4 border-t border-gray-200">
               <p className="text-gray-600 text-sm mb-3">{t("orderStatus.secureCheckoutDescription")}</p>

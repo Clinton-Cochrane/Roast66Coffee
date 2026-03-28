@@ -1,13 +1,34 @@
-import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { FaInstagram, FaBars, FaTimes, FaTshirt, FaShoppingCart, FaMugHot } from "react-icons/fa";
 
 import logo from "../logo.png";
+import { ORDER_STATUS } from "../constants/orderStatus";
+import {
+  ORDER_STATUS_SESSION_UPDATED_EVENT,
+  readOrderStatusSession,
+  type OrderStatusLookupSessionPayload,
+} from "../constants/orderStatusSession";
 import { useI18n } from "../i18n/LanguageContext";
 
 function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { t } = useI18n();
+  const location = useLocation();
+  const [orderTrackingSession, setOrderTrackingSession] =
+    useState<OrderStatusLookupSessionPayload | null>(() =>
+      typeof window !== "undefined" ? readOrderStatusSession() : null
+    );
+
+  useEffect(() => {
+    setOrderTrackingSession(readOrderStatusSession());
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const sync = () => setOrderTrackingSession(readOrderStatusSession());
+    window.addEventListener(ORDER_STATUS_SESSION_UPDATED_EVENT, sync);
+    return () => window.removeEventListener(ORDER_STATUS_SESSION_UPDATED_EVENT, sync);
+  }, []);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -61,7 +82,7 @@ function Navigation() {
               </span>
             </NavLink>
           </li>
-          <li>
+          <li className="flex flex-wrap items-center gap-1 md:gap-1.5">
             <NavLink
               to="/order"
               className={({ isActive }) =>
@@ -77,6 +98,23 @@ function Navigation() {
                 {t("nav.order")}
               </span>
             </NavLink>
+            {orderTrackingSession ? (
+              <Link
+                to="/order-status"
+                className="inline-flex items-center justify-center min-h-[2.5rem] min-w-[1.25rem] shrink-0 p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a64b2a] focus-visible:ring-offset-2"
+                aria-label={t("nav.orderTrackingActive")}
+                title={t("nav.orderTrackingActive")}
+              >
+                <span
+                  className={`block h-2.5 w-2.5 rounded-full ${
+                    orderTrackingSession.orderStatus === ORDER_STATUS.Completed
+                      ? "bg-gray-400"
+                      : "bg-amber-500 ring-2 ring-amber-200"
+                  }`}
+                  aria-hidden
+                />
+              </Link>
+            ) : null}
           </li>
           <li>
             <a
