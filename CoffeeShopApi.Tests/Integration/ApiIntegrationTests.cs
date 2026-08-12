@@ -319,6 +319,23 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
+    public async Task UpdateMenuItem_WithoutAdminToken_ReturnsUnauthorized()
+    {
+        var item = new MenuItem
+        {
+            Id = 1,
+            Name = "Unauthorized Update",
+            Price = 0.01m,
+            Description = "This update must not be accepted.",
+            CategoryType = CategoryType.COFFEE
+        };
+
+        var response = await _client.PutAsJsonAsync("/api/menu/1", item, JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task HealthEndpoint_ReturnsOk()
     {
         var response = await _client.GetAsync("/api/health");

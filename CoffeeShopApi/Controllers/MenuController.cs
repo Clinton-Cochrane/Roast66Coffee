@@ -31,6 +31,7 @@ public class MenuController : ControllerBase
         return CreatedAtAction(nameof(GetMenuItems), new { id = createdItem.Id }, createdItem);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPut("{id}")]
     public async Task<IActionResult> PutMenuItem(int id, MenuItem menuItem)
     {
