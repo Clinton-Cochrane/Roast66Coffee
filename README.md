@@ -1,315 +1,271 @@
 # Roast 66 Coffee
 
-Roast 66 Coffee is a full-stack web application for managing a coffee shop menu, orders, and admin operations. It uses a React frontend, an ASP.NET Core Web API backend, and PostgreSQL for data storage.
+Roast 66 Coffee is the ordering and shop-operations application for Roast 66's mobile coffee business. Customers can browse the menu, build drinks, place pickup orders, and follow preparation through a private tracking link. Staff use dedicated admin and cash views to manage the menu, process the order queue, and configure notifications.
 
-## Table of Contents
+The application is a React single-page frontend backed by an ASP.NET Core API and PostgreSQL. It is designed to run locally with Docker Compose and deploy to Render from the included Blueprint.
 
-- [Features](#features)
-- [Tech Stack](#tech-stack)
-- [Quick Start](#quick-start)
-- [Prerequisites](#prerequisites)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Run the App](#run-the-app)
-- [Database Migrations](#database-migrations)
-- [Seed the Database](#seed-the-database)
-- [Deployment (Render)](#deployment-render)
-- [Production Operations](#production-operations)
-- [License](#license)
+## What the Application Does
 
-## Features
+### Customer experience
 
-- View menu items and offerings.
-- Place customer orders.
-- Manage menu items from an admin dashboard.
-- Bulk import/export menu data as JSON.
-- Seed a default menu from admin bulk operations.
-- Use responsive UI across desktop and mobile.
+- Browse a categorized menu in English or Spanish.
+- Build drinks with quantities, flavors, add-ons, and notes.
+- Place pickup orders with optional email notifications.
+- Detect accidental duplicate submissions within a configurable window.
+- Receive a cryptographically random private tracking token after ordering.
+- Follow an order from received through preparing, ready for pickup, and completed.
+- Return to an active tracked order from the navigation bar on the same device.
+- Optionally download an order summary.
 
-## Tech Stack
+### Staff experience
 
-### Frontend
+- Use `/admin` for the order queue, menu management, bulk menu operations, and notification settings.
+- Use `/cash` for a streamlined shop-device workflow.
+- Advance order status and trigger customer-ready notifications.
+- Import, export, or explicitly seed menu data.
+- Register staff devices for web-push notifications.
 
-- React (Vite)
-- TypeScript
-- React Router
-- Axios
-- Tailwind CSS
-- React Icons
-- Vitest + Testing Library
+### Production safeguards
 
-### Backend
+- Production refuses to start without explicit admin credentials and a stable JWT signing key.
+- Admin sessions expire after eight hours, reject malformed or expired tokens, and synchronize logout across browser tabs.
+- Public order APIs use 256-bit tracking tokens instead of sequential IDs and customer identity.
+- Public tracking responses omit phone numbers, email addresses, provider IDs, and internal database fields.
+- Public order creation, tracking, login, and password-support endpoints are rate limited.
+- Production migrations run as a locked, one-time deployment step rather than during application startup.
 
-- .NET 8 (ASP.NET Core Web API)
-- Entity Framework Core
-- PostgreSQL
+Stripe checkout and Twilio SMS are feature-gated and disabled by default until their production integrations are approved and hardened.
 
-### Hosting and Infrastructure
+## Architecture
 
-- Render (frontend/backend hosting)
-- Docker (containerization)
+| Area | Technology |
+| --- | --- |
+| Frontend | React 18, TypeScript, React Router 7, Axios, Tailwind CSS, Vite |
+| Backend | .NET 8, ASP.NET Core Web API, Entity Framework Core |
+| Database | PostgreSQL |
+| Authentication | JWT bearer tokens for staff routes |
+| Testing | xUnit, ASP.NET integration tests, Vitest, Testing Library |
+| Deployment | Docker and Render Blueprint |
+| Automation | GitHub Actions, Dependabot, CodeQL |
 
-## Quick Start
+Repository layout:
 
-Use Docker Compose for the fastest local setup:
-
-1. Copy environment files:
-   - `env.example` -> `.env` (repo root, optional overrides)
-   - `roast66/.env.example` -> `roast66/.env`
-   - `CoffeeShopApi/.env.example` -> `CoffeeShopApi/.env`
-2. Ensure backend connection string uses `Host=postgres-db` in `CoffeeShopApi/.env`.
-3. Start the stack:
-
-```bash
-docker-compose up --build
+```text
+CoffeeShopApi/        ASP.NET Core API, EF models, migrations, and services
+CoffeeShopApi.Tests/  Backend unit and API integration tests
+roast66/              React frontend and frontend tests
+scripts/ops/          Health-check and keepalive helpers
+render.yaml           Render database, API, and static-site Blueprint
+docker-compose.yml    Local frontend, backend, and PostgreSQL stack
 ```
 
-Services:
+## Local Development
 
-- Frontend: `http://localhost:3000`
-- Backend: `http://localhost:5001`
-- PostgreSQL: started by Compose
+### Prerequisites
 
-## Prerequisites
+- Docker with Docker Compose for the recommended setup
+- Node.js 20+ and npm for frontend-only development
+- .NET 8 SDK for backend development and EF migrations
+- PostgreSQL when running the backend without Docker
 
-Install the following:
+### Recommended: Docker Compose
 
-- Node.js 18+
-- .NET 8 SDK
-- Docker Desktop
-- PostgreSQL (only required for non-Docker local runs)
+1. Create the local environment files:
 
-## Installation
+   ```bash
+   cp env.example .env
+   cp CoffeeShopApi/.env.example CoffeeShopApi/.env
+   cp roast66/.env.example roast66/.env
+   ```
 
-### Clone the Repository
+2. Start PostgreSQL, the API, and the frontend:
+
+   ```bash
+   docker compose up --build -d
+   ```
+
+3. Apply database migrations once:
+
+   ```bash
+   docker compose exec backend dotnet CoffeeShopApi.dll migrate
+   ```
+
+4. Open the services:
+
+   - Frontend: `http://localhost:3000`
+   - API: `http://localhost:5001`
+   - API health: `http://localhost:5001/api/health`
+
+5. Sign in at `/admin` and use **Seed Default Menu** if the database has no menu data.
+
+The Docker connection string must use `Host=postgres-db`, which is already shown in `CoffeeShopApi/.env.example`.
+
+### Run without Docker
+
+Create `CoffeeShopApi/appsettings.json` from `CoffeeShopApi/appsettings.Example.json` and set a local PostgreSQL connection string. Then run:
 
 ```bash
-git clone https://github.com/your-username/Roast66.git
-cd Roast66
+dotnet ef database update --project CoffeeShopApi
+dotnet run --project CoffeeShopApi
 ```
 
-### Install Frontend Dependencies
+In another terminal:
 
 ```bash
 cd roast66
 npm install
+npm run dev
 ```
+
+The API listens on port 80 unless `PORT` is set. Ensure `VITE_API_URL` points to the actual API URL.
 
 ## Configuration
 
-### Frontend Environment (`roast66/.env`)
+ASP.NET configuration uses double underscores in environment-variable names. For example, `Jwt:Key` becomes `Jwt__Key`.
 
-Copy `roast66/.env.example` to `roast66/.env`.
+### Required backend settings
 
-```env
-VITE_API_URL=http://localhost:5001/api
-VITE_ENABLE_STRIPE_CHECKOUT=false
-```
+| Setting | Purpose |
+| --- | --- |
+| `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
+| `Admin__Username` | Staff login username |
+| `Admin__Password` | Staff login password |
+| `Jwt__Key` | Stable signing secret of at least 32 characters |
+| `Jwt__Issuer` | JWT issuer; normally `Roast66Coffee` |
+| `Jwt__Audience` | JWT audience; normally `Roast66Coffee` |
+| `Jwt__TokenExpiryInHours` | Staff session duration; production default is `8` |
+| `AllowedOrigins` | Comma-separated frontend origins allowed by CORS |
 
-### Backend Configuration (local appsettings)
+Development and testing have explicit local credential defaults. Production has none and will fail during startup if required authentication settings are missing or unsafe.
 
-For local non-Docker runs, copy:
-
-- `CoffeeShopApi/appsettings.Example.json` -> `CoffeeShopApi/appsettings.json`
-
-Required keys:
-
-- `ConnectionStrings:DefaultConnection` (PostgreSQL connection string)
-- `Admin:Username`, `Admin:Password` (admin credentials)
-- `Jwt:Key` (minimum 32 chars), `Jwt:Issuer`, `Jwt:Audience`
-- `AllowedOrigins` (comma-separated frontend URLs; required in production)
-
-### Backend Environment (`CoffeeShopApi/.env`) for Docker
-
-For Docker Compose, backend settings are loaded from `CoffeeShopApi/.env` (not `appsettings.json`).
-
-- Copy `CoffeeShopApi/.env.example` -> `CoffeeShopApi/.env`
-- Use `Host=postgres-db` (service name) in the connection string, not `localhost`
-
-## Run the App
-
-### Option A: Docker Compose
-
-From the repository root:
-
-```bash
-docker-compose up --build
-```
-
-### Option B: Run Without Docker
-
-Start backend:
-
-```bash
-cd CoffeeShopApi
-dotnet ef database update
-dotnet run
-```
-
-Backend default: `http://localhost:80`  
-Set `PORT` to use another port.
-
-Start frontend:
-
-```bash
-cd roast66
-npm start
-```
-
-Frontend default: `http://localhost:3000`
-
-## Database Migrations
-
-Application startup never applies production migrations. Apply them as a controlled one-time step:
-
-```bash
-dotnet CoffeeShopApi.dll migrate
-```
-
-The command takes a PostgreSQL advisory lock, applies pending EF migrations once, and exits. Render
-runs it through `preDeployCommand` before starting the new API deployment. Do not run this command
-concurrently from a shell or application instance.
-
-To create a migration locally, use `dotnet ef migrations add MigrationName` from the repository root.
-
-## Seed the Database
-
-Use one of the following options:
-
-- Admin UI: sign in at `/admin`, then run **Seed Default Menu** from Bulk Menu Operations.
-- API (admin auth required):
-
-```http
-GET /api/Admin/seed-menu?confirm=true
-```
-
-## Deployment (Render)
-
-This repository includes a `render.yaml` Blueprint for one-click deployment.
-
-1. Push the repository to GitHub and connect it in Render.
-2. Create a new Blueprint Instance in Render.
-3. Render provisions:
-   - PostgreSQL database: `roast66-db`
-   - Backend API service: `roast66-api` (Docker)
-   - Frontend static site: `roast66-web`
-4. Configure required environment variables in Render.
-
-### Backend Environment Variables (`roast66-api`)
-
-- `ASPNETCORE_ENVIRONMENT=Production`
-- `ConnectionStrings__DefaultConnection`
-- `Admin__Username`
-- `Admin__Password` (use strong value)
-- `Jwt__Key` (stable secret, at least 32 chars)
-- `Jwt__Issuer=Roast66Coffee`
-- `Jwt__Audience=Roast66Coffee`
-- `Jwt__TokenExpiryInHours=8`
-- `AllowedOrigins` (comma-separated frontend URLs)
-- `Order__DuplicateDetectionWindowMinutes=2`
-
-Optional:
-
-- Stripe: `Stripe__SecretKey`, `Stripe__WebhookSecret`, `Stripe__FrontendBaseUrl`
-- Alerts/email: `Resend__ApiKey`, `Resend__From`, `Support__AlertEmail`
-
-`Jwt__Key` must be stable and explicitly configured. Production refuses to start without it. Generate
-a secret, store it in Render, and do not regenerate it during ordinary deployments:
+Generate a production JWT key with:
 
 ```bash
 openssl rand -base64 48
 ```
 
-### Frontend Environment Variables (`roast66-web`)
+Keep this value stable during normal deployments. Rotating it immediately invalidates every active staff session.
 
-- `VITE_API_URL` (example: `https://roast66coffee.onrender.com/api`)
-- `VITE_ENABLE_STRIPE_CHECKOUT=false` (set `true` when ready)
-- `VITE_VAPID_PUBLIC_KEY` (optional; web push for staff devices)
+### Frontend settings
 
-Static site output is `roast66/dist/` (configure `staticPublishPath` accordingly).
+| Setting | Purpose |
+| --- | --- |
+| `VITE_API_URL` | API base URL including `/api`, with no trailing slash |
+| `VITE_ENABLE_STRIPE_CHECKOUT` | Enables Stripe checkout UI when set to `true` |
+| `VITE_VAPID_PUBLIC_KEY` | Optional public key for staff web push |
 
-### Post-Deploy Checks
+Vite settings are embedded at build time, so changing them requires rebuilding the static site.
 
-1. Redeploy backend if `AllowedOrigins` needs actual frontend URL updates.
-2. Redeploy frontend if `VITE_API_URL` or other `VITE_*` vars changed (they are baked in at build time).
-3. Seed menu data via admin UI or `GET /api/Admin/seed-menu?confirm=true`.
+### Optional integrations
 
-## Production Operations
+- Resend: customer and support email delivery
+- Web Push/VAPID: staff-device notifications
+- Stripe: optional checkout, disabled by default
+- Twilio: optional SMS, disabled by default
+- Supabase heartbeat: optional free-tier connection warmup
 
-### Post-Deployment Operations
+See the checked-in `.env.example` and `appsettings.Example.json` files for the complete key list.
 
-- Database backups: verify retention policy in Render dashboard.
-- Health check endpoint: `GET /api/health`
-- **GitHub automation (free):** CI runs backend and frontend tests on push/PR to `main`; Dependabot opens weekly dependency PRs; CodeQL scans C# and JavaScript for security issues. Workflows live under `.github/workflows/`.
-- **Scheduled health ping (optional):** `scheduled-health-ping.yml` runs every five minutes. Set Actions secrets **`API_HEALTH_CHECK_URL`** (e.g. `https://<api-host>/api/health`) and **`HEALTH_CHECK_URL`** (frontend static URL). Optional **`SUPABASE_WAKE_URL`**. Schedules run from the default branch; GitHub may pause them after long repo inactivity—any push or re-enabling Actions refreshes that.
-- **External uptime (recommended):** Use a free monitor (e.g. Better Stack, UptimeRobot) if you want alerts when the API is down; the scheduled ping does not notify on failure by default. See `PRODUCTION_READINESS.md` §5 for Neon/Fly optional redundancy.
-- Keepalive mode (free-tier mitigation):
-  - Admin dashboard sends `POST /api/ops/keepalive/heartbeat` while open.
-  - API warmup runs in configured `KeepAlive:*` window.
-  - Optional helper: `scripts/ops/keepalive-pulse.sh` (requires `ADMIN_JWT_TOKEN`).
-- Stripe checkout (optional):
-  - Frontend starts checkout via `POST /api/payments/checkout-session`.
-  - Webhook endpoint: `POST /api/payments/webhook`.
-  - Orders finalize on `checkout.session.completed`.
+## Database Changes and Menu Data
 
-### Rotate Admin Password and JWT Key
+Normal API startup never applies migrations or seeds data.
 
-1. Open `roast66-api` -> **Environment** in Render Dashboard.
-2. Update `Admin__Username` and/or `Admin__Password`.
-3. Rotate `Jwt__Key` when needed (recommended after security incidents).
-4. Save and redeploy `roast66-api`.
-5. Staff sign in again with updated credentials.
+Create a migration locally:
 
-Notes:
+```bash
+dotnet ef migrations add MigrationName --project CoffeeShopApi
+```
 
-- Rotating `Admin__Password` changes future login credentials.
-- Rotating `Jwt__Key` invalidates active sessions (`/admin`, `/cash`).
-- Admin sessions have an eight-hour absolute lifetime and do not silently refresh. Expired or malformed
-  tokens are cleared before protected pages render and logout is synchronized across browser tabs.
+Apply migrations from a published application:
 
-### Lost Staff Device
+```bash
+dotnet CoffeeShopApi.dll migrate
+```
 
-1. Immediately update `Admin__Password` and `Jwt__Key` in Render.
-2. Redeploy the API. The stable replacement key must be at least 32 characters.
-3. Confirm a token copied from the lost device receives `401` from an admin endpoint.
+The migration command takes a PostgreSQL advisory lock, applies pending EF migrations, and exits. Render invokes it as a pre-deploy command so migrations finish before new application instances receive traffic.
+
+Menu seeding is intentionally separate from schema migration. Use either:
+
+- `/admin` → **Bulk Menu Operations** → **Seed Default Menu**
+- Authenticated `GET /api/Admin/seed-menu?confirm=true`
+
+## Testing and Quality Checks
+
+Run backend tests:
+
+```bash
+dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
+```
+
+Run the complete frontend gate:
+
+```bash
+cd roast66
+npm test -- --run
+npm run lint
+npm run build
+npm audit
+```
+
+The current baseline is 41 backend tests and 67 frontend tests. The production frontend build performs TypeScript checks before Vite bundles the application.
+
+## Render Deployment
+
+[`render.yaml`](render.yaml) provisions:
+
+- `roast66-db`: PostgreSQL
+- `roast66-api`: Docker-based ASP.NET API
+- `roast66-web`: Vite static frontend
+
+Deployment flow:
+
+1. Connect the GitHub repository to Render and create a Blueprint instance.
+2. Populate every `sync: false` secret in the Render dashboard.
+3. Confirm `Admin__Username`, `Admin__Password`, and `Jwt__Key` before the first production deployment.
+4. Confirm `AllowedOrigins`, `Stripe__FrontendBaseUrl`, and `VITE_API_URL` use the actual Render URLs.
+5. Let the API pre-deploy command apply migrations.
+6. Seed the menu explicitly if this is a new database.
+
+Post-deploy verification:
+
+1. `GET /api/health` succeeds.
+2. The menu loads from the public frontend.
+3. Staff can sign in at both `/admin` and `/cash`.
+4. A test order can be placed and retrieved using its private tracking link.
+5. An unauthenticated request to an admin endpoint returns `401`.
+
+## Operations Runbook
+
+### Lost or shared staff device
+
+1. Change `Admin__Password` and `Jwt__Key` in Render immediately.
+2. Redeploy the API.
+3. Confirm an old token receives `401` from an admin endpoint.
 4. Confirm the previous password can no longer sign in.
-5. Sign trusted `/admin` and `/cash` devices in again and record the rotation time.
+5. Sign trusted staff devices in again and record the rotation time.
 
-JWT rotation invalidates every staff device; this application does not have per-device revocation.
+JWT rotation invalidates all staff devices because the application does not currently maintain per-device revocation records.
 
-### Migration, Rollback, and Restore
+### Migration, rollback, and restore
 
-1. Confirm a current database backup exists before deployment.
-2. Deploy additive/expand migrations before code that depends on them; defer destructive contract
-   migrations until old application versions are no longer running.
-3. Let Render's pre-deploy command apply migrations, then verify `/api/health`, `/api/menu`, an admin
-   login, and a token-based order lookup.
-4. For application failures, roll back to the last compatible image. Prefer a forward-fix for schema
-   failures; use EF `Down` only when it is proven data-safe.
-5. For data loss, restore the backup into staging first. Verify migration history, menu and order counts,
-   public tracking, admin reads, and payment identifiers before promoting the restored database.
-6. Perform and record a staging restore drill at least quarterly.
+1. Confirm a current backup exists before deploying a migration.
+2. Prefer additive expand/migrate/contract changes that remain compatible during deployment.
+3. Verify health, menu reads, admin login, and a known tracking token after migration.
+4. Roll application images back only to versions compatible with the current schema.
+5. Prefer a forward fix for schema problems; run a migration `Down` only when its data safety is proven.
+6. Restore backups into staging first and validate migration history, row counts, tracking, and payment identifiers.
+7. Perform and record a staging restore drill at least quarterly.
 
-### Production Runbook
+### Monitoring and automation
 
-- Staging parity:
-  - Keep staging env var keys aligned with production.
-  - Run migrations and checkout tests in staging before release.
-- Backup verification cadence:
-  - Daily: confirm latest backup exists.
-  - Weekly: restore to staging and validate key reads (`/api/menu` and a known token-based order lookup).
-- Incident rollback:
-  - Roll frontend/backend to last known-good deployment.
-  - For data issues, validate restore in staging first.
-- Billing guardrails:
-  - Configure Render/Supabase budget alerts.
-  - Review usage monthly before plan changes.
+- Health endpoint: `GET /api/health`
+- GitHub Actions run tests and security checks on pushes and pull requests.
+- Dependabot monitors npm and NuGet dependencies.
+- CodeQL scans C# and JavaScript/TypeScript.
+- The optional scheduled health workflow uses `API_HEALTH_CHECK_URL` and `HEALTH_CHECK_URL` repository secrets.
+- `scripts/ops/keepalive-pulse.sh` can keep the API warm using `API_BASE_URL` and `ADMIN_JWT_TOKEN`.
 
-### Payments and Compliance Checklist
-
-- Stripe business profile and KYC complete.
-- Terms, Privacy Policy, and Refund/Cancellation Policy published.
-- Reconciliation process defined (daily payouts, monthly close).
+Use an external uptime monitor when alert delivery is required; the scheduled GitHub health ping does not provide a full incident-alerting service.
 
 ## License
 
