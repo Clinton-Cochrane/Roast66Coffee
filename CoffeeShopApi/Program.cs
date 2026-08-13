@@ -6,8 +6,6 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using CoffeeShopApi.Data;
 using System;
-using System.Collections.Generic;
-using System.Security.Cryptography;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -27,7 +25,12 @@ namespace CoffeeShopApi
             {
                 Log.Information("Starting the application...");
                 var host = CreateHostBuilder(args).Build();
-                ApplyMigrations(host);
+                if (args.Length == 1 && string.Equals(args[0], "migrate", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyMigrations(host);
+                    return;
+                }
+
                 host.Run();
             }
             catch (Exception ex)
@@ -52,15 +55,20 @@ namespace CoffeeShopApi
                 var env = services.GetRequiredService<IWebHostEnvironment>();
 
                 if (env.IsEnvironment("Testing"))
-                {
-                    context.Database.EnsureCreated();
-                    DbInitializer.Initialize(context);
-                }
-                else
+                    throw new InvalidOperationException("The migrate command cannot run in Testing.");
+
+                Console.WriteLine("Acquiring the database migration lock...");
+                context.Database.OpenConnection();
+                context.Database.ExecuteSqlRaw("SELECT pg_advisory_lock(7266677001)");
+                try
                 {
                     Console.WriteLine("Applying database migrations...");
                     context.Database.Migrate();
-                    DbInitializer.Initialize(context);
+                }
+                finally
+                {
+                    context.Database.ExecuteSqlRaw("SELECT pg_advisory_unlock(7266677001)");
+                    context.Database.CloseConnection();
                 }
 
                 Console.WriteLine("Database initialization successful.");
@@ -82,39 +90,7 @@ namespace CoffeeShopApi
                     .ReadFrom.Configuration(context.Configuration)
                     .Enrich.FromLogContext()
                     .WriteTo.Console())
-                .ConfigureAppConfiguration((context, config) =>
-                {
-                    // Probe appsettings + env the same way the host does. Docker/Render images often have no
-                    // gitignored appsettings.json; Jwt__Key is easy to miss in the dashboard — inject a key so the app boots.
-                    var probe = new ConfigurationBuilder()
-                        .SetBasePath(context.HostingEnvironment.ContentRootPath)
-                        .AddJsonFile("appsettings.json", optional: true)
-                        .AddJsonFile($"appsettings.{context.HostingEnvironment.EnvironmentName}.json", optional: true)
-                        .AddEnvironmentVariables()
-                        .Build();
-
-                    if (context.HostingEnvironment.IsEnvironment("Testing"))
-                    {
-                        (probe as IDisposable)?.Dispose();
-                        return;
-                    }
-
-                    var jwtKey = probe["Jwt:Key"];
-                    (probe as IDisposable)?.Dispose();
-
-                    if (!string.IsNullOrEmpty(jwtKey) && jwtKey.Length >= 32)
-                        return;
-
-                    var generated = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
-                    config.AddInMemoryCollection(new Dictionary<string, string?>
-                    {
-                        ["Jwt:Key"] = generated
-                    });
-                    Console.WriteLine(
-                        "WARN: Jwt:Key was missing or shorter than 32 characters. " +
-                        "Using a random signing key for this process. " +
-                        "Set Jwt__Key (at least 32 characters) in the environment for stable keys across restarts.");
-                })
+                .ConfigureAppConfiguration(SecurityConfiguration.ApplyDevelopmentDefaults)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();

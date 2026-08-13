@@ -11,6 +11,7 @@ import Loading from "../components/common/Loading";
 import Button from "../components/common/Button";
 import useKeepAliveHeartbeat from "../hooks/useKeepAliveHeartbeat";
 import { useI18n } from "../i18n/LanguageContext";
+import { clearAdminSession, getAdminToken } from "../authSession";
 
 const ADMIN_TAB_IDS = {
   ORDERS: "orders",
@@ -36,7 +37,7 @@ function AdminPage() {
   useKeepAliveHeartbeat(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getAdminToken();
     if (!token) {
       navigate("/admin-login");
     } else {
@@ -49,7 +50,7 @@ function AdminPage() {
   }, []);
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem("token");
+    clearAdminSession();
     navigate("/admin", { replace: true });
   }, [navigate]);
 

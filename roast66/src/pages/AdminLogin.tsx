@@ -5,6 +5,7 @@ import { toast } from "react-toastify";
 import FormInput from "../components/common/FormInput";
 import Button from "../components/common/Button";
 import { useI18n } from "../i18n/LanguageContext";
+import { setAdminSession } from "../authSession";
 
 type AdminLoginProps = {
   onLoginSuccess?: () => void;
@@ -24,7 +25,7 @@ const AdminLogin = ({ onLoginSuccess }: AdminLoginProps) => {
         username,
         password,
       });
-      localStorage.setItem("token", response.data.token);
+      setAdminSession(response.data.token);
       onLoginSuccess?.();
     } catch (err: unknown) {
       const status = axios.isAxiosError(err) ? err.response?.status : undefined;

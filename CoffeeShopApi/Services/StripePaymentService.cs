@@ -87,8 +87,8 @@ public class StripePaymentService
                 throw new InvalidOperationException("This order has no billable items.");
             }
 
-            successUrl = $"{frontendBaseUrl}/order-status?checkout=success&orderId={prepayId}";
-            cancelUrl = $"{frontendBaseUrl}/order-status?checkout=cancelled&orderId={prepayId}";
+            successUrl = $"{frontendBaseUrl}/order-status?checkout=success&token={order.TrackingToken}";
+            cancelUrl = $"{frontendBaseUrl}/order-status?checkout=cancelled&token={order.TrackingToken}";
 
             payloadToStore = new CheckoutSessionRequest
             {

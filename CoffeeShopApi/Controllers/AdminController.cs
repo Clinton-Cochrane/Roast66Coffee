@@ -54,8 +54,8 @@ namespace CoffeeShopApi.Controllers
         [EnableRateLimiting("Login")]
         public IActionResult Login([FromBody] LoginModel login)
         {
-            var adminUser = _configuration["Admin:Username"] ?? "admin";
-            var adminPassword = _configuration["Admin:Password"] ?? "password";
+            var adminUser = _configuration["Admin:Username"];
+            var adminPassword = _configuration["Admin:Password"];
             if (string.Equals(login.Username, adminUser, StringComparison.Ordinal) &&
                 string.Equals(login.Password, adminPassword, StringComparison.Ordinal))
             {
@@ -95,7 +95,7 @@ namespace CoffeeShopApi.Controllers
         {
             return Ok(new CredentialSettingsInfo
             {
-                Username = _configuration["Admin:Username"] ?? "admin",
+                Username = _configuration["Admin:Username"] ?? string.Empty,
                 UsernameEnvKey = "Admin__Username",
                 PasswordEnvKey = "Admin__Password",
                 UpdateInstructions = "Update these environment variables in your deployment provider and redeploy the API service."
@@ -110,7 +110,7 @@ namespace CoffeeShopApi.Controllers
             {
                 throw new InvalidOperationException("JWT key is invalid or too short. It must be at least 32 characters long.");
             }
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey ?? "default_key"));
+            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
             var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
@@ -246,12 +246,15 @@ namespace CoffeeShopApi.Controllers
                 {
                     message = "Duplicate order detected. An identical order was placed recently.",
                     existingOrderId = duplicate.Id,
-                    order = duplicate
+                    order = PublicOrderDto.FromOrder(duplicate)
                 });
             }
             var newOrder = await _orderService.CreateOrderAsync(order);
             await _notificationService.SendOrderNotificationAsync(newOrder, cancellationToken);
-            return CreatedAtAction(nameof(GetOrders), new { id = newOrder.Id }, newOrder);
+            return CreatedAtAction(
+                nameof(GetOrders),
+                new { id = newOrder.Id },
+                PublicOrderDto.FromOrder(newOrder));
         }
 
         [Authorize(Roles = "Admin")]

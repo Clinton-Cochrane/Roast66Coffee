@@ -54,12 +54,12 @@ function Navigation() {
         return;
       }
       try {
-        const data = await fetchOrderLookup(parseInt(session.orderId, 10), session.customerName);
+        const data = await fetchOrderLookup(session.trackingToken);
         if (cancelled) {
           return;
         }
         const next = getOrderStatusFromDto(data);
-        writeOrderStatusSession(session.orderId, session.customerName, next);
+        writeOrderStatusSession(session.trackingToken, next);
       } catch {
         /* ignore */
       }
@@ -81,8 +81,7 @@ function Navigation() {
     };
   }, [
     location.pathname,
-    orderTrackingSession?.orderId,
-    orderTrackingSession?.customerName,
+    orderTrackingSession?.trackingToken,
     orderTrackingSession?.orderStatus,
   ]);
 
@@ -160,7 +159,7 @@ function Navigation() {
             </NavLink>
             {hasActiveTrackedOrder ? (
               <Link
-                to="/order-status"
+                to={`/order-status?token=${encodeURIComponent(orderTrackingSession.trackingToken)}`}
                 className="inline-flex items-center justify-center min-h-[2.5rem] min-w-[1.25rem] shrink-0 p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a64b2a] focus-visible:ring-offset-2"
                 aria-label={t("nav.orderTrackingActive")}
                 title={t("nav.orderTrackingActive")}

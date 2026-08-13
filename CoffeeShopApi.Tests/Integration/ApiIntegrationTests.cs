@@ -237,22 +237,33 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task GetOrderSummary_WithMatchingPhone_ReturnsSummaryPayload()
+    public async Task PublicTracking_WithToken_ReturnsMinimalOrderAndSummary()
     {
         var order = CreateValidOrder(
             $"Summary-{Guid.NewGuid():N}",
             $"555{Random.Shared.Next(1000000, 9999999)}");
         var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
         post.EnsureSuccessStatusCode();
-        var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
+        var created = await post.Content.ReadFromJsonAsync<PublicOrderResponse>(JsonOptions);
         Assert.NotNull(created);
 
-        var summary = await _client.GetAsync($"/api/order/{created!.Id}/summary?phone={order.CustomerPhone}");
+        var tracked = await _client.GetAsync($"/api/order/track/{created!.TrackingToken}");
+        tracked.EnsureSuccessStatusCode();
+        var trackedJson = await tracked.Content.ReadAsStringAsync();
+        Assert.DoesNotContain("customerPhone", trackedJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("customerEmail", trackedJson, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("stripePaymentIntentId", trackedJson, StringComparison.OrdinalIgnoreCase);
+
+        var summary = await _client.GetAsync($"/api/order/track/{created.TrackingToken}/summary");
         summary.EnsureSuccessStatusCode();
         var summaryPayload = await summary.Content.ReadFromJsonAsync<OrderSummaryResponse>(JsonOptions);
         Assert.NotNull(summaryPayload);
         Assert.Equal(created.Id, summaryPayload!.OrderId);
-        Assert.Equal("/order-status", summaryPayload.TrackerUrl);
+        Assert.Equal($"/order-status?token={created.TrackingToken}", summaryPayload.TrackerUrl);
+
+        var oldLookup = await _client.GetAsync(
+            $"/api/order/lookup?orderId={created.Id}&customerName={Uri.EscapeDataString(order.CustomerName)}");
+        Assert.Equal(HttpStatusCode.NotFound, oldLookup.StatusCode);
     }
 
     [Fact]
@@ -448,6 +459,12 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     {
         public int OrderId { get; set; }
         public string TrackerUrl { get; set; } = string.Empty;
+    }
+
+    private class PublicOrderResponse
+    {
+        public int Id { get; set; }
+        public string TrackingToken { get; set; } = string.Empty;
     }
 
 }

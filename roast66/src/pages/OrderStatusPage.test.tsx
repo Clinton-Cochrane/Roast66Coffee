@@ -50,7 +50,7 @@ describe("OrderStatusPage", () => {
   it("runs lookup from session on mount when saved session exists", async () => {
     sessionStorage.setItem(
       ORDER_STATUS_LOOKUP_SESSION_KEY,
-      JSON.stringify({ orderId: "42", customerName: "Alex", orderStatus: 1 })
+      JSON.stringify({ trackingToken: "token-42", orderStatus: 1 })
     );
     render(
       <LanguageProvider>
@@ -60,9 +60,7 @@ describe("OrderStatusPage", () => {
       </LanguageProvider>
     );
     await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith("/order/lookup", {
-        params: { orderId: 42, customerName: "Alex" },
-      });
+      expect(mockGet).toHaveBeenCalledWith("/order/track/token-42");
     });
     expect(await screen.findByText(/Order #42/i)).toBeInTheDocument();
   });
@@ -80,7 +78,7 @@ describe("OrderStatusPage", () => {
 
     sessionStorage.setItem(
       ORDER_STATUS_LOOKUP_SESSION_KEY,
-      JSON.stringify({ orderId: "42", customerName: "Alex", orderStatus: 1 })
+      JSON.stringify({ trackingToken: "token-42", orderStatus: 1 })
     );
     const { container } = render(
       <LanguageProvider>
@@ -99,11 +97,9 @@ describe("OrderStatusPage", () => {
       throw new Error("form not found");
     }
 
-    const orderIdInput = screen.getByRole("textbox", { name: /Order ID/i });
-    const nameInput = screen.getByRole("textbox", { name: /Your Name/i });
+    const trackingInput = screen.getByRole("textbox", { name: /tracking code/i });
 
-    fireEvent.change(orderIdInput, { target: { value: "99" } });
-    fireEvent.change(nameInput, { target: { value: "Bob" } });
+    fireEvent.change(trackingInput, { target: { value: "token-99" } });
     fireEvent.submit(form);
 
     expect(await screen.findByText(/Order #99/i)).toBeInTheDocument();
@@ -111,8 +107,7 @@ describe("OrderStatusPage", () => {
     const storedAfterManual = JSON.parse(
       sessionStorage.getItem(ORDER_STATUS_LOOKUP_SESSION_KEY) ?? "{}"
     );
-    expect(storedAfterManual.orderId).toBe("99");
-    expect(storedAfterManual.customerName).toBe("Bob");
+    expect(storedAfterManual.trackingToken).toBe("token-99");
 
     resolveRestore({ data: lookupResponse });
 
@@ -124,8 +119,7 @@ describe("OrderStatusPage", () => {
     const storedAfterStaleRestore = JSON.parse(
       sessionStorage.getItem(ORDER_STATUS_LOOKUP_SESSION_KEY) ?? "{}"
     );
-    expect(storedAfterStaleRestore.orderId).toBe("99");
-    expect(storedAfterStaleRestore.customerName).toBe("Bob");
+    expect(storedAfterStaleRestore.trackingToken).toBe("token-99");
   });
 
   it("polling uses last successful lookup credentials, not in-progress form edits", async () => {
@@ -144,29 +138,23 @@ describe("OrderStatusPage", () => {
       throw new Error("form not found");
     }
 
-    const orderIdInput = screen.getByRole("textbox", { name: /Order ID/i });
-    const nameInput = screen.getByRole("textbox", { name: /Your Name/i });
+    const trackingInput = screen.getByRole("textbox", { name: /tracking code/i });
 
-    fireEvent.change(orderIdInput, { target: { value: "42" } });
-    fireEvent.change(nameInput, { target: { value: "Alex" } });
+    fireEvent.change(trackingInput, { target: { value: "token-42" } });
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith("/order/lookup", {
-        params: { orderId: 42, customerName: "Alex" },
-      });
+      expect(mockGet).toHaveBeenCalledWith("/order/track/token-42");
     });
 
     mockGet.mockClear();
 
-    fireEvent.change(orderIdInput, { target: { value: "1" } });
+    fireEvent.change(trackingInput, { target: { value: "token-being-typed" } });
 
     await vi.advanceTimersByTimeAsync(45_000);
 
     expect(mockGet).toHaveBeenCalledTimes(1);
-    expect(mockGet).toHaveBeenCalledWith("/order/lookup", {
-      params: { orderId: 42, customerName: "Alex" },
-    });
+    expect(mockGet).toHaveBeenCalledWith("/order/track/token-42");
 
     vi.useRealTimers();
   });

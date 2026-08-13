@@ -14,6 +14,7 @@ services:
     dockerfilePath: ./Dockerfile.backend
     dockerContext: .
     healthCheckPath: /api/health
+    preDeployCommand: dotnet CoffeeShopApi.dll migrate
     envVars:
       - key: ConnectionStrings__DefaultConnection
         fromDatabase:
@@ -23,15 +24,14 @@ services:
         sync: false
       - key: Admin__Password
         sync: false
-      # Auto-generated 256-bit secret (base64); avoids deploy crash when Jwt__Key was never set in the dashboard.
       - key: Jwt__Key
-        generateValue: true
+        sync: false
       - key: Jwt__Issuer
         value: Roast66Coffee
       - key: Jwt__Audience
         value: Roast66Coffee
       - key: Jwt__TokenExpiryInHours
-        value: "16"
+        value: "8"
       - key: AllowedOrigins
         value: "https://roast66-web.onrender.com"
         sync: false

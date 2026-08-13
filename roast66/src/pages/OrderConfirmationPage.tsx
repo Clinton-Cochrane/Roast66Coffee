@@ -5,6 +5,7 @@ import Button from "../components/common/Button";
 import { useI18n } from "../i18n/LanguageContext";
 import { getOrderStatusFromDto } from "../constants/orderStatusParse";
 import type { OrderDto, OrderLineItemDto } from "../types/api";
+import { writeOrderStatusSession } from "../constants/orderStatusSession";
 
 function OrderConfirmationPage() {
   const { locale, t } = useI18n();
@@ -16,6 +17,12 @@ function OrderConfirmationPage() {
     order?.customerNotificationOptIn ?? order?.CustomerNotificationOptIn
   );
   const hasEmailUpdates = notificationOptIn && customerEmail.trim().length > 0;
+  const trackingToken = order?.trackingToken ?? order?.TrackingToken ?? "";
+  const statusVal = order ? getOrderStatusFromDto(order) : 0;
+
+  React.useEffect(() => {
+    if (trackingToken) writeOrderStatusSession(trackingToken, statusVal);
+  }, [trackingToken, statusVal]);
 
   const currencyFormatter = new Intl.NumberFormat(locale, {
     style: "currency",
@@ -57,8 +64,7 @@ function OrderConfirmationPage() {
     const summary = {
       orderNumber: order.id ?? order.Id,
       customerName: order.customerName ?? order.CustomerName,
-      customerPhone: order.customerPhone ?? order.CustomerPhone,
-      trackerUrl: `${window.location.origin}/order-status`,
+      trackerUrl: `${window.location.origin}/order-status?token=${encodeURIComponent(trackingToken)}`,
       items: items.map((item) => ({
         name: item.menuItem?.name ?? item.MenuItem?.name ?? t("orderConfirmation.itemFallback"),
         quantity: item.quantity ?? 1,
@@ -81,8 +87,6 @@ function OrderConfirmationPage() {
   };
 
   const orderId = order.id ?? order.Id ?? 0;
-  const statusVal = getOrderStatusFromDto(order);
-
   return (
     <div className="p-6 max-w-lg mx-auto">
       <h1 className="text-3xl md:text-4xl font-bold mb-2 tracking-[0.01em] text-[#4a3326]">
@@ -138,7 +142,10 @@ function OrderConfirmationPage() {
       <div className="mt-8 pt-6 border-t border-[#ddcdbf]">
         <p className="text-sm text-[#5b4940] mb-2">
           {t("orderConfirmation.laterStatusStart")}{" "}
-          <Link to="/order-status" className="text-[#6c89a2] underline">
+          <Link
+            to={`/order-status?token=${encodeURIComponent(trackingToken)}`}
+            className="text-[#6c89a2] underline"
+          >
             {t("orderStatus.title")}
           </Link>{" "}
           {t("orderConfirmation.laterStatusEnd", { orderId })}

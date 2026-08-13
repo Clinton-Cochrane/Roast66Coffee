@@ -160,11 +160,17 @@ Frontend default: `http://localhost:3000`
 
 ## Database Migrations
 
+Application startup never applies production migrations. Apply them as a controlled one-time step:
+
 ```bash
-cd CoffeeShopApi
-dotnet ef migrations add MigrationName
-dotnet ef database update
+dotnet CoffeeShopApi.dll migrate
 ```
+
+The command takes a PostgreSQL advisory lock, applies pending EF migrations once, and exits. Render
+runs it through `preDeployCommand` before starting the new API deployment. Do not run this command
+concurrently from a shell or application instance.
+
+To create a migration locally, use `dotnet ef migrations add MigrationName` from the repository root.
 
 ## Seed the Database
 
@@ -198,7 +204,7 @@ This repository includes a `render.yaml` Blueprint for one-click deployment.
 - `Jwt__Key` (stable secret, at least 32 chars)
 - `Jwt__Issuer=Roast66Coffee`
 - `Jwt__Audience=Roast66Coffee`
-- `Jwt__TokenExpiryInHours=16`
+- `Jwt__TokenExpiryInHours=8`
 - `AllowedOrigins` (comma-separated frontend URLs)
 - `Order__DuplicateDetectionWindowMinutes=2`
 
@@ -207,11 +213,8 @@ Optional:
 - Stripe: `Stripe__SecretKey`, `Stripe__WebhookSecret`, `Stripe__FrontendBaseUrl`
 - Alerts/email: `Resend__ApiKey`, `Resend__From`, `Support__AlertEmail`
 
-`Jwt__Key` note:
-
-- Blueprint may auto-generate this value.
-- If unset, the API creates a random key at startup and logs a warning.
-- For production stability, set a fixed secret manually (example generation):
+`Jwt__Key` must be stable and explicitly configured. Production refuses to start without it. Generate
+a secret, store it in Render, and do not regenerate it during ordinary deployments:
 
 ```bash
 openssl rand -base64 48
@@ -261,6 +264,31 @@ Notes:
 
 - Rotating `Admin__Password` changes future login credentials.
 - Rotating `Jwt__Key` invalidates active sessions (`/admin`, `/cash`).
+- Admin sessions have an eight-hour absolute lifetime and do not silently refresh. Expired or malformed
+  tokens are cleared before protected pages render and logout is synchronized across browser tabs.
+
+### Lost Staff Device
+
+1. Immediately update `Admin__Password` and `Jwt__Key` in Render.
+2. Redeploy the API. The stable replacement key must be at least 32 characters.
+3. Confirm a token copied from the lost device receives `401` from an admin endpoint.
+4. Confirm the previous password can no longer sign in.
+5. Sign trusted `/admin` and `/cash` devices in again and record the rotation time.
+
+JWT rotation invalidates every staff device; this application does not have per-device revocation.
+
+### Migration, Rollback, and Restore
+
+1. Confirm a current database backup exists before deployment.
+2. Deploy additive/expand migrations before code that depends on them; defer destructive contract
+   migrations until old application versions are no longer running.
+3. Let Render's pre-deploy command apply migrations, then verify `/api/health`, `/api/menu`, an admin
+   login, and a token-based order lookup.
+4. For application failures, roll back to the last compatible image. Prefer a forward-fix for schema
+   failures; use EF `Down` only when it is proven data-safe.
+5. For data loss, restore the backup into staging first. Verify migration history, menu and order counts,
+   public tracking, admin reads, and payment identifiers before promoting the restored database.
+6. Perform and record a staging restore drill at least quarterly.
 
 ### Production Runbook
 
@@ -269,7 +297,7 @@ Notes:
   - Run migrations and checkout tests in staging before release.
 - Backup verification cadence:
   - Daily: confirm latest backup exists.
-  - Weekly: restore to staging and validate key reads (`/api/menu`, `/api/order/lookup`).
+  - Weekly: restore to staging and validate key reads (`/api/menu` and a known token-based order lookup).
 - Incident rollback:
   - Roll frontend/backend to last known-good deployment.
   - For data issues, validate restore in staging first.

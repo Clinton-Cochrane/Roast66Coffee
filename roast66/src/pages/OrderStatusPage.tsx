@@ -24,8 +24,7 @@ const STRIPE_PREPAY_RETURN_KEY = "stripePrepayReturn";
 function OrderStatusPage() {
   const { locale, t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [orderId, setOrderId] = useState("");
-  const [customerName, setCustomerName] = useState("");
+  const [trackingToken, setTrackingToken] = useState(() => searchParams.get("token") ?? "");
   const [order, setOrder] = useState<OrderDto | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -33,8 +32,7 @@ function OrderStatusPage() {
   const restoreRanRef = useRef(false);
   /** Bumps when a manual lookup starts so in-flight restore cannot overwrite state or sessionStorage. */
   const lookupEpochRef = useRef(0);
-  /** Credentials last used for a successful load; polling reads this so typing in the form does not change poll requests. */
-  const pollCredentialsRef = useRef<{ orderId: string; customerName: string } | null>(null);
+  const pollTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
     const checkout = searchParams.get("checkout");
@@ -45,9 +43,8 @@ function OrderStatusPage() {
     const raw = sessionStorage.getItem(STRIPE_PREPAY_RETURN_KEY);
     if (raw) {
       try {
-        const parsed = JSON.parse(raw) as { customerName?: string; orderId?: number };
-        if (parsed.customerName) setCustomerName(parsed.customerName);
-        if (parsed.orderId != null) setOrderId(String(parsed.orderId));
+        const parsed = JSON.parse(raw) as { trackingToken?: string };
+        if (parsed.trackingToken) setTrackingToken(parsed.trackingToken);
       } catch {
         /* ignore */
       }
@@ -62,7 +59,7 @@ function OrderStatusPage() {
 
     const next = new URLSearchParams(searchParams);
     next.delete("checkout");
-    next.delete("orderId");
+    next.delete("token");
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, t]);
 
@@ -76,34 +73,26 @@ function OrderStatusPage() {
     }
     restoreRanRef.current = true;
 
-    const session = readOrderStatusSession();
-    if (!session) {
+    const sessionToken = searchParams.get("token") ?? readOrderStatusSession()?.trackingToken;
+    if (!sessionToken) {
       return;
     }
 
-    setOrderId(session.orderId);
-    setCustomerName(session.customerName);
+    setTrackingToken(sessionToken);
 
     const runRestore = async () => {
       const epochAtRestoreStart = lookupEpochRef.current;
       setIsLoading(true);
       setOrder(null);
       try {
-        const data = await fetchOrderLookup(parseInt(session.orderId, 10), session.customerName);
+        const data = await fetchOrderLookup(sessionToken);
         if (lookupEpochRef.current !== epochAtRestoreStart) {
           return;
         }
         setOrder(data);
         setLastUpdatedAt(new Date());
-        pollCredentialsRef.current = {
-          orderId: session.orderId,
-          customerName: session.customerName,
-        };
-        writeOrderStatusSession(
-          session.orderId,
-          session.customerName,
-          getOrderStatusFromDto(data)
-        );
+        pollTokenRef.current = sessionToken;
+        writeOrderStatusSession(sessionToken, getOrderStatusFromDto(data));
       } catch (err: unknown) {
         if (
           lookupEpochRef.current === epochAtRestoreStart &&
@@ -124,23 +113,20 @@ function OrderStatusPage() {
 
   const handleLookup = async (e: FormEvent) => {
     e.preventDefault();
-    if (!orderId.trim() || !customerName.trim()) {
+    if (!trackingToken.trim()) {
       toast.error(t("orderStatus.lookupMissingFields"));
       return;
     }
     lookupEpochRef.current += 1;
-    pollCredentialsRef.current = null;
+    pollTokenRef.current = null;
     setIsLoading(true);
     setOrder(null);
     try {
-      const data = await fetchOrderLookup(parseInt(orderId, 10), customerName);
+      const data = await fetchOrderLookup(trackingToken);
       setOrder(data);
       setLastUpdatedAt(new Date());
-      pollCredentialsRef.current = {
-        orderId: orderId.trim(),
-        customerName: customerName.trim(),
-      };
-      writeOrderStatusSession(orderId, customerName, getOrderStatusFromDto(data));
+      pollTokenRef.current = trackingToken.trim();
+      writeOrderStatusSession(trackingToken, getOrderStatusFromDto(data));
     } catch (err: unknown) {
       if (axios.isAxiosError(err) && err.response?.status === 404) {
         clearOrderStatusSession();
@@ -159,7 +145,7 @@ function OrderStatusPage() {
       window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
     sessionStorage.setItem(
       STRIPE_PREPAY_RETURN_KEY,
-      JSON.stringify({ customerName: customerName.trim(), orderId: order.id })
+      JSON.stringify({ trackingToken: trackingToken.trim() })
     );
     setPrepayLoading(true);
     try {
@@ -205,17 +191,15 @@ function OrderStatusPage() {
   /** Keep customer view in sync when staff advances status (admin). */
   useEffect(() => {
     if (!order) {
-      pollCredentialsRef.current = null;
+      pollTokenRef.current = null;
       return;
     }
     if (isCompleted) {
       return;
     }
 
-    const creds = pollCredentialsRef.current;
-    const id = creds?.orderId.trim() ?? "";
-    const name = creds?.customerName.trim() ?? "";
-    if (!id || !name) {
+    const token = pollTokenRef.current?.trim() ?? "";
+    if (!token) {
       return;
     }
 
@@ -226,20 +210,18 @@ function OrderStatusPage() {
         return;
       }
       const epochAtRequest = lookupEpochRef.current;
-      const active = pollCredentialsRef.current;
-      const pollId = active?.orderId.trim() ?? "";
-      const pollName = active?.customerName.trim() ?? "";
-      if (!pollId || !pollName) {
+      const pollToken = pollTokenRef.current?.trim() ?? "";
+      if (!pollToken) {
         return;
       }
       try {
-        const data = await fetchOrderLookup(parseInt(pollId, 10), pollName);
+        const data = await fetchOrderLookup(pollToken);
         if (cancelled || lookupEpochRef.current !== epochAtRequest) {
           return;
         }
         setOrder(data);
         setLastUpdatedAt(new Date());
-        writeOrderStatusSession(pollId, pollName, getOrderStatusFromDto(data));
+        writeOrderStatusSession(pollToken, getOrderStatusFromDto(data));
       } catch {
         /* ignore — user can use Check Status */
       }
@@ -268,21 +250,12 @@ function OrderStatusPage() {
       <form onSubmit={(e) => void handleLookup(e)} className="space-y-4 mb-8">
         <FormInput
           type="text"
-          name="orderId"
+          name="trackingToken"
           placeholder={t("orderStatus.orderIdPlaceholder")}
           title={t("orderStatus.orderIdPlaceholder")}
           aria-label={t("orderStatus.orderIdPlaceholder")}
-          value={orderId}
-          onChange={(e) => setOrderId(e.target.value)}
-        />
-        <FormInput
-          type="text"
-          name="customerName"
-          placeholder={t("order.namePlaceholder")}
-          title={t("order.namePlaceholder")}
-          aria-label={t("order.namePlaceholder")}
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
+          value={trackingToken}
+          onChange={(e) => setTrackingToken(e.target.value)}
         />
         <Button type="submit" color="green" disabled={isLoading}>
           {isLoading ? t("orderStatus.lookingUp") : t("orderStatus.lookup")}

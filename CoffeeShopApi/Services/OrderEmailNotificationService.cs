@@ -103,7 +103,7 @@ public class OrderEmailNotificationService
 
         sb.AppendLine();
         sb.AppendLine($"Total: {total:C}");
-        sb.AppendLine("Track order: /order-status (use order number + your phone)");
+        sb.AppendLine($"Track order: /order-status?token={order.TrackingToken}");
         return sb.ToString();
     }
 }

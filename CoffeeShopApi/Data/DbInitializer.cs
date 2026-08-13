@@ -10,9 +10,6 @@ namespace CoffeeShopApi.Data
     {
         public static void Initialize(ApplicationDbContext context)
         {
-            // Ensure the database is created.
-            context.Database.EnsureCreated();
-
             // Look for any existing data.
             if (context.MenuItems.Any())
             {

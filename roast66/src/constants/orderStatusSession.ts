@@ -8,8 +8,7 @@ export const ORDER_STATUS_LOOKUP_SESSION_KEY = "roast66_orderStatusLookup";
 export const ORDER_STATUS_SESSION_UPDATED_EVENT = "roast66:orderStatusSessionUpdated";
 
 export type OrderStatusLookupSessionPayload = {
-  orderId: string;
-  customerName: string;
+  trackingToken: string;
   /** From last successful lookup; drives nav dot color (e.g. completed = muted). */
   orderStatus?: number;
 };
@@ -17,17 +16,16 @@ export type OrderStatusLookupSessionPayload = {
 function parsePayload(raw: string): OrderStatusLookupSessionPayload | null {
   try {
     const parsed = JSON.parse(raw) as Partial<OrderStatusLookupSessionPayload>;
-    const orderId = typeof parsed.orderId === "string" ? parsed.orderId.trim() : "";
-    const customerName =
-      typeof parsed.customerName === "string" ? parsed.customerName.trim() : "";
-    if (!orderId || !customerName) {
+    const trackingToken =
+      typeof parsed.trackingToken === "string" ? parsed.trackingToken.trim() : "";
+    if (!trackingToken) {
       return null;
     }
     const orderStatus =
       typeof parsed.orderStatus === "number" && Number.isFinite(parsed.orderStatus)
         ? parsed.orderStatus
         : undefined;
-    return { orderId, customerName, orderStatus };
+    return { trackingToken, orderStatus };
   } catch {
     return null;
   }
@@ -45,16 +43,14 @@ export function readOrderStatusSession(): OrderStatusLookupSessionPayload | null
 }
 
 export function writeOrderStatusSession(
-  orderId: string,
-  customerName: string,
+  trackingToken: string,
   orderStatus?: number
 ): void {
   if (typeof window === "undefined") {
     return;
   }
   const payload: OrderStatusLookupSessionPayload = {
-    orderId: orderId.trim(),
-    customerName: customerName.trim(),
+    trackingToken: trackingToken.trim(),
   };
   if (orderStatus !== undefined) {
     payload.orderStatus = orderStatus;

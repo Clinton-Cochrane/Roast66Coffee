@@ -7,7 +7,9 @@ import PrivateRoute from "./PrivateRoute";
 const TestChild = () => <div>Admin Content</div>;
 
 function renderWithRouter(initialEntries: string[] = ["/admin"], hasToken = true) {
-  const getItem = vi.fn((key: string) => (key === "token" && hasToken ? "fake-token" : null));
+  const getItem = vi.fn((key: string) =>
+    key === "token" && hasToken ? "x.eyJleHAiOjQxMDI0NDQ4MDB9.x" : null
+  );
   Object.defineProperty(window, "localStorage", {
     value: { getItem, setItem: vi.fn(), removeItem: vi.fn() },
     writable: true,

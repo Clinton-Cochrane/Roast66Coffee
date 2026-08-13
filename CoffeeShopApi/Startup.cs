@@ -30,6 +30,7 @@ namespace CoffeeShopApi
 
         public void ConfigureServices(IServiceCollection services)
         {
+            SecurityConfiguration.Validate(Configuration, _env);
             if (_env.IsEnvironment("Testing"))
             {
                 services.AddDbContext<ApplicationDbContext>(options =>
@@ -76,6 +77,7 @@ namespace CoffeeShopApi
                 var permitLogin = _env.IsEnvironment("Testing") ? 1000 : 5;
                 var permitOrder = _env.IsEnvironment("Testing") ? 1000 : 30;
                 var permitForgotPassword = _env.IsEnvironment("Testing") ? 1000 : 3;
+                var permitPublicTracking = _env.IsEnvironment("Testing") ? 1000 : 20;
 
                 options.AddPolicy("Login", context =>
                 {
@@ -107,18 +109,17 @@ namespace CoffeeShopApi
                         QueueLimit = 0
                     });
                 });
-            });
-
-            if (!_env.IsEnvironment("Testing"))
-            {
-                var jwtKey = Configuration["Jwt:Key"];
-                if (string.IsNullOrEmpty(jwtKey) || jwtKey.Length < 32)
+                options.AddPolicy("PublicTracking", context =>
                 {
-                    throw new InvalidOperationException(
-                        "Jwt:Key must be configured and at least 32 characters long. " +
-                        "Set Jwt__Key (or Jwt:Key) in environment variables or appsettings.");
-                }
-            }
+                    var ip = context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+                    return RateLimitPartition.GetFixedWindowLimiter(ip, _ => new FixedWindowRateLimiterOptions
+                    {
+                        PermitLimit = permitPublicTracking,
+                        Window = TimeSpan.FromMinutes(1),
+                        QueueLimit = 0
+                    });
+                });
+            });
 
             services.AddCors(options =>
             {
@@ -160,7 +161,8 @@ namespace CoffeeShopApi
                     ValidateIssuerSigningKey = true,
                     ValidIssuer = JwtTokenSettings.GetIssuer(Configuration),
                     ValidAudience = JwtTokenSettings.GetAudience(Configuration),
-                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Configuration["Jwt:Key"] ?? "default_key")),
+                    IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+                        Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured."))),
                     // Map JWT role/name claims so [Authorize(Roles = "Admin")] and IsInRole work with handler defaults.
                     RoleClaimType = ClaimTypes.Role,
                     NameClaimType = ClaimTypes.Name

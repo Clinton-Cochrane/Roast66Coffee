@@ -66,7 +66,7 @@ function renderAdminPage() {
 describe("AdminPage", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
-    localStorage.setItem("token", "test-token");
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
   });
 
   afterEach(() => {
@@ -107,7 +107,7 @@ describe("AdminPage", () => {
 describe("AdminPage (es-MX locale)", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
-    localStorage.setItem("token", "test-token");
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
     localStorage.setItem("roast66_locale", "es");
   });
 

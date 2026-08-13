@@ -29,14 +29,14 @@ describe("AdminGate", () => {
   });
 
   it("shows admin page when token exists", () => {
-    localStorage.setItem("token", "jwt-token");
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
     render(<AdminGate />);
     expect(screen.getByText("Mock Admin Page")).toBeInTheDocument();
   });
 
   it("shows login first, then admin page after login success", () => {
     render(<AdminGate />);
-    localStorage.setItem("token", "jwt-token");
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
     fireEvent.click(screen.getByRole("button", { name: /mock admin login/i }));
     expect(screen.getByText("Mock Admin Page")).toBeInTheDocument();
   });

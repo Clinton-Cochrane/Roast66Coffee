@@ -36,7 +36,7 @@ describe("Navigation", () => {
   it("shows a link to order-status when lookup session exists", async () => {
     sessionStorage.setItem(
       ORDER_STATUS_LOOKUP_SESSION_KEY,
-      JSON.stringify({ orderId: "9", customerName: "Sam", orderStatus: 1 })
+      JSON.stringify({ trackingToken: "tracking-token-9", orderStatus: 1 })
     );
     render(
       <LanguageProvider>
@@ -46,7 +46,7 @@ describe("Navigation", () => {
       </LanguageProvider>
     );
     const tracking = screen.getByRole("link", { name: /return to order status/i });
-    expect(tracking).toHaveAttribute("href", "/order-status");
+    expect(tracking).toHaveAttribute("href", "/order-status?token=tracking-token-9");
     await waitFor(() => {
       expect(vi.mocked(fetchOrderLookup)).toHaveBeenCalled();
     });
@@ -56,8 +56,7 @@ describe("Navigation", () => {
     sessionStorage.setItem(
       ORDER_STATUS_LOOKUP_SESSION_KEY,
       JSON.stringify({
-        orderId: "9",
-        customerName: "Sam",
+        trackingToken: "tracking-token-9",
         orderStatus: ORDER_STATUS.Completed,
       })
     );

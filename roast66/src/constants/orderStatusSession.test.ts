@@ -20,19 +20,18 @@ describe("orderStatusSession", () => {
   it("parses valid payload with optional orderStatus", () => {
     sessionStorage.setItem(
       ORDER_STATUS_LOOKUP_SESSION_KEY,
-      JSON.stringify({ orderId: " 7 ", customerName: " Pat ", orderStatus: 3 })
+      JSON.stringify({ trackingToken: " token-7 ", orderStatus: 3 })
     );
     expect(readOrderStatusSession()).toEqual({
-      orderId: "7",
-      customerName: "Pat",
+      trackingToken: "token-7",
       orderStatus: 3,
     });
   });
 
-  it("returns null when orderId or customerName is empty after trim", () => {
+  it("returns null when trackingToken is empty after trim", () => {
     sessionStorage.setItem(
       ORDER_STATUS_LOOKUP_SESSION_KEY,
-      JSON.stringify({ orderId: "", customerName: "x" })
+      JSON.stringify({ trackingToken: "" })
     );
     expect(readOrderStatusSession()).toBeNull();
   });
@@ -40,18 +39,17 @@ describe("orderStatusSession", () => {
   it("writeOrderStatusSession dispatches custom event", () => {
     const spy = vi.fn();
     window.addEventListener(ORDER_STATUS_SESSION_UPDATED_EVENT, spy);
-    writeOrderStatusSession("1", "Ada", 2);
+    writeOrderStatusSession("token-1", 2);
     expect(spy).toHaveBeenCalledTimes(1);
     expect(JSON.parse(sessionStorage.getItem(ORDER_STATUS_LOOKUP_SESSION_KEY)!)).toEqual({
-      orderId: "1",
-      customerName: "Ada",
+      trackingToken: "token-1",
       orderStatus: 2,
     });
     window.removeEventListener(ORDER_STATUS_SESSION_UPDATED_EVENT, spy);
   });
 
   it("clearOrderStatusSession removes key and dispatches event", () => {
-    writeOrderStatusSession("1", "Ada");
+    writeOrderStatusSession("token-1");
     const spy = vi.fn();
     window.addEventListener(ORDER_STATUS_SESSION_UPDATED_EVENT, spy);
     clearOrderStatusSession();
