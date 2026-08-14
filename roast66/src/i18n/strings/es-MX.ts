@@ -49,6 +49,14 @@ export const esMx: Messages = {
     categoryFlavors: "Sabores",
   },
   home: {
+    heroEyebrow: "Autos, café y buena compañía",
+    heroTitle: "Café fresco, adonde te lleve el camino.",
+    heroBody:
+      "Roast 66 es una cafetería sobre ruedas que sirve bebidas caseras favoritas desde nuestro remolque móvil.",
+    orderNow: "Ordenar ahora",
+    viewMenu: "Ver menú",
+    heroMobileCoffee: "Café sobre ruedas",
+    heroFollowRoute: "Sigue nuestra ruta hasta la próxima parada",
     welcomeTitle: "Bienvenido a Roast 66 Coffee",
     logoAlt: "Logotipo de Roast 66 Coffee",
     tagline: "Tu cafetería favorita",

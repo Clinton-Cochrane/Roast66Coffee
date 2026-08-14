@@ -49,6 +49,14 @@ export const en = {
     categoryFlavors: "Flavors",
   },
   home: {
+    heroEyebrow: "Cars, coffee, and good company",
+    heroTitle: "Fresh coffee, wherever the road takes you.",
+    heroBody:
+      "Roast 66 is a coffee shop on wheels, serving homemade favorites from our mobile trailer.",
+    orderNow: "Order Now",
+    viewMenu: "View Menu",
+    heroMobileCoffee: "Coffee on wheels",
+    heroFollowRoute: "Follow our route to the next stop",
     welcomeTitle: "Welcome to Roast 66 Coffee",
     logoAlt: "Roast 66 Coffee logo",
     tagline: "Your favorite coffee shop",

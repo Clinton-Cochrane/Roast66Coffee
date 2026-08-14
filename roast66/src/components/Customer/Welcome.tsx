@@ -1,31 +1,64 @@
 import React from "react";
-import Card from "../common/Card";
-import logo from "../../logo.png";
+import { Link } from "react-router-dom";
 import { useI18n } from "../../i18n/LanguageContext";
-import { FaRoad, FaMugHot } from "react-icons/fa";
+import { FaArrowRight, FaMapMarkerAlt, FaMugHot, FaRoad } from "react-icons/fa";
 
 function Welcome() {
   const { t } = useI18n();
 
   return (
-    <div className="flex items-center justify-center">
-      <Card title={t("home.welcomeTitle")} className="text-center">
-        <img src={logo} alt={t("home.logoAlt")} className="w-64 mx-auto my-4" />
-        <p className="text-lg text-[#4a3326] font-medium">{t("home.tagline")}</p>
-        <p className="text-sm text-[#6f5b4b] mt-2">{t("home.welcomeTaglineExtra")}</p>
-        <div className="mt-3 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-[#6c89a2]">
-          <span className="inline-flex items-center gap-1">
-            <FaMugHot />
-            {t("home.badgeSmallBatch")}
-          </span>
-          <span className="text-[#b59e8c]">|</span>
-          <span className="inline-flex items-center gap-1">
-            <FaRoad />
-            {t("home.badgeRoadReady")}
-          </span>
+    <section className="r66-panel overflow-hidden" aria-labelledby="home-hero-title">
+      <div className="grid md:grid-cols-[minmax(0,1.3fr)_minmax(15rem,0.7fr)]">
+        <div className="flex flex-col justify-center px-6 py-8 sm:px-9 sm:py-10 md:px-12 md:py-12">
+          <p className="mb-3 text-xs font-bold uppercase tracking-[0.16em] text-[#a64b2a]">
+            {t("home.heroEyebrow")}
+          </p>
+          <h1
+            id="home-hero-title"
+            className="max-w-2xl text-4xl font-bold leading-[1.08] tracking-[-0.025em] text-[#2c1d15] sm:text-5xl"
+          >
+            {t("home.heroTitle")}
+          </h1>
+          <p className="mt-4 max-w-xl text-base leading-7 text-[#5b4940] sm:text-lg">
+            {t("home.heroBody")}
+          </p>
+
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <Link
+              to="/order"
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-md bg-[#4a3326] px-6 py-3 font-bold tracking-wide text-white no-underline shadow-[0_3px_0_rgba(0,0,0,0.18)] transition-all duration-150 hover:-translate-y-px hover:bg-[#2c1d15] hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#99bfdd] focus-visible:ring-offset-2"
+            >
+              {t("home.orderNow")}
+              <FaArrowRight aria-hidden="true" />
+            </Link>
+            <Link
+              to="/menu"
+              className="inline-flex min-h-12 items-center justify-center rounded-md border-2 border-[#4a3326] bg-transparent px-6 py-3 font-bold tracking-wide text-[#4a3326] no-underline transition-colors duration-150 hover:bg-[#f1e4d6] hover:text-[#2c1d15] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#99bfdd] focus-visible:ring-offset-2"
+            >
+              {t("home.viewMenu")}
+            </Link>
+          </div>
         </div>
-      </Card>
-    </div>
+
+        <div className="relative flex min-h-64 items-center justify-center overflow-hidden border-t border-[#dccdbe] bg-[#4a3326] px-6 py-8 text-center text-[#fff9f2] md:min-h-full md:border-l md:border-t-0">
+          <FaRoad
+            className="absolute -bottom-8 -right-8 text-[13rem] text-[#fff9f2]/[0.06]"
+            aria-hidden="true"
+          />
+          <div className="relative">
+            <FaMugHot className="mx-auto text-4xl text-[#99bfdd]" aria-hidden="true" />
+            <p className="mt-4 text-6xl font-black leading-none tracking-[-0.06em]">66</p>
+            <p className="mt-2 text-sm font-bold uppercase tracking-[0.16em] text-[#f4d7bd]">
+              {t("home.heroMobileCoffee")}
+            </p>
+            <p className="mt-5 inline-flex items-center gap-2 text-sm text-[#f7efe6]">
+              <FaMapMarkerAlt aria-hidden="true" />
+              {t("home.heroFollowRoute")}
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
