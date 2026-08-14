@@ -5,13 +5,14 @@ import Button from "../components/common/Button";
 import ViewOrders from "../components/Admin/ViewOrders";
 import StaffDevicePrompt from "../components/Admin/StaffDevicePrompt";
 import { useI18n } from "../i18n/LanguageContext";
+import { clearAdminSession, getAdminToken } from "../authSession";
 
 function CashPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = getAdminToken();
     if (!token) {
       navigate("/cash", { replace: true });
     }
@@ -22,7 +23,7 @@ function CashPage() {
   }, [navigate]);
 
   const handleLogout = useCallback(() => {
-    localStorage.removeItem("token");
+    clearAdminSession();
     navigate("/cash", { replace: true });
   }, [navigate]);
 

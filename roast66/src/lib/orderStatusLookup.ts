@@ -2,14 +2,13 @@ import axiosInstance from "../axiosConfig";
 import type { OrderDto } from "../types/api";
 
 /**
- * GET /order/lookup — shared by manual submit, session restore, and future polling/SSE.
+ * Token-authenticated public tracking, shared by restore and polling.
  */
 export async function fetchOrderLookup(
-  orderId: number,
-  customerName: string
+  trackingToken: string
 ): Promise<OrderDto> {
-  const { data } = await axiosInstance.get<OrderDto>("/order/lookup", {
-    params: { orderId, customerName: customerName.trim() },
-  });
+  const { data } = await axiosInstance.get<OrderDto>(
+    `/order/track/${encodeURIComponent(trackingToken.trim())}`
+  );
   return data;
 }

@@ -19,6 +19,17 @@ namespace CoffeeShopApi.Data
         public DbSet<NotificationMessage> NotificationMessages { get; set; } = null!;
         public DbSet<StaffPushSubscription> StaffPushSubscriptions { get; set; } = null!;
         public DbSet<PaymentCheckoutDraft> PaymentCheckoutDrafts { get; set; } = null!;
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<Order>()
+                .Property(order => order.TrackingToken)
+                .HasMaxLength(43)
+                .IsRequired();
+            modelBuilder.Entity<Order>()
+                .HasIndex(order => order.TrackingToken)
+                .IsUnique();
+        }
     }
 }
-

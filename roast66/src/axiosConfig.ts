@@ -1,5 +1,6 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
 import { API_BASE_URL } from "./config";
+import { clearAdminSession, getAdminToken } from "./authSession";
 
 const instance = axios.create({
   baseURL: API_BASE_URL,
@@ -13,7 +14,7 @@ const isPublicPost = (config: InternalAxiosRequestConfig): boolean =>
 instance.interceptors.request.use(
   (config) => {
     if (!isPublicPost(config)) {
-      const token = localStorage.getItem("token");
+      const token = getAdminToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       }
@@ -36,7 +37,7 @@ instance.interceptors.response.use(
         ? (error.response as { status: number }).status
         : undefined;
     if (status === 401 && typeof window !== "undefined") {
-      localStorage.removeItem("token");
+      clearAdminSession();
       const pathname = window.location.pathname || "/";
       const loginPath = pathname.startsWith("/cash") ? "/cash" : "/admin";
       if (pathname !== loginPath) {

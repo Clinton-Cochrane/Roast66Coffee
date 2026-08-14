@@ -32,16 +32,16 @@ describe("axiosConfig interceptors", () => {
   });
 
   it("adds bearer token for protected requests", () => {
-    localStorage.setItem("token", "jwt-token");
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
     const config = { method: "get", url: "/admin/orders", headers: {} };
     const result = requestHolder.fn!(config) as {
       headers: Record<string, unknown>;
     };
-    expect(result.headers.Authorization).toBe("Bearer jwt-token");
+    expect(result.headers.Authorization).toBe("Bearer x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
   });
 
   it("does not add token for public order POST requests", () => {
-    localStorage.setItem("token", "jwt-token");
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
     const config = { method: "post", url: "/order", headers: {} };
     const result = requestHolder.fn!(config) as {
       headers: Record<string, unknown>;
@@ -50,7 +50,7 @@ describe("axiosConfig interceptors", () => {
   });
 
   it("clears token and redirects cash users on 401", async () => {
-    localStorage.setItem("token", "jwt-token");
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
     const assignSpy = vi.fn();
     Object.defineProperty(window, "location", {
       configurable: true,

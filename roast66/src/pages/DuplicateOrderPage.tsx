@@ -13,6 +13,7 @@ function DuplicateOrderPage() {
     | undefined;
   const order = state?.order;
   const existingOrderId = state?.existingOrderId ?? order?.id ?? order?.Id;
+  const trackingToken = order?.trackingToken ?? order?.TrackingToken;
 
   return (
     <div className="p-6 max-w-lg mx-auto text-center">
@@ -73,7 +74,13 @@ function DuplicateOrderPage() {
       ) : null}
 
       <div className="flex flex-col sm:flex-row gap-3 justify-center">
-        <Link to="/order-status">
+        <Link
+          to={
+            trackingToken
+              ? `/order-status?token=${encodeURIComponent(trackingToken)}`
+              : "/order-status"
+          }
+        >
           <Button color="green">{t("duplicateOrder.checkStatus")}</Button>
         </Link>
         <Link to="/order">

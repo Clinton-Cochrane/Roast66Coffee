@@ -29,14 +29,14 @@ describe("CashGate", () => {
   });
 
   it("shows cash page when token exists", () => {
-    localStorage.setItem("token", "jwt-token");
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
     render(<CashGate />);
     expect(screen.getByText("Mock Cash Page")).toBeInTheDocument();
   });
 
   it("shows login first, then cash page after login success", () => {
     render(<CashGate />);
-    localStorage.setItem("token", "jwt-token");
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
     fireEvent.click(screen.getByRole("button", { name: /mock admin login/i }));
     expect(screen.getByText("Mock Cash Page")).toBeInTheDocument();
   });

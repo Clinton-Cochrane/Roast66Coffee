@@ -1,6 +1,7 @@
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Data;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
 
 namespace CoffeeShopApi.Services;
 
@@ -31,6 +32,24 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
             .ThenInclude(a => a.MenuItem)
             .OrderBy(o => o.OrderDate)
             .FirstOrDefaultAsync(o => o.Id == id, cancellationToken);
+    }
+
+    public async Task<Order?> GetOrderByTrackingTokenAsync(
+        string trackingToken,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(trackingToken) || trackingToken.Length != 43)
+        {
+            return null;
+        }
+
+        return await _context.Orders
+            .Include(o => o.OrderItems!)
+                .ThenInclude(oi => oi.MenuItem)
+            .Include(o => o.OrderItems!)
+                .ThenInclude(oi => oi.AddOns!)
+                .ThenInclude(a => a.MenuItem)
+            .FirstOrDefaultAsync(o => o.TrackingToken == trackingToken, cancellationToken);
     }
 
     /// <summary>
@@ -89,10 +108,20 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
 
     public async Task<Order> CreateOrderAsync(Order order)
     {
+        if (string.IsNullOrEmpty(order.TrackingToken))
+        {
+            order.TrackingToken = GenerateTrackingToken();
+        }
         _context.Orders.Add(order);
         await _context.SaveChangesAsync();
         return (await GetOrderByIdAsync(order.Id))!;
     }
+
+    internal static string GenerateTrackingToken() =>
+        Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
 
     public async Task<bool> UpdateOrderAsync(Order order)
     {

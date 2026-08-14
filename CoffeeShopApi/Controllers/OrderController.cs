@@ -27,25 +27,23 @@ public class OrderController : ControllerBase
         return Ok(await _orderService.GetOrdersAsync());
     }
 
-    /// <summary>Public lookup: get order status by order ID and customer name (or phone for backward compatibility).</summary>
-    [HttpGet("lookup")]
-    public async Task<ActionResult<Order>> LookupOrder(
-        [FromQuery] int orderId,
-        [FromQuery] string? customerName,
-        [FromQuery] string? phone,
+    [HttpGet("track/{trackingToken}")]
+    [EnableRateLimiting("PublicTracking")]
+    public async Task<ActionResult<PublicOrderDto>> TrackOrder(
+        string trackingToken,
         CancellationToken cancellationToken)
     {
-        if (orderId <= 0 || (string.IsNullOrWhiteSpace(phone) && string.IsNullOrWhiteSpace(customerName)))
-        {
-            return BadRequest("Order ID and customer name are required.");
-        }
-        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, customerName, cancellationToken);
+        var order = await _orderService.GetOrderByTrackingTokenAsync(trackingToken, cancellationToken);
         if (order == null)
         {
-            return NotFound("Order not found or customer details do not match.");
+            return NotFound();
         }
-        return Ok(order);
+        return Ok(PublicOrderDto.FromOrder(order));
     }
+
+    [HttpGet("lookup")]
+    [EnableRateLimiting("PublicTracking")]
+    public IActionResult LegacyLookup() => NotFound();
 
     [Authorize(Roles = "Admin")]
     [HttpGet("{id}")]
@@ -77,33 +75,34 @@ public class OrderController : ControllerBase
             {
                 message = "Duplicate order detected. An identical order was placed recently.",
                 existingOrderId = duplicate.Id,
-                order = duplicate
+                order = PublicOrderDto.FromOrder(duplicate)
             });
         }
 
         var createdOrder = await _orderService.CreateOrderAsync(order);
         await _notificationService.SendOrderNotificationAsync(createdOrder, cancellationToken);
-        return CreatedAtAction(nameof(GetOrder), new { id = createdOrder.Id }, createdOrder);
+        return CreatedAtAction(
+            nameof(TrackOrder),
+            new { trackingToken = createdOrder.TrackingToken },
+            PublicOrderDto.FromOrder(createdOrder));
     }
 
-    [HttpGet("{orderId}/notifications")]
+    [HttpGet("track/{trackingToken}/notifications")]
+    [EnableRateLimiting("PublicTracking")]
     public async Task<IActionResult> GetCustomerNotifications(
-        int orderId,
-        [FromQuery] string phone,
+        string trackingToken,
         CancellationToken cancellationToken)
     {
-        if (orderId <= 0 || string.IsNullOrWhiteSpace(phone))
-        {
-            return BadRequest("Order ID and phone are required.");
-        }
-
-        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, null, cancellationToken);
+        var order = await _orderService.GetOrderByTrackingTokenAsync(trackingToken, cancellationToken);
         if (order == null)
         {
-            return NotFound("Order not found or phone does not match.");
+            return NotFound();
         }
 
-        var notifications = await _notificationService.GetCustomerNotificationsForOrderAsync(orderId, phone, cancellationToken);
+        var notifications = await _notificationService.GetCustomerNotificationsForOrderAsync(
+            order.Id,
+            order.CustomerPhone ?? string.Empty,
+            cancellationToken);
         var result = notifications.Select(n => new
         {
             n.Id,
@@ -118,21 +117,16 @@ public class OrderController : ControllerBase
         return Ok(result);
     }
 
-    [HttpGet("{orderId}/summary")]
+    [HttpGet("track/{trackingToken}/summary")]
+    [EnableRateLimiting("PublicTracking")]
     public async Task<IActionResult> DownloadOrderSummary(
-        int orderId,
-        [FromQuery] string phone,
+        string trackingToken,
         CancellationToken cancellationToken)
     {
-        if (orderId <= 0 || string.IsNullOrWhiteSpace(phone))
-        {
-            return BadRequest("Order ID and phone are required.");
-        }
-
-        var order = await _orderService.GetOrderForCustomerAsync(orderId, phone, null, cancellationToken);
+        var order = await _orderService.GetOrderByTrackingTokenAsync(trackingToken, cancellationToken);
         if (order == null)
         {
-            return NotFound("Order not found or phone does not match.");
+            return NotFound();
         }
 
         var items = (order.OrderItems ?? [])
@@ -163,8 +157,7 @@ public class OrderController : ControllerBase
         {
             orderId = order.Id,
             customerName = order.CustomerName,
-            customerPhone = order.CustomerPhone,
-            trackerUrl = "/order-status",
+            trackerUrl = $"/order-status?token={order.TrackingToken}",
             status = order.OrderStatus.ToString(),
             items,
             total

@@ -27,6 +27,8 @@ export type OrderLineItemDto = {
 export type OrderDto = {
   id?: number;
   Id?: number;
+  trackingToken?: string;
+  TrackingToken?: string;
   customerName?: string;
   CustomerName?: string;
   customerPhone?: string | null;

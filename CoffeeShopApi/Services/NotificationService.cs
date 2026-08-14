@@ -39,7 +39,7 @@ public class NotificationService
     {
         var itemCount = order.OrderItems?.Sum(oi => oi.Quantity) ?? 0;
         var staffBody = $"Roast 66: New order #{order.Id} from {order.CustomerName} ({order.CustomerPhone}), {itemCount} item(s).";
-        var customerBody = $"Roast 66: We received your order #{order.Id}. Track status at /order-status.";
+        var customerBody = $"Roast 66: We received your order #{order.Id}. Track status at /order-status?token={order.TrackingToken}.";
         var settings = await _settingsService.GetNotificationSettingsAsync(cancellationToken);
         var twilioFromPhone = NormalizePhone(settings?.TwilioFromPhoneNumber ?? string.Empty);
 

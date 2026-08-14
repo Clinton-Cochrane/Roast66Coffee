@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json.Serialization;
 
 namespace CoffeeShopApi.Models
 {
@@ -17,6 +18,10 @@ namespace CoffeeShopApi.Models
         [Key]
         [Column("id")]
         public int Id { get; set; }
+
+        [Column("trackingtoken")]
+        [JsonIgnore]
+        public string TrackingToken { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "Customer name is required")]
         [StringLength(100, MinimumLength = 1)]
