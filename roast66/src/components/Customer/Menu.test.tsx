@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import Menu from "./Menu";
 import CategoryType from "../../constants/categories";
 import { LanguageProvider } from "../../i18n/LanguageContext";
@@ -23,11 +23,36 @@ const mockMenuItem: MenuItemDto = {
   categoryType: CategoryType.COFFEE,
 };
 
+const specialItem: MenuItemDto = {
+  id: 2,
+  name: "Blue Flame Nitro",
+  description: "A house special",
+  price: 5.25,
+  categoryType: CategoryType.SPECIALS,
+};
+
+const flavorItem: MenuItemDto = {
+  id: 3,
+  name: "Vanilla Shot",
+  description: "Classic vanilla",
+  price: 0.5,
+  categoryType: CategoryType.FLAVORS,
+};
+
+function OrderStateProbe() {
+  const location = useLocation();
+  const state = location.state as { menuItemId?: number } | null;
+  return <div>Selected item: {state?.menuItemId}</div>;
+}
+
 function renderMenu() {
   return render(
     <LanguageProvider>
       <MemoryRouter>
-        <Menu />
+        <Routes>
+          <Route path="/" element={<Menu />} />
+          <Route path="/order" element={<OrderStateProbe />} />
+        </Routes>
       </MemoryRouter>
     </LanguageProvider>
   );
@@ -35,6 +60,7 @@ function renderMenu() {
 
 describe("Menu", () => {
   beforeEach(() => {
+    window.history.replaceState(null, "", window.location.pathname);
     mockGet.mockReset();
     mockGet.mockResolvedValue({ data: [mockMenuItem] });
   });
@@ -50,7 +76,7 @@ describe("Menu", () => {
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith("/menu");
     });
-    expect(await screen.findByText("Drinks")).toBeInTheDocument();
+    expect((await screen.findAllByText("Drinks")).length).toBeGreaterThan(0);
     expect(screen.getByText("Espresso")).toBeInTheDocument();
     expect(screen.getByText("$3.50")).toBeInTheDocument();
   });
@@ -63,5 +89,57 @@ describe("Menu", () => {
       expect(mockGet).toHaveBeenCalled();
     });
     expect(screen.queryByText("Espresso")).not.toBeInTheDocument();
+  });
+
+  it("provides hash links and marks the selected category active", async () => {
+    mockGet.mockResolvedValue({ data: [mockMenuItem, specialItem, flavorItem] });
+    renderMenu();
+
+    const categoryNavigation = await screen.findByRole("navigation", {
+      name: "Menu categories",
+    });
+    const drinksLink = screen.getByRole("link", { name: "Drinks" });
+    const specialsLink = screen.getByRole("link", { name: "Specials" });
+
+    expect(categoryNavigation).toContainElement(drinksLink);
+    expect(drinksLink).toHaveAttribute("href", "#drinks");
+    expect(specialsLink).toHaveAttribute("href", "#specials");
+    expect(drinksLink).toHaveAttribute("aria-current", "location");
+
+    fireEvent.click(specialsLink);
+
+    expect(specialsLink).toHaveAttribute("aria-current", "location");
+    expect(drinksLink).not.toHaveAttribute("aria-current");
+  });
+
+  it("preserves API order within a category", async () => {
+    const latte = { ...mockMenuItem, id: 4, name: "Latte" };
+    mockGet.mockResolvedValue({ data: [latte, mockMenuItem] });
+    renderMenu();
+
+    const latteHeading = await screen.findByRole("heading", { name: "Latte" });
+    const espressoHeading = screen.getByRole("heading", { name: "Espresso" });
+
+    expect(latteHeading.compareDocumentPosition(espressoHeading)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+  });
+
+  it("opens the order page with the selected directly orderable item", async () => {
+    mockGet.mockResolvedValue({ data: [specialItem] });
+    renderMenu();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Order this item" }));
+
+    expect(screen.getByText("Selected item: 2")).toBeInTheDocument();
+  });
+
+  it("shows flavors compactly without a direct order action", async () => {
+    mockGet.mockResolvedValue({ data: [flavorItem] });
+    renderMenu();
+
+    expect(await screen.findByText("Vanilla Shot")).toBeInTheDocument();
+    expect(screen.getByText("Choose flavors as add-ons while building your drink.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Order this item" })).not.toBeInTheDocument();
   });
 });
