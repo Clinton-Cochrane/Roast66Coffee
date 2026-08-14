@@ -40,6 +40,7 @@ export const en = {
   },
   menu: {
     orderThisItem: "Order this item",
+    categoryNavigation: "Menu categories",
     pageTitle: "Our Menu",
     pageSubtitle: "Rustic coffee classics and roadtrip-ready favorites.",
     badgeRouteInspired: "Route 66 Inspired",
@@ -47,6 +48,7 @@ export const en = {
     categoryDrinks: "Drinks",
     categorySpecials: "Specials",
     categoryFlavors: "Flavors",
+    flavorsHelp: "Choose flavors as add-ons while building your drink.",
   },
   home: {
     heroEyebrow: "Cars, coffee, and good company",

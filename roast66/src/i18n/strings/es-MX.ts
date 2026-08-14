@@ -40,6 +40,7 @@ export const esMx: Messages = {
   },
   menu: {
     orderThisItem: "Pedir este artículo",
+    categoryNavigation: "Categorías del menú",
     pageTitle: "Nuestro menú",
     pageSubtitle: "Clásicos rústicos de café y favoritos listos para la carretera.",
     badgeRouteInspired: "Inspirado en la Ruta 66",
@@ -47,6 +48,7 @@ export const esMx: Messages = {
     categoryDrinks: "Bebidas",
     categorySpecials: "Especiales",
     categoryFlavors: "Sabores",
+    flavorsHelp: "Elige sabores como extras mientras armas tu bebida.",
   },
   home: {
     heroEyebrow: "Autos, café y buena compañía",
