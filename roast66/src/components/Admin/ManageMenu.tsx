@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState, type ChangeEvent, type FormEvent } from "react";
 import axios from "../../axiosConfig";
 import { toast } from "react-toastify";
-import "../../styles/ManageMenu.css";
 import FormInput from "../common/FormInput";
 import Button from "../common/Button";
 import Card from "../common/Card";
@@ -132,14 +131,14 @@ function ManageMenu() {
   };
 
   return (
-    <div className="manage-menu space-y-4">
+    <div className="space-y-4">
       <h2 className="text-2xl font-bold mb-4">{t("adminMenu.title")}</h2>
 
       <Card>
         <select
           value={selectedMenuItemId}
           onChange={handleSelectChange}
-          className="w-full p-2 border rounded mb-4 top-select"
+          className="mx-auto mb-4 block w-full max-w-[800px] rounded border p-2"
         >
           <option value="">{t("adminMenu.selectPlaceholder")}</option>
           <option value="new">{t("adminMenu.addNewOption")}</option>
@@ -157,6 +156,7 @@ function ManageMenu() {
             placeholder={t("adminMenu.namePlaceholder")}
             value={menuItemForm.name}
             onChange={handleFormChange}
+            className="mx-auto max-w-[400px]"
             required
           />
           <FormInput
@@ -166,6 +166,7 @@ function ManageMenu() {
             step="0.01"
             value={menuItemForm.price}
             onChange={handleFormChange}
+            className="mx-auto max-w-[400px]"
             required
           />
           <FormInput
@@ -174,13 +175,14 @@ function ManageMenu() {
             placeholder={t("adminMenu.descriptionPlaceholder")}
             value={menuItemForm.description}
             onChange={handleFormChange}
+            className="mx-auto max-w-[400px]"
             required
           />
           <select
             name="categoryType"
             value={menuItemForm.categoryType}
             onChange={handleFormChange}
-            className="w-full p-2 border rounded"
+            className="mx-auto block w-full max-w-[400px] rounded border p-2"
             required
           >
             <option value="">{t("adminMenu.selectCategory")}</option>

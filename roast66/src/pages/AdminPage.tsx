@@ -4,7 +4,6 @@ import ManageMenu from "../components/Admin/ManageMenu";
 import MenuBulkOperations from "../components/Admin/MenuBulkOperations";
 import ViewOrders from "../components/Admin/ViewOrders";
 import Header from "../components/layout/Header";
-import "../styles/AdminPage.css";
 import NotificationSettings from "../components/Admin/NotificationSettings";
 import StaffDevicePrompt from "../components/Admin/StaffDevicePrompt";
 import Loading from "../components/common/Loading";

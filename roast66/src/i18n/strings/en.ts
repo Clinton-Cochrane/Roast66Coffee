@@ -40,6 +40,7 @@ export const en = {
   },
   menu: {
     orderThisItem: "Order this item",
+    orderItem: "Order {{itemName}}",
     categoryNavigation: "Menu categories",
     pageTitle: "Our Menu",
     pageSubtitle: "Rustic coffee classics and roadtrip-ready favorites.",
