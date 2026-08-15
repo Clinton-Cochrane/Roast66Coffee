@@ -94,15 +94,21 @@ function Navigation() {
     orderTrackingSession.orderStatus !== ORDER_STATUS.Completed;
 
   return (
-    <nav className="p-4 border-b border-[#d8c8ba] bg-[#f7efe6]/95 backdrop-blur-sm">
-      <div className="container mx-auto flex items-center justify-between p-4 rounded-xl border border-[#e2d4c7] bg-[#fff9f2] shadow-sm">
+    <nav className="w-full border-b border-[#d8c8ba] bg-[#fff9f2]/95 shadow-sm backdrop-blur-sm">
+      <div className="relative mx-auto flex w-full max-w-screen-xl items-center justify-between px-4 py-4">
         <div className="text-2xl font-bold">
           <NavLink
             to="/"
             title={t("nav.homeTitle")}
             className="hover:text-[#a64b2a] flex items-center gap-2 transition-colors duration-150"
           >
-            <img src={logo} alt={t("home.logoAlt")} className="h-8 inline-block" />
+            <img
+              src={logo}
+              alt={t("home.logoAlt")}
+              width={32}
+              height={32}
+              className="inline-block h-8"
+            />
             <span className="text-[#4a3326]">{t("nav.brandName")}</span>
           </NavLink>
         </div>
@@ -122,13 +128,13 @@ function Navigation() {
           id="site-navigation-menu"
           className={`${
             isMenuOpen ? "block" : "hidden"
-          } md:flex md:space-x-6 items-center w-full md:w-auto md:static absolute top-16 mt-2 md:mt-0 left-0 z-20 bg-[#fff9f2] md:bg-transparent p-4 md:p-0 rounded md:rounded-none border border-[#e2d4c7] md:border-0 shadow-sm md:shadow-none`}
+          } absolute left-0 top-full z-20 mt-2 w-full items-center rounded border border-[#e2d4c7] bg-[#fff9f2] p-4 shadow-sm md:static md:mt-0 md:flex md:w-auto md:space-x-6 md:rounded-none md:border-0 md:bg-transparent md:p-0 md:shadow-none`}
         >
           <li>
             <NavLink
               to="/menu"
               className={({ isActive }) =>
-                `block md:inline no-underline border-b-2 p-2 transition-all duration-150 ${
+                `block border-b-2 p-2 no-underline transition-[color,border-color] duration-150 md:inline ${
                   isActive
                     ? "text-[#a64b2a] border-[#a64b2a]"
                     : "text-[#4a3326] border-transparent hover:text-[#a64b2a] hover:border-[#a64b2a]"
@@ -136,7 +142,7 @@ function Navigation() {
               }
             >
               <span className="inline-flex items-center">
-                <FaMugHot className="text-xl mr-1" />
+                <FaMugHot className="mr-1 text-xl" aria-hidden="true" />
                 {t("nav.menu")}
               </span>
             </NavLink>
@@ -145,7 +151,7 @@ function Navigation() {
             <NavLink
               to="/order"
               className={({ isActive }) =>
-                `block md:inline no-underline border-b-2 p-2 transition-all duration-150 ${
+                `block border-b-2 p-2 no-underline transition-[color,border-color] duration-150 md:inline ${
                   isActive
                     ? "text-[#a64b2a] border-[#a64b2a]"
                     : "text-[#4a3326] border-transparent hover:text-[#a64b2a] hover:border-[#a64b2a]"
@@ -153,7 +159,7 @@ function Navigation() {
               }
             >
               <span className="inline-flex items-center">
-                <FaShoppingCart className="text-xl mr-1" />
+                <FaShoppingCart className="mr-1 text-xl" aria-hidden="true" />
                 {t("nav.order")}
               </span>
             </NavLink>
@@ -176,11 +182,11 @@ function Navigation() {
               href="https://roast-66-coffee.printify.me/products"
               target="_blank"
               rel="noopener noreferrer"
-              className="block md:inline text-[#4a3326] hover:text-[#a64b2a] no-underline border-b-2 border-transparent hover:border-[#a64b2a] p-2 transition-all duration-150"
+              className="block border-b-2 border-transparent p-2 text-[#4a3326] no-underline transition-[color,border-color] duration-150 hover:border-[#a64b2a] hover:text-[#a64b2a] md:inline"
               title={t("nav.merchTitle")}
             >
               <span className="inline-flex items-center">
-                <FaTshirt className="text-xl mr-1" />
+                <FaTshirt className="mr-1 text-xl" aria-hidden="true" />
                 {t("nav.merch")}
               </span>
             </a>
@@ -190,11 +196,11 @@ function Navigation() {
               href="https://www.instagram.com/roast66coffee"
               target="_blank"
               rel="noopener noreferrer"
-              className="block md:inline text-[#4a3326] hover:text-[#a64b2a] no-underline border-b-2 border-transparent hover:border-[#a64b2a] p-2 transition-all duration-150"
+              className="block border-b-2 border-transparent p-2 text-[#4a3326] no-underline transition-[color,border-color] duration-150 hover:border-[#a64b2a] hover:text-[#a64b2a] md:inline"
               title={t("nav.instagramTitle")}
             >
               <span className="inline-flex items-center">
-                <FaInstagram className="text-xl mr-1" />
+                <FaInstagram className="mr-1 text-xl" aria-hidden="true" />
                 {t("nav.instagram")}
               </span>
             </a>
