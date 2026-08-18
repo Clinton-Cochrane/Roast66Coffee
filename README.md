@@ -197,6 +197,15 @@ Run backend tests:
 dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
 ```
 
+Run the PostgreSQL migration-lock integration test against a disposable database:
+
+```bash
+REQUIRE_POSTGRES_INTEGRATION_TESTS=true \
+POSTGRES_INTEGRATION_CONNECTION_STRING="$STAGING_DATABASE_URL" \
+dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj \
+  --filter FullyQualifiedName~PostgresMigrationLockTests
+```
+
 Run the complete frontend gate:
 
 ```bash
@@ -247,6 +256,8 @@ Post-deploy verification:
 JWT rotation invalidates all staff devices because the application does not currently maintain per-device revocation records.
 
 ### Migration, rollback, and restore
+
+The provider-specific commands and decision criteria are maintained in [`docs/operations/supabase-database-runbook.md`](docs/operations/supabase-database-runbook.md).
 
 1. Confirm a current backup exists before deploying a migration.
 2. Prefer additive expand/migrate/contract changes that remain compatible during deployment.

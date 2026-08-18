@@ -14,6 +14,8 @@ namespace CoffeeShopApi
     /// <summary>Entry point. Exposed for integration testing via WebApplicationFactory.</summary>
     public class Program
     {
+        internal const long MigrationLockKey = 7266677001;
+
         public static void Main(string[] args)
         {
             Log.Logger = new LoggerConfiguration()
@@ -59,7 +61,7 @@ namespace CoffeeShopApi
 
                 Console.WriteLine("Acquiring the database migration lock...");
                 context.Database.OpenConnection();
-                context.Database.ExecuteSqlRaw("SELECT pg_advisory_lock(7266677001)");
+                context.Database.ExecuteSqlRaw($"SELECT pg_advisory_lock({MigrationLockKey})");
                 try
                 {
                     Console.WriteLine("Applying database migrations...");
@@ -67,7 +69,7 @@ namespace CoffeeShopApi
                 }
                 finally
                 {
-                    context.Database.ExecuteSqlRaw("SELECT pg_advisory_unlock(7266677001)");
+                    context.Database.ExecuteSqlRaw($"SELECT pg_advisory_unlock({MigrationLockKey})");
                     context.Database.CloseConnection();
                 }
 
