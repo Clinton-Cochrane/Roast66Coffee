@@ -6,9 +6,9 @@ import FeaturedSpecials from "../components/Customer/FeaturedSpecials";
 
 function HomePage() {
   return (
-    <div className="flex flex-col items-center px-3 py-6 sm:px-6">
-      <div className="w-full max-w-6xl">
-        <Welcome />
+    <div className="flex flex-col items-center">
+      <Welcome />
+      <div className="w-full max-w-6xl px-3 pb-6 sm:px-6">
         <FeaturedSpecials />
         <About />
         <div className="mt-6">

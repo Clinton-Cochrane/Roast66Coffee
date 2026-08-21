@@ -9,18 +9,37 @@ type HomePhotoProps = {
   height: number;
   sizes: string;
   className?: string;
+  tone?: "dark" | "light";
 };
 
-function HomePhoto({ name, alt, pendingLabel, width, height, sizes, className = "" }: HomePhotoProps) {
+function HomePhoto({
+  name,
+  alt,
+  pendingLabel,
+  width,
+  height,
+  sizes,
+  className = "",
+  tone = "dark",
+}: HomePhotoProps) {
   const [loaded, setLoaded] = useState(false);
 
   return (
     <div
-      className={`relative isolate overflow-hidden bg-[#3b281f] ${className}`}
+      className={`relative isolate overflow-hidden ${
+        tone === "light" ? "bg-[#d8cec3]" : "bg-[#3b281f]"
+      } ${className}`}
       style={{ aspectRatio: `${width} / ${height}` }}
     >
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center text-[#fff9f2]">
-        <FaCamera className="text-3xl text-[#99bfdd]" aria-hidden="true" />
+      <div
+        className={`absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center ${
+          tone === "light" ? "text-[#4a3326]" : "text-[#fff9f2]"
+        }`}
+      >
+        <FaCamera
+          className={`text-3xl ${tone === "light" ? "text-[#a64b2a]" : "text-[#99bfdd]"}`}
+          aria-hidden="true"
+        />
         <span className="min-w-0 max-w-full break-words text-sm font-bold uppercase tracking-[0.14em]">
           {pendingLabel}
         </span>

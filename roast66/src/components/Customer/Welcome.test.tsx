@@ -18,7 +18,7 @@ describe("Welcome", () => {
     expect(
       screen.getByRole("heading", {
         level: 1,
-        name: "Fresh coffee, wherever the road takes you.",
+        name: "Coffee for the neighborhood",
       })
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /order now/i })).toHaveAttribute("href", "/order");

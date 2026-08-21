@@ -57,10 +57,12 @@ export const en = {
     flavorsHelp: "Choose flavors as add-ons while building your drink.",
   },
   home: {
-    heroEyebrow: "Cars, coffee, and good company",
+    heroEyebrow: "Small batch. Big flavor.",
     heroTitle: "Fresh coffee, wherever the road takes you.",
+    heroTitleLead: "Coffee for the",
+    heroTitleAccent: "neighborhood",
     heroBody:
-      "Roast 66 is a coffee shop on wheels, serving homemade favorites from our mobile trailer.",
+      "Roast 66 is your stop for handcrafted drinks, friendly faces, and a warm place to land.",
     orderNow: "Order Now",
     viewMenu: "View Menu",
     heroMobileCoffee: "Coffee on wheels",

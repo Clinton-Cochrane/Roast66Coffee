@@ -57,10 +57,12 @@ export const esMx: Messages = {
     flavorsHelp: "Elige sabores como extras mientras armas tu bebida.",
   },
   home: {
-    heroEyebrow: "Autos, café y buena compañía",
+    heroEyebrow: "Lotes pequeños. Gran sabor.",
     heroTitle: "Café fresco, adonde te lleve el camino.",
+    heroTitleLead: "Café para el",
+    heroTitleAccent: "vecindario",
     heroBody:
-      "Roast 66 es una cafetería sobre ruedas que sirve bebidas caseras favoritas desde nuestro remolque móvil.",
+      "Roast 66 es tu parada para bebidas artesanales, caras amigables y un lugar cálido donde llegar.",
     orderNow: "Ordenar ahora",
     viewMenu: "Ver menú",
     heroMobileCoffee: "Café sobre ruedas",
