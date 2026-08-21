@@ -32,7 +32,12 @@ function RouteFocusManager() {
     if (main) {
       main.focus();
     }
-  }, [location.pathname]);
+    if (location.hash) {
+      window.requestAnimationFrame(() => {
+        document.getElementById(location.hash.slice(1))?.scrollIntoView();
+      });
+    }
+  }, [location.pathname, location.hash]);
 
   return null;
 }

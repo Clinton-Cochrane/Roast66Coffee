@@ -15,6 +15,7 @@ type MenuItemFormState = {
   price: string | number;
   description: string;
   categoryType: number;
+  isFeaturedOnHome: boolean;
 };
 
 function ManageMenu() {
@@ -27,6 +28,7 @@ function ManageMenu() {
     price: "",
     description: "",
     categoryType: 0,
+    isFeaturedOnHome: false,
   });
 
   const fetchMenuItems = useCallback(() => {
@@ -58,6 +60,7 @@ function ManageMenu() {
         price: 0,
         description: "",
         categoryType: 0,
+        isFeaturedOnHome: false,
       });
     } else {
       const selectedItem = menuItems.find((item) => item.id === parseInt(selectedId, 10));
@@ -67,6 +70,7 @@ function ManageMenu() {
           price: selectedItem.price.toString(),
           description: selectedItem.description,
           categoryType: selectedItem.categoryType,
+          isFeaturedOnHome: selectedItem.isFeaturedOnHome,
         });
       }
     }
@@ -77,7 +81,9 @@ function ManageMenu() {
     setMenuItemForm((prev) => ({
       ...prev,
       [name]:
-        name === "price"
+        name === "isFeaturedOnHome" && e.target instanceof HTMLInputElement
+          ? e.target.checked
+          : name === "price"
           ? parseFloat(value) || 0
           : name === "categoryType"
             ? parseInt(value, 10) || 0
@@ -96,6 +102,7 @@ function ManageMenu() {
       price: parseFloat(String(menuItemForm.price)) || 0,
       description: menuItemForm.description,
       categoryType: parseInt(String(menuItemForm.categoryType), 10) || 0,
+      isFeaturedOnHome: menuItemForm.isFeaturedOnHome,
     };
 
     if (selectedMenuItemId === "new") {
@@ -104,7 +111,7 @@ function ManageMenu() {
         .then(() => {
           toast.success(t("adminMenu.added"));
           fetchMenuItems();
-          setMenuItemForm({ name: "", price: "", description: "", categoryType: 0 });
+          setMenuItemForm({ name: "", price: "", description: "", categoryType: 0, isFeaturedOnHome: false });
           setSelectedMenuItemId("");
         })
         .catch(() => toast.error(t("adminMenu.failedAdd")));
@@ -114,7 +121,7 @@ function ManageMenu() {
         .then(() => {
           toast.success(t("adminMenu.updated"));
           fetchMenuItems();
-          setMenuItemForm({ name: "", price: "", description: "", categoryType: 0 });
+          setMenuItemForm({ name: "", price: "", description: "", categoryType: 0, isFeaturedOnHome: false });
           setSelectedMenuItemId("");
         })
         .catch(() => toast.error(t("adminMenu.failedUpdate")));
@@ -190,6 +197,17 @@ function ManageMenu() {
               </option>
             ))}
           </select>
+
+          <label className="flex min-h-11 items-center gap-3 text-[#4a3326]">
+            <input
+              type="checkbox"
+              name="isFeaturedOnHome"
+              checked={menuItemForm.isFeaturedOnHome}
+              onChange={handleFormChange}
+              className="h-5 w-5 accent-[#a64b2a]"
+            />
+            {t("adminMenu.featureOnHome")}
+          </label>
 
           <Button type="submit" color="green">
             {selectedMenuItemId === "new" ? t("adminMenu.submitAdd") : t("adminMenu.submitUpdate")}

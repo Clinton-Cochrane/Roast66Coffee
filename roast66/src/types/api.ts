@@ -5,6 +5,7 @@ export type MenuItemDto = {
   price: number;
   description: string;
   categoryType: number;
+  isFeaturedOnHome: boolean;
 };
 
 export type OrderLineAddOnDto = {

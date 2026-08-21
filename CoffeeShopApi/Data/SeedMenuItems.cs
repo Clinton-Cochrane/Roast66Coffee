@@ -29,11 +29,11 @@ namespace CoffeeShopApi.Data
 
                 // Specials
                 new MenuItem { Name = "Mr. Brownie Shaken Espresso", Price = 4.15M, Description = "Shaken espresso with brown sugar, cinnamon powder, and vanilla cold foam", CategoryType = CategoryType.SPECIALS },
-                new MenuItem { Name = "Mrs. Brownie Latte", Price = 7.23M, Description = "Iced coconut and caramel latte", CategoryType = CategoryType.SPECIALS },
-                new MenuItem { Name = "Shitbox LUV Fuel", Price = 5.00M, Description = "Triple espresso with caramel drizzle and guarana syrup", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "Mrs. Brownie Latte", Price = 7.23M, Description = "Iced coconut and caramel latte", CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true },
+                new MenuItem { Name = "Shitbox LUV Fuel", Price = 5.00M, Description = "Triple espresso with caramel drizzle and guarana syrup", CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true },
                 new MenuItem { Name = "Blue Flame Nitro", Price = 5.25M, Description = "Nitro cold brew with sweet cream and blueberry syrup", CategoryType = CategoryType.SPECIALS },
                 new MenuItem { Name = "GTO Grape Energy Boost", Price = 4.50M, Description = "Grape energy drink with lemon and passion fruit", CategoryType = CategoryType.SPECIALS },
-                new MenuItem { Name = "Black SS Lemonade", Price = 2.50M, Description = "Red raspberry, pomegranate, and bubbly lemonade", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "Black SS Lemonade", Price = 2.50M, Description = "Red raspberry, pomegranate, and bubbly lemonade", CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true },
                 new MenuItem { Name = "Red SnotRod Energy Bump", Price = 2.50M, Description = "Cherry, passion fruit, and white peach flavored energy drink", CategoryType = CategoryType.SPECIALS },
                 new MenuItem { Name = "Green Nova Refresher", Price = 3.75M, Description = "Iced sparkling lime drink with cucumber and mint", CategoryType = CategoryType.SPECIALS },
                 new MenuItem { Name = "Pink Slip Punch", Price = 3.50M, Description = "Strawberry, watermelon, and lemon punch", CategoryType = CategoryType.SPECIALS },

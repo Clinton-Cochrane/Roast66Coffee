@@ -7,7 +7,7 @@ type FooterProps = {
 };
 
 const Footer = ({ year = 2024 }: FooterProps) => {
-  const { locale, setLocale, t } = useI18n();
+  const { t } = useI18n();
 
   return (
     <footer className="bg-[#2c1d15] text-[#f7efe6] py-5 border-t border-[#4a3326]">
@@ -17,16 +17,6 @@ const Footer = ({ year = 2024 }: FooterProps) => {
         </p>
 
         <div className="flex items-center space-x-3">
-          <button
-            type="button"
-            onClick={() => setLocale(locale === "en" ? "es" : "en")}
-            aria-label={
-              locale === "en" ? t("language.switchToSpanish") : t("language.switchToEnglish")
-            }
-            className="h-8 w-8 rounded-full border border-[#8a7364] text-[10px] font-bold tracking-[0.08em] text-[#f7efe6] hover:border-[#99bfdd] focus:outline-none focus:ring-2 focus:ring-[#99bfdd]"
-          >
-            {locale === "en" ? t("language.localeCodeEn") : t("language.localeCodeEs")}
-          </button>
           <a
             href="https://www.instagram.com/roast66coffee"
             target="_blank"

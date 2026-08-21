@@ -20,7 +20,8 @@ const mockMenuItem: MenuItemDto = {
   name: "Espresso",
   description: "Strong coffee",
   price: 3.5,
-  categoryType: CategoryType.COFFEE,
+      categoryType: CategoryType.COFFEE,
+      isFeaturedOnHome: false,
 };
 
 const specialItem: MenuItemDto = {
@@ -28,7 +29,8 @@ const specialItem: MenuItemDto = {
   name: "Blue Flame Nitro",
   description: "A house special",
   price: 5.25,
-  categoryType: CategoryType.SPECIALS,
+      categoryType: CategoryType.SPECIALS,
+      isFeaturedOnHome: true,
 };
 
 const flavorItem: MenuItemDto = {
@@ -36,7 +38,8 @@ const flavorItem: MenuItemDto = {
   name: "Vanilla Shot",
   description: "Classic vanilla",
   price: 0.5,
-  categoryType: CategoryType.FLAVORS,
+      categoryType: CategoryType.FLAVORS,
+      isFeaturedOnHome: false,
 };
 
 function OrderStateProbe() {

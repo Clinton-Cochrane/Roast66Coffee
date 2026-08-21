@@ -1,7 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useI18n } from "../../i18n/LanguageContext";
-import { FaArrowRight, FaMapMarkerAlt, FaMugHot, FaRoad } from "react-icons/fa";
+import { FaArrowRight } from "react-icons/fa";
+import HomePhoto from "./HomePhoto";
 
 function Welcome() {
   const { t } = useI18n();
@@ -40,23 +41,15 @@ function Welcome() {
           </div>
         </div>
 
-        <div className="relative flex min-h-64 items-center justify-center overflow-hidden border-t border-[#dccdbe] bg-[#4a3326] px-6 py-8 text-center text-[#fff9f2] md:min-h-full md:border-l md:border-t-0">
-          <FaRoad
-            className="absolute -bottom-8 -right-8 text-[13rem] text-[#fff9f2]/[0.06]"
-            aria-hidden="true"
-          />
-          <div className="relative">
-            <FaMugHot className="mx-auto text-4xl text-[#99bfdd]" aria-hidden="true" />
-            <p className="mt-4 text-6xl font-black leading-none tracking-[-0.06em]">66</p>
-            <p className="mt-2 text-sm font-bold uppercase tracking-[0.16em] text-[#f4d7bd]">
-              {t("home.heroMobileCoffee")}
-            </p>
-            <p className="mt-5 inline-flex items-center gap-2 text-sm text-[#f7efe6]">
-              <FaMapMarkerAlt aria-hidden="true" />
-              {t("home.heroFollowRoute")}
-            </p>
-          </div>
-        </div>
+        <HomePhoto
+          name="hero"
+          alt={t("home.heroImageAlt")}
+          pendingLabel={t("home.heroImagePending")}
+          width={1440}
+          height={960}
+          sizes="(min-width: 768px) 35vw, 100vw"
+          className="min-h-64 border-t border-[#dccdbe] md:min-h-full md:border-l md:border-t-0"
+        />
       </div>
     </section>
   );

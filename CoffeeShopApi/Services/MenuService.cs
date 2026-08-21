@@ -77,7 +77,8 @@ namespace CoffeeShopApi.Services
                 Name = m.Name,
                 Price = m.Price,
                 Description = m.Description ?? string.Empty,
-                CategoryType = m.CategoryType
+                CategoryType = m.CategoryType,
+                IsFeaturedOnHome = m.IsFeaturedOnHome
             }).ToList();
             _context.MenuItems.RemoveRange(_context.MenuItems);
             await _context.MenuItems.AddRangeAsync(items);

@@ -36,5 +36,8 @@ namespace CoffeeShopApi.Models
 
         [Required]
         public CategoryType CategoryType { get; set; }
+
+        [Column("is_featured_on_home")]
+        public bool IsFeaturedOnHome { get; set; }
     }
 }

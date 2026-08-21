@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { FaInstagram, FaBars, FaTimes, FaTshirt, FaShoppingCart, FaMugHot } from "react-icons/fa";
+import { FaBars, FaChevronDown, FaTimes } from "react-icons/fa";
 
-import logo from "../logo.png";
+import logo from "../logo-sign.svg";
 import { ORDER_STATUS } from "../constants/orderStatus";
 import { getOrderStatusFromDto } from "../constants/orderStatusParse";
 import {
@@ -14,9 +14,11 @@ import {
 import { fetchOrderLookup } from "../lib/orderStatusLookup";
 import { useI18n } from "../i18n/LanguageContext";
 
+const merchUrl = "https://roast-66-coffee.printify.me/products";
+
 function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { t } = useI18n();
+  const { locale, setLocale, t } = useI18n();
   const location = useLocation();
   const [orderTrackingSession, setOrderTrackingSession] =
     useState<OrderStatusLookupSessionPayload | null>(() =>
@@ -24,8 +26,9 @@ function Navigation() {
     );
 
   useEffect(() => {
+    setIsMenuOpen(false);
     setOrderTrackingSession(readOrderStatusSession());
-  }, [location.pathname]);
+  }, [location.pathname, location.hash]);
 
   useEffect(() => {
     const sync = () => setOrderTrackingSession(readOrderStatusSession());
@@ -33,43 +36,28 @@ function Navigation() {
     return () => window.removeEventListener(ORDER_STATUS_SESSION_UPDATED_EVENT, sync);
   }, []);
 
-  /** Refresh stored status from the server so the nav dot matches staff updates when not on Order Status. */
   useEffect(() => {
-    if (location.pathname === "/order-status") {
-      return;
-    }
+    if (location.pathname === "/order-status") return;
 
     const session = readOrderStatusSession();
-    if (!session) {
-      return;
-    }
-    if (session.orderStatus === ORDER_STATUS.Completed) {
-      return;
-    }
+    if (!session || session.orderStatus === ORDER_STATUS.Completed) return;
 
     let cancelled = false;
-
     const pull = async () => {
-      if (cancelled) {
-        return;
-      }
+      if (cancelled) return;
       try {
         const data = await fetchOrderLookup(session.trackingToken);
-        if (cancelled) {
-          return;
+        if (!cancelled) {
+          writeOrderStatusSession(session.trackingToken, getOrderStatusFromDto(data));
         }
-        const next = getOrderStatusFromDto(data);
-        writeOrderStatusSession(session.trackingToken, next);
       } catch {
-        /* ignore */
+        /* Keep navigation usable if background status refresh fails. */
       }
     };
 
     const interval = window.setInterval(() => void pull(), 90_000);
     const onVisibility = () => {
-      if (document.visibilityState === "visible") {
-        void pull();
-      }
+      if (document.visibilityState === "visible") void pull();
     };
     document.addEventListener("visibilitychange", onVisibility);
     void pull();
@@ -79,129 +67,111 @@ function Navigation() {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [
-    location.pathname,
-    orderTrackingSession?.trackingToken,
-    orderTrackingSession?.orderStatus,
-  ]);
-
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
+  }, [location.pathname, orderTrackingSession?.trackingToken, orderTrackingSession?.orderStatus]);
 
   const hasActiveTrackedOrder =
-    orderTrackingSession != null &&
-    orderTrackingSession.orderStatus !== ORDER_STATUS.Completed;
+    orderTrackingSession != null && orderTrackingSession.orderStatus !== ORDER_STATUS.Completed;
+
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `r66-nav-link ${isActive ? "r66-nav-link-active" : ""}`;
 
   return (
-    <nav className="p-4 border-b border-[#d8c8ba] bg-[#f7efe6]/95 backdrop-blur-sm">
-      <div className="container mx-auto flex items-center justify-between p-4 rounded-xl border border-[#e2d4c7] bg-[#fff9f2] shadow-sm">
-        <div className="text-2xl font-bold">
-          <NavLink
-            to="/"
-            title={t("nav.homeTitle")}
-            className="hover:text-[#a64b2a] flex items-center gap-2 transition-colors duration-150"
-          >
-            <img src={logo} alt={t("home.logoAlt")} className="h-8 inline-block" />
-            <span className="text-[#4a3326]">{t("nav.brandName")}</span>
-          </NavLink>
-        </div>
+    <header className="r66-header">
+      <nav className="r66-header-inner" aria-label={t("nav.primaryNavigation")}>
+        <NavLink to="/" title={t("nav.homeTitle")} className="r66-brand">
+          <img src={logo} alt={t("home.logoAlt")} className="r66-brand-logo" />
+          <span className="min-w-0">
+            <span className="r66-brand-name">{t("nav.brandName")}</span>
+            <span className="r66-brand-motto">{t("nav.motto")}</span>
+          </span>
+        </NavLink>
 
         <button
           type="button"
-          onClick={toggleMenu}
-          className="block md:hidden text-[#4a3326] focus:outline-none"
+          onClick={() => setIsMenuOpen((open) => !open)}
+          className="r66-mobile-toggle"
           aria-expanded={isMenuOpen}
           aria-controls="site-navigation-menu"
           aria-label={isMenuOpen ? t("nav.closeMenu") : t("nav.openMenu")}
         >
-          {isMenuOpen ? <FaTimes className="text-2xl" /> : <FaBars className="text-2xl" />}
+          {isMenuOpen ? <FaTimes aria-hidden="true" /> : <FaBars aria-hidden="true" />}
         </button>
 
-        <ul
-          id="site-navigation-menu"
-          className={`${
-            isMenuOpen ? "block" : "hidden"
-          } md:flex md:space-x-6 items-center w-full md:w-auto md:static absolute top-16 mt-2 md:mt-0 left-0 z-20 bg-[#fff9f2] md:bg-transparent p-4 md:p-0 rounded md:rounded-none border border-[#e2d4c7] md:border-0 shadow-sm md:shadow-none`}
-        >
-          <li>
-            <NavLink
-              to="/menu"
-              className={({ isActive }) =>
-                `block md:inline no-underline border-b-2 p-2 transition-all duration-150 ${
-                  isActive
-                    ? "text-[#a64b2a] border-[#a64b2a]"
-                    : "text-[#4a3326] border-transparent hover:text-[#a64b2a] hover:border-[#a64b2a]"
-                }`
-              }
-            >
-              <span className="inline-flex items-center">
-                <FaMugHot className="text-xl mr-1" />
-                {t("nav.menu")}
-              </span>
-            </NavLink>
-          </li>
-          <li className="flex flex-wrap items-center gap-1 md:gap-1.5">
-            <NavLink
-              to="/order"
-              className={({ isActive }) =>
-                `block md:inline no-underline border-b-2 p-2 transition-all duration-150 ${
-                  isActive
-                    ? "text-[#a64b2a] border-[#a64b2a]"
-                    : "text-[#4a3326] border-transparent hover:text-[#a64b2a] hover:border-[#a64b2a]"
-                }`
-              }
-            >
-              <span className="inline-flex items-center">
-                <FaShoppingCart className="text-xl mr-1" />
-                {t("nav.order")}
-              </span>
-            </NavLink>
-            {hasActiveTrackedOrder ? (
-              <Link
-                to={`/order-status?token=${encodeURIComponent(orderTrackingSession.trackingToken)}`}
-                className="inline-flex items-center justify-center min-h-[2.5rem] min-w-[1.25rem] shrink-0 p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-[#a64b2a] focus-visible:ring-offset-2"
-                aria-label={t("nav.orderTrackingActive")}
-                title={t("nav.orderTrackingActive")}
-              >
-                <span
-                  className="block h-2.5 w-2.5 rounded-full bg-amber-500 ring-2 ring-amber-200"
-                  aria-hidden
-                />
+        <div id="site-navigation-menu" className={`r66-navigation-menu ${isMenuOpen ? "is-open" : ""}`}>
+          <ul className="r66-primary-links">
+            <li>
+              <NavLink to="/" end className={navLinkClass}>
+                {t("nav.home")}
+              </NavLink>
+            </li>
+            <li>
+              <details className="r66-shop-menu">
+                <summary className="r66-nav-link">
+                  {t("nav.shop")}
+                  <FaChevronDown aria-hidden="true" />
+                </summary>
+                <ul className="r66-shop-dropdown">
+                  <li>
+                    <NavLink to="/menu" className={navLinkClass}>
+                      {t("nav.menu")}
+                    </NavLink>
+                  </li>
+                  <li>
+                    <a href={merchUrl} target="_blank" rel="noopener noreferrer" className="r66-nav-link">
+                      {t("nav.merch")}
+                    </a>
+                  </li>
+                </ul>
+              </details>
+            </li>
+            <li>
+              <Link to="/#home-story" className="r66-nav-link">
+                {t("nav.contactAbout")}
               </Link>
-            ) : null}
-          </li>
-          <li>
-            <a
-              href="https://roast-66-coffee.printify.me/products"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block md:inline text-[#4a3326] hover:text-[#a64b2a] no-underline border-b-2 border-transparent hover:border-[#a64b2a] p-2 transition-all duration-150"
-              title={t("nav.merchTitle")}
-            >
-              <span className="inline-flex items-center">
-                <FaTshirt className="text-xl mr-1" />
-                {t("nav.merch")}
-              </span>
-            </a>
-          </li>
-          <li>
-            <a
-              href="https://www.instagram.com/roast66coffee"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block md:inline text-[#4a3326] hover:text-[#a64b2a] no-underline border-b-2 border-transparent hover:border-[#a64b2a] p-2 transition-all duration-150"
-              title={t("nav.instagramTitle")}
-            >
-              <span className="inline-flex items-center">
-                <FaInstagram className="text-xl mr-1" />
+            </li>
+            <li>
+              <a
+                href="https://www.instagram.com/roast66coffee"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="r66-nav-link"
+                title={t("nav.instagramTitle")}
+              >
                 {t("nav.instagram")}
-              </span>
-            </a>
-          </li>
-        </ul>
-      </div>
-    </nav>
+              </a>
+            </li>
+          </ul>
+
+          <div className="r66-header-actions">
+            <button
+              type="button"
+              onClick={() => setLocale(locale === "en" ? "es" : "en")}
+              className="r66-language-switch"
+              aria-label={locale === "en" ? t("language.switchToSpanish") : t("language.switchToEnglish")}
+            >
+              {t("language.localeCodeEn")} / {t("language.localeCodeEs")}
+            </button>
+
+            <span className="relative">
+              <NavLink to="/order" className="r66-order-now">
+                {t("nav.orderNow")}
+                <img src={logo} alt="" aria-hidden="true" />
+              </NavLink>
+              {hasActiveTrackedOrder ? (
+                <Link
+                  to={`/order-status?token=${encodeURIComponent(orderTrackingSession.trackingToken)}`}
+                  className="r66-tracking-link"
+                  aria-label={t("nav.orderTrackingActive")}
+                  title={t("nav.orderTrackingActive")}
+                >
+                  <span aria-hidden="true" />
+                </Link>
+              ) : null}
+            </span>
+          </div>
+        </div>
+      </nav>
+    </header>
   );
 }
 
