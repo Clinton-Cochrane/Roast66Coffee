@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import CategoryType from "../constants/categories";
 import { LanguageProvider } from "../i18n/LanguageContext";
@@ -87,9 +87,9 @@ describe("OrderPage", () => {
     renderOrderPage({ pathname: "/order", state: { menuItemId: 1 } });
 
     await waitFor(() => {
-      expect(document.querySelectorAll(".order-item")).toHaveLength(1);
+      expect(screen.getAllByTestId("order-item")).toHaveLength(1);
     });
-    expect(document.querySelector(".order-item")).toHaveTextContent("Espresso");
+    expect(screen.getByTestId("order-item")).toHaveTextContent("Espresso");
 
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith("/order", {
@@ -108,7 +108,7 @@ describe("OrderPage", () => {
       expect(mockGet).toHaveBeenCalledWith("/menu");
     });
 
-    expect(document.querySelectorAll(".order-item")).toHaveLength(0);
+    expect(screen.queryAllByTestId("order-item")).toHaveLength(0);
   });
 
   it("clears prefill state when menuItemId does not match any menu item", async () => {
@@ -127,7 +127,7 @@ describe("OrderPage", () => {
       });
     });
 
-    expect(document.querySelectorAll(".order-item")).toHaveLength(0);
+    expect(screen.queryAllByTestId("order-item")).toHaveLength(0);
   });
 
   it("does not prefill flavor items and shows a warning", async () => {
@@ -150,6 +150,6 @@ describe("OrderPage", () => {
       });
     });
 
-    expect(document.querySelectorAll(".order-item")).toHaveLength(0);
+    expect(screen.queryAllByTestId("order-item")).toHaveLength(0);
   });
 });

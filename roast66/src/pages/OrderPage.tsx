@@ -3,7 +3,6 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import axios from "axios";
 import axiosInstance from "../axiosConfig";
 import { toast } from "react-toastify";
-import "../styles/OrderPage.css";
 import FormInput from "../components/common/FormInput";
 import Button from "../components/common/Button";
 import CategoryType from "../constants/categories";
@@ -261,9 +260,11 @@ function OrderPage() {
             {t("order.checkOrderStatus")} →
           </Link>
         </div>
-        <p className="r66-subtitle mb-6">{t("order.pageSubtitle")}</p>
+        <p className="mb-6 text-[0.98rem] leading-[1.6] text-[#6f5b4b]">
+          {t("order.pageSubtitle")}
+        </p>
 
-        <div className="customer-info-container r66-panel p-4">
+        <div className="mb-1 flex gap-4 rounded-[14px] border border-[#dccdbe] bg-[#fffaf3]/[0.92] p-4 shadow-[0_10px_24px_rgba(54,33,19,0.12)] max-[820px]:flex-col">
           <div className="flex-1 min-w-0">
             <FormInput
               type="text"
@@ -323,15 +324,19 @@ function OrderPage() {
         </div>
 
         <form onSubmit={handleOrderSubmit} className="space-y-4">
-          <ul className="space-y-4 order-items-list">
+          <ul className="mx-auto grid max-w-[600px] gap-[0.9rem]">
             {orderItems.map((item, index) => (
-              <li key={index} className="order-item">
-                <div className="order-item-header">
-                  <div className="order-item-quantity">
+              <li
+                key={index}
+                data-testid="order-item"
+                className="flex flex-col gap-[0.65rem] rounded-[10px] border border-[#dccdbe] bg-[#fffaf3] p-[0.95rem] shadow-[0_3px_8px_rgba(54,33,19,0.08)] transition-[box-shadow,transform] duration-200 motion-safe:hover:-translate-y-px hover:shadow-[0_8px_16px_rgba(54,33,19,0.12)]"
+              >
+                <div className="relative flex items-center justify-center gap-4">
+                  <div className="flex items-center">
                     <FormInput
                       type="number"
                       label={t("order.quantityLabel", { itemName: item.name })}
-                      className="quantity-input"
+                      className="!w-14 !p-1 text-center"
                       value={item.quantity}
                       min={1}
                       max={99}
@@ -340,21 +345,22 @@ function OrderPage() {
                     />
                   </div>
 
-                  <div className="order-item-details">
+                  <div className="flex-1 text-[1.15rem] font-bold tracking-[0.01em] text-[#4a3326]">
                     {item.name} - ${calculateTotalPrice(item).toFixed(2)}
                   </div>
 
                   <Button
                     type="button"
                     onClick={() => handleRemoveItem(index)}
-                    className="button-remove"
+                    variant="link"
+                    className="absolute right-0 top-0 inline-flex !h-auto !w-auto items-center justify-center !p-1 text-xl no-underline transition-[color,background-color,transform] duration-200 hover:scale-110 hover:bg-[#f1ddd0]"
                     color="red"
                   >
                     X
                   </Button>
                 </div>
 
-                <div className="add-ons-section">
+                <div className="mt-3 border-t border-dashed border-[#ddcdbf] pt-2.5">
                   <select
                     id={`flavor-select-${index}`}
                     onChange={(e) => handleAddFlavor(index, JSON.parse(e.target.value) as MenuItemDto)}
@@ -373,15 +379,18 @@ function OrderPage() {
                   </select>
 
                   {item.addOns.length > 0 ? (
-                    <ul className="add-on-list">
+                    <ul className="mt-1 list-none pl-0">
                       {item.addOns.map((addOn, addOnIndex) => (
-                        <li key={addOnIndex} className="add-on-item">
+                        <li
+                          key={addOnIndex}
+                          className="flex items-center justify-between gap-2 text-sm text-[#4d3b31]"
+                        >
                           <span>
                             {addOn.name} - ${addOn.price} x {addOn.quantity}
                           </span>
                           <FormInput
                             type="number"
-                            className="quantity-input"
+                            className="!w-14 !p-1 text-center"
                             min={1}
                             value={addOn.quantity}
                             onChange={(e) => {

@@ -32,6 +32,14 @@ describe("Button", () => {
     expect(screen.getByRole("button")).toHaveAttribute("type", "submit");
   });
 
+  it("uses black text for the yellow button variant", () => {
+    render(<Button color="yellow">Order special</Button>);
+    expect(screen.getByRole("button", { name: /order special/i })).toHaveClass(
+      "text-black",
+      "hover:text-black"
+    );
+  });
+
   it("renders link variant without solid button background classes", () => {
     render(
       <Button variant="link" color="green">

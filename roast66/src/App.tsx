@@ -9,8 +9,6 @@ import {
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Navigation from "./components/Navigation";
-import "./styles/Customer.css";
-import "./styles/Navigation.css";
 import Footer from "./components/layout/Footer";
 import Loading from "./components/common/Loading";
 import { useI18n } from "./i18n/LanguageContext";

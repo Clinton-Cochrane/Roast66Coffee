@@ -94,7 +94,7 @@ describe("Menu", () => {
     expect(screen.queryByText("Espresso")).not.toBeInTheDocument();
   });
 
-  it("provides hash links and marks the selected category active", async () => {
+  it("keeps category navigation sticky and marks the selected category active", async () => {
     mockGet.mockResolvedValue({ data: [mockMenuItem, specialItem, flavorItem] });
     renderMenu();
 
@@ -105,14 +105,48 @@ describe("Menu", () => {
     const specialsLink = screen.getByRole("link", { name: "Specials" });
 
     expect(categoryNavigation).toContainElement(drinksLink);
+    expect(categoryNavigation).toHaveClass("sticky", "mx-0");
+    expect(categoryNavigation).not.toHaveClass("md:mx-4", "xl:mx-8");
+    expect(categoryNavigation).not.toHaveClass("md:static");
     expect(drinksLink).toHaveAttribute("href", "#drinks");
     expect(specialsLink).toHaveAttribute("href", "#specials");
-    expect(drinksLink).toHaveAttribute("aria-current", "location");
-
-    fireEvent.click(specialsLink);
-
     expect(specialsLink).toHaveAttribute("aria-current", "location");
-    expect(drinksLink).not.toHaveAttribute("aria-current");
+
+    fireEvent.click(drinksLink);
+
+    expect(drinksLink).toHaveAttribute("aria-current", "location");
+    expect(drinksLink).toHaveClass("border-[#c77e42]", "bg-[#c77e42]", "text-black");
+    expect(specialsLink).not.toHaveAttribute("aria-current");
+  });
+
+  it("promotes Specials ahead of Drinks", async () => {
+    mockGet.mockResolvedValue({ data: [mockMenuItem, specialItem] });
+    renderMenu();
+
+    const specialsHeading = await screen.findByRole("heading", { name: "Specials" });
+    const drinksHeading = screen.getByRole("heading", { name: "Drinks" });
+
+    expect(specialsHeading.compareDocumentPosition(drinksHeading)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+  });
+
+  it("uses consistent category colors for sections and item cards", async () => {
+    mockGet.mockResolvedValue({ data: [mockMenuItem, specialItem] });
+    renderMenu();
+
+    const specialsHeading = await screen.findByRole("heading", { name: "Specials" });
+    const drinksHeading = screen.getByRole("heading", { name: "Drinks" });
+    const specialCard = screen.getByRole("heading", { name: specialItem.name }).parentElement;
+    const drinkCard = screen.getByRole("heading", { name: mockMenuItem.name }).parentElement;
+
+    expect(specialsHeading).toHaveClass("border-[#c77e42]");
+    expect(specialsHeading.closest("section")).toHaveClass("border-[#c77e42]");
+    expect(specialCard).toHaveClass("border-[#c77e42]", "bg-[#fffaf4]");
+
+    expect(drinksHeading).toHaveClass("border-[#4a3326]");
+    expect(drinksHeading.closest("section")).toHaveClass("border-[#4a3326]", "bg-[#fffaf4]");
+    expect(drinkCard).toHaveClass("border-[#4a3326]", "bg-[#eadfd3]");
   });
 
   it("preserves API order within a category", async () => {
@@ -132,7 +166,7 @@ describe("Menu", () => {
     mockGet.mockResolvedValue({ data: [specialItem] });
     renderMenu();
 
-    fireEvent.click(await screen.findByRole("button", { name: "Order this item" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Order Blue Flame Nitro" }));
 
     expect(screen.getByText("Selected item: 2")).toBeInTheDocument();
   });
@@ -143,6 +177,6 @@ describe("Menu", () => {
 
     expect(await screen.findByText("Vanilla Shot")).toBeInTheDocument();
     expect(screen.getByText("Choose flavors as add-ons while building your drink.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Order this item" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Order Vanilla Shot" })).not.toBeInTheDocument();
   });
 });

@@ -46,6 +46,7 @@ export const esMx: Messages = {
   },
   menu: {
     orderThisItem: "Pedir este artículo",
+    orderItem: "Pedir {{itemName}}",
     categoryNavigation: "Categorías del menú",
     pageTitle: "Nuestro menú",
     pageSubtitle: "Clásicos rústicos de café y favoritos listos para la carretera.",

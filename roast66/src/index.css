@@ -12,10 +12,6 @@
   --r66-baby-blue: #99bfdd;
   --r66-slate-blue: #6c89a2;
   --r66-text: #2f2621;
-  --r66-border: #dccdbe;
-  --r66-surface: rgba(255, 250, 243, 0.92);
-  --r66-shadow: 0 10px 24px rgba(54, 33, 19, 0.12);
-  --r66-shadow-soft: 0 6px 16px rgba(54, 33, 19, 0.09);
 }
 
 /* Global body styles */
@@ -46,31 +42,6 @@ a:hover {
   min-height: calc(100vh - 180px);
 }
 
-.r66-panel {
-  background: var(--r66-surface);
-  border: 1px solid var(--r66-border);
-  box-shadow: var(--r66-shadow);
-  border-radius: 14px;
-  transition: box-shadow 180ms ease, transform 180ms ease;
-}
-
-.r66-panel:hover {
-  box-shadow: 0 14px 30px rgba(54, 33, 19, 0.14);
-  transform: translateY(-1px);
-}
-
-.r66-subtitle {
-  color: #6f5b4b;
-  font-size: 0.98rem;
-  line-height: 1.6;
-}
-
-.notes-input {
-  border: 1px solid #ccc;
-  padding: 0.5rem;
-  border-radius: 4px;
-}
-
 .skip-link {
   position: absolute;
   left: -9999px;
@@ -92,4 +63,3 @@ a:hover {
   outline: 3px solid #1d4ed8;
   outline-offset: 2px;
 }
-

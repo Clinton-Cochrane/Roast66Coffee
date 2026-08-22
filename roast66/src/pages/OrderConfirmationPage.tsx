@@ -98,7 +98,7 @@ function OrderConfirmationPage() {
         })}
       </p>
 
-      <div className="r66-panel rounded-lg p-4 mb-6">
+      <div className="mb-6 rounded-lg border border-[#dccdbe] bg-[#fffaf3]/[0.92] p-4 shadow-[0_10px_24px_rgba(54,33,19,0.12)]">
         <p className="text-lg font-bold mb-2">
           {t("orderConfirmation.orderPrefix")} #{orderId}
         </p>
