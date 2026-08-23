@@ -131,6 +131,35 @@ describe("Menu", () => {
     );
   });
 
+  it("shows homepage specials in Specials without duplicating them in Drinks", async () => {
+    const featuredDrink = {
+      ...mockMenuItem,
+      id: 4,
+      name: "Featured Espresso",
+      isFeaturedOnHome: true,
+    };
+    mockGet.mockResolvedValue({ data: [featuredDrink, mockMenuItem] });
+    renderMenu();
+
+    const specialsSection = (await screen.findByRole("heading", { name: "Specials" })).closest(
+      "section"
+    );
+    const drinksSection = screen.getByRole("heading", { name: "Drinks" }).closest("section");
+
+    expect(specialsSection).toHaveTextContent("Featured Espresso");
+    expect(drinksSection).not.toHaveTextContent("Featured Espresso");
+    expect(drinksSection).toHaveTextContent("Espresso");
+  });
+
+  it("keeps unfeatured menu specials in Specials", async () => {
+    mockGet.mockResolvedValue({ data: [{ ...specialItem, isFeaturedOnHome: false }] });
+    renderMenu();
+
+    expect(await screen.findByRole("heading", { name: "Specials" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: specialItem.name })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Drinks" })).not.toBeInTheDocument();
+  });
+
   it("uses consistent category colors for sections and item cards", async () => {
     mockGet.mockResolvedValue({ data: [mockMenuItem, specialItem] });
     renderMenu();
