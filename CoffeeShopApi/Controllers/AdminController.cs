@@ -180,6 +180,8 @@ namespace CoffeeShopApi.Controllers
         }
 
         public sealed record HomepageSpecialSelectionRequest(bool IsSelected);
+        public sealed record MenuSpecialSelectionRequest(bool IsSelected);
+        public sealed record PromotionUpdateRequest(string? Promotion);
 
         [Authorize(Roles = "Admin")]
         [HttpPut("menu/{id}/homepage-special")]
@@ -197,6 +199,25 @@ namespace CoffeeShopApi.Controllers
                     message = $"Only {MenuService.MaxHomepageSpecials} homepage specials can be selected."
                 }),
                 _ => StatusCode(StatusCodes.Status500InternalServerError)
+            };
+        }
+
+        [Authorize(Roles = "Admin")]
+        [HttpPut("menu/{id}/menu-special")]
+        public async Task<IActionResult> SetMenuSpecial(int id, [FromBody] MenuSpecialSelectionRequest request) =>
+            await _menuService.SetMenuSpecialAsync(id, request.IsSelected) ? NoContent() : NotFound();
+
+        [Authorize(Roles = "Admin")]
+        [HttpPut("menu/{id}/promotion")]
+        public async Task<IActionResult> SetPromotion(int id, [FromBody] PromotionUpdateRequest request)
+        {
+            var result = await _menuService.SetPromotionAsync(id, request.Promotion);
+            return result switch
+            {
+                MenuItemUpdateResult.Updated => NoContent(),
+                MenuItemUpdateResult.NotFound => NotFound(),
+                MenuItemUpdateResult.InvalidPromotion => BadRequest(new { message = "Use a valid discount such as $2 or 32%. The discounted price must be at least $0.01." }),
+                _ => StatusCode(500)
             };
         }
 

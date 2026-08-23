@@ -223,12 +223,14 @@ public class StripePaymentService
                 AddOns = item.AddOns.Select(addOn => new AddOn
                 {
                     MenuItemId = addOn.MenuItemId,
-                    Quantity = addOn.Quantity
+                    Quantity = addOn.Quantity,
+                    UnitPrice = addOn.UnitPrice ?? 0
                 }).ToList()
+                ,UnitPrice = item.UnitPrice ?? 0
             }).ToList()
         };
 
-        var createdOrder = await _orderService.CreateOrderAsync(orderNew);
+        var createdOrder = await _orderService.CreateOrderAsync(orderNew, preserveSnapshotPrices: true);
         await _notificationService.SendOrderNotificationAsync(createdOrder, cancellationToken);
         draft.Status = "completed";
         draft.CompletedUtc = DateTime.UtcNow;
@@ -273,7 +275,8 @@ public class StripePaymentService
                 throw new InvalidOperationException($"Menu item {item.MenuItemId} not found.");
             }
 
-            lineItems.Add(ToLineItem(menuItem.Name, menuItem.Description, menuItem.Price, item.Quantity));
+            item.UnitPrice = menuItem.EffectivePrice;
+            lineItems.Add(ToLineItem(menuItem.Name, menuItem.Description, item.UnitPrice.Value, item.Quantity));
 
             foreach (var addOn in item.AddOns)
             {
@@ -282,10 +285,11 @@ public class StripePaymentService
                     throw new InvalidOperationException($"Add-on item {addOn.MenuItemId} not found.");
                 }
 
+                addOn.UnitPrice = addOnItem.EffectivePrice;
                 lineItems.Add(ToLineItem(
                     $"{menuItem.Name} add-on: {addOnItem.Name}",
                     addOnItem.Description,
-                    addOnItem.Price,
+                    addOn.UnitPrice.Value,
                     addOn.Quantity));
             }
         }
@@ -300,7 +304,7 @@ public class StripePaymentService
         {
             var menuItem = item.MenuItem
                 ?? throw new InvalidOperationException($"Order item {item.Id} is missing menu data.");
-            lineItems.Add(ToLineItem(menuItem.Name, menuItem.Description, menuItem.Price, item.Quantity));
+            lineItems.Add(ToLineItem(menuItem.Name, menuItem.Description, item.UnitPrice, item.Quantity));
 
             foreach (var addOn in item.AddOns ?? [])
             {
@@ -309,7 +313,7 @@ public class StripePaymentService
                 lineItems.Add(ToLineItem(
                     $"{menuItem.Name} add-on: {addOnItem.Name}",
                     addOnItem.Description,
-                    addOnItem.Price,
+                    addOn.UnitPrice,
                     addOn.Quantity));
             }
         }

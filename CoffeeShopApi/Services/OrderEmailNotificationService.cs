@@ -85,7 +85,7 @@ public class OrderEmailNotificationService
         decimal total = 0m;
         foreach (var item in order.OrderItems ?? [])
         {
-            var itemPrice = item.MenuItem?.Price ?? 0m;
+            var itemPrice = item.UnitPrice;
             var itemName = item.MenuItem?.Name ?? $"Item {item.MenuItemId}";
             var lineTotal = itemPrice * item.Quantity;
             total += lineTotal;
@@ -93,7 +93,7 @@ public class OrderEmailNotificationService
 
             foreach (var addOn in item.AddOns ?? [])
             {
-                var addOnPrice = addOn.MenuItem?.Price ?? 0m;
+                var addOnPrice = addOn.UnitPrice;
                 var addOnName = addOn.MenuItem?.Name ?? $"Add-on {addOn.MenuItemId}";
                 var addOnTotal = addOnPrice * addOn.Quantity;
                 total += addOnTotal;

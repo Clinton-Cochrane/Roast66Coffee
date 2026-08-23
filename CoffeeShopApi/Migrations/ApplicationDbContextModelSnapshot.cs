@@ -42,6 +42,10 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("quantity");
 
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("unit_price");
+
                     b.HasKey("Id");
 
                     b.HasIndex("MenuItemId");
@@ -82,6 +86,14 @@ namespace CoffeeShopApi.Migrations
                     b.Property<decimal>("Price")
                         .HasColumnType("numeric")
                         .HasColumnName("price");
+
+                    b.Property<int?>("PromotionType")
+                        .HasColumnType("integer")
+                        .HasColumnName("promotion_type");
+
+                    b.Property<decimal?>("PromotionValue")
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("promotion_value");
 
                     b.HasKey("Id");
 
@@ -316,6 +328,10 @@ namespace CoffeeShopApi.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("integer")
                         .HasColumnName("quantity");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("unit_price");
 
                     b.HasKey("Id");
 

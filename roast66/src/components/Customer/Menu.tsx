@@ -9,6 +9,7 @@ import { useI18n } from "../../i18n/LanguageContext";
 import { canOrderMenuItemDirectly } from "../../utils/canOrderMenuItemDirectly";
 import { FaRoute, FaStar } from "react-icons/fa";
 import type { MenuItemDto } from "../../types/api";
+import PromotionPrice from "../common/PromotionPrice";
 
 const categoryIds = ["specials", "drinks", "flavors"] as const;
 type CategoryId = (typeof categoryIds)[number];
@@ -172,7 +173,7 @@ function Menu() {
                         <h4 className="mb-1 min-h-7 line-clamp-2 text-xl font-semibold text-[#4a3326]">
                           {item.name}
                         </h4>
-                        <p className="text-[#a64b2a] font-semibold">${item.price.toFixed(2)}</p>
+                        <PromotionPrice item={item} className="text-[#a64b2a] font-semibold" />
                         <div className="min-h-[4.5rem]">
                           <p className="line-clamp-2 text-[#5b4940]">{item.description}</p>
                         </div>
@@ -226,9 +227,7 @@ function Menu() {
                           {item.description}
                         </p>
                       </div>
-                      <span className="shrink-0 font-semibold text-[#a64b2a]">
-                        ${item.price.toFixed(2)}
-                      </span>
+                      <PromotionPrice item={item} className="shrink-0 font-semibold text-[#a64b2a]" />
                     </div>
                   ))}
                 </div>

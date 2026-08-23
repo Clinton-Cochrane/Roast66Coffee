@@ -133,8 +133,8 @@ public class OrderController : ControllerBase
             .Select(item =>
             {
                 var addOns = item.AddOns ?? [];
-                var addOnTotal = addOns.Sum(a => (a.MenuItem?.Price ?? 0m) * a.Quantity);
-                var itemTotal = (item.MenuItem?.Price ?? 0m) * item.Quantity;
+                var addOnTotal = addOns.Sum(a => a.UnitPrice * a.Quantity);
+                var itemTotal = item.UnitPrice * item.Quantity;
                 return new
                 {
                     name = item.MenuItem?.Name ?? $"Item {item.MenuItemId}",
@@ -145,7 +145,7 @@ public class OrderController : ControllerBase
                     {
                         name = a.MenuItem?.Name ?? $"Add-on {a.MenuItemId}",
                         quantity = a.Quantity,
-                        lineTotal = (a.MenuItem?.Price ?? 0m) * a.Quantity
+                        lineTotal = a.UnitPrice * a.Quantity
                     })
                 };
             })

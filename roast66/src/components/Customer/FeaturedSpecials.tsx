@@ -4,6 +4,7 @@ import axios from "../../axiosConfig";
 import type { MenuItemDto } from "../../types/api";
 import { useI18n } from "../../i18n/LanguageContext";
 import logo from "../../logo-sign.svg";
+import PromotionPrice from "../common/PromotionPrice";
 
 const MAX_SPECIALS = 3;
 
@@ -65,7 +66,7 @@ function FeaturedSpecials() {
                   <h3>{special.name}</h3>
                   <p>{special.description}</p>
                 </div>
-                <span className="r66-special-price">${special.price.toFixed(2)}</span>
+                <PromotionPrice item={special} className="r66-special-price" />
               </article>
             ))}
           </div>

@@ -9,6 +9,7 @@ import CategoryType from "../constants/categories";
 import { useI18n } from "../i18n/LanguageContext";
 import { canOrderMenuItemDirectly } from "../utils/canOrderMenuItemDirectly";
 import type { MenuItemDto, OrderDto } from "../types/api";
+import PromotionPrice, { effectivePrice } from "../components/common/PromotionPrice";
 
 const ENABLE_STRIPE_CHECKOUT = import.meta.env.VITE_ENABLE_STRIPE_CHECKOUT === "true";
 
@@ -125,9 +126,9 @@ function OrderPage() {
   });
 
   const calculateTotalPrice = (item: CartLine) => {
-    const basePrice = item.price * item.quantity;
+    const basePrice = effectivePrice(item) * item.quantity;
     const addOnsPrice = item.addOns.reduce(
-      (total, addOn) => total + addOn.price * addOn.quantity,
+      (total, addOn) => total + effectivePrice(addOn) * addOn.quantity,
       0
     );
     return basePrice + addOnsPrice;
@@ -317,7 +318,7 @@ function OrderPage() {
               .filter((item) => canOrderMenuItemDirectly(item))
               .map((item) => (
                 <option key={item.id} value={JSON.stringify(item)}>
-                  {item.name} - {currencyFormatter.format(item.price)} - {item.description}
+                  {item.name} - {currencyFormatter.format(effectivePrice(item))} - {item.description}
                 </option>
               ))}
           </select>
@@ -346,7 +347,8 @@ function OrderPage() {
                   </div>
 
                   <div className="flex-1 text-[1.15rem] font-bold tracking-[0.01em] text-[#4a3326]">
-                    {item.name} - ${calculateTotalPrice(item).toFixed(2)}
+                    <div>{item.name} - ${calculateTotalPrice(item).toFixed(2)}</div>
+                    {item.promotion ? <PromotionPrice item={item} className="text-sm font-semibold text-[#a64b2a]" /> : null}
                   </div>
 
                   <Button
@@ -373,7 +375,7 @@ function OrderPage() {
                       .filter((menuItem) => menuItem.categoryType === CategoryType.FLAVORS)
                       .map((flavor) => (
                         <option key={flavor.id} value={JSON.stringify(flavor)}>
-                          {flavor.name} - {currencyFormatter.format(flavor.price)}
+                          {flavor.name} - {flavor.promotion ? `${flavor.promotion} off, ` : ""}{currencyFormatter.format(effectivePrice(flavor))}
                         </option>
                       ))}
                   </select>
@@ -386,7 +388,8 @@ function OrderPage() {
                           className="flex items-center justify-between gap-2 text-sm text-[#4d3b31]"
                         >
                           <span>
-                            {addOn.name} - ${addOn.price} x {addOn.quantity}
+                            {addOn.name} - ${effectivePrice(addOn)} x {addOn.quantity}
+                            {addOn.promotion ? ` (${addOn.promotion} off; was $${addOn.price.toFixed(2)})` : ""}
                           </span>
                           <FormInput
                             type="number"

@@ -12,6 +12,8 @@ namespace CoffeeShopApi.Services
         LimitReached
     }
 
+    public enum MenuItemUpdateResult { Updated, NotFound, InvalidPromotion }
+
     public class MenuService(ApplicationDbContext context)
     {
         public const int MaxHomepageSpecials = 3;
@@ -89,6 +91,53 @@ namespace CoffeeShopApi.Services
             return HomepageSpecialSelectionResult.Updated;
         }
 
+        public async Task<bool> SetMenuSpecialAsync(int id, bool isSelected)
+        {
+            var item = await _context.MenuItems.FindAsync(id);
+            if (item == null) return false;
+            item.CategoryType = isSelected ? CategoryType.SPECIALS : CategoryType.DRINKS;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<MenuItemUpdateResult> SetPromotionAsync(int id, string? promotion)
+        {
+            var item = await _context.MenuItems.FindAsync(id);
+            if (item == null) return MenuItemUpdateResult.NotFound;
+            if (string.IsNullOrWhiteSpace(promotion))
+            {
+                item.PromotionType = null;
+                item.PromotionValue = null;
+            }
+            else if (!TryParsePromotion(promotion, item.Price, out var type, out var value))
+            {
+                return MenuItemUpdateResult.InvalidPromotion;
+            }
+            else
+            {
+                item.PromotionType = type;
+                item.PromotionValue = value;
+            }
+            await _context.SaveChangesAsync();
+            return MenuItemUpdateResult.Updated;
+        }
+
+        public static bool TryParsePromotion(string input, decimal price, out PromotionType type, out decimal value)
+        {
+            type = default;
+            value = 0;
+            var text = input.Trim();
+            if (text.Length < 2) return false;
+            var isDollar = text[0] == '$';
+            var isPercent = text[^1] == '%';
+            if (isDollar == isPercent) return false;
+            var number = isDollar ? text[1..] : text[..^1];
+            if (!decimal.TryParse(number, System.Globalization.NumberStyles.AllowDecimalPoint,
+                    System.Globalization.CultureInfo.InvariantCulture, out value) || value <= 0) return false;
+            type = isDollar ? PromotionType.Dollar : PromotionType.Percentage;
+            return MenuItem.CalculateEffectivePrice(price, type, value) >= 0.01m;
+        }
+
         public async Task<bool> DeleteMenuItemAsync(int id)
         {
             var menuItem = await _context.MenuItems.FindAsync(id);
@@ -126,6 +175,8 @@ namespace CoffeeShopApi.Services
                     Description = m.Description ?? string.Empty,
                     CategoryType = m.CategoryType,
                     IsFeaturedOnHome = isSelected
+                    ,PromotionType = m.PromotionType
+                    ,PromotionValue = m.PromotionValue
                 };
             }).ToList();
             _context.MenuItems.RemoveRange(_context.MenuItems);

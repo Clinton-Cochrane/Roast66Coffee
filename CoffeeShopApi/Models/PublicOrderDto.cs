@@ -28,7 +28,7 @@ public sealed record PublicOrderItemDto(
     public static PublicOrderItemDto FromOrderItem(OrderItem item) => new(
         item.Quantity,
         item.Notes,
-        item.MenuItem is null ? null : PublicMenuItemDto.FromMenuItem(item.MenuItem),
+        item.MenuItem is null ? null : PublicMenuItemDto.FromMenuItem(item.MenuItem, item.UnitPrice),
         (item.AddOns ?? []).Select(PublicOrderAddOnDto.FromAddOn).ToList());
 }
 
@@ -36,10 +36,10 @@ public sealed record PublicOrderAddOnDto(int Quantity, PublicMenuItemDto? MenuIt
 {
     public static PublicOrderAddOnDto FromAddOn(AddOn addOn) => new(
         addOn.Quantity,
-        addOn.MenuItem is null ? null : PublicMenuItemDto.FromMenuItem(addOn.MenuItem));
+        addOn.MenuItem is null ? null : PublicMenuItemDto.FromMenuItem(addOn.MenuItem, addOn.UnitPrice));
 }
 
 public sealed record PublicMenuItemDto(string Name, decimal Price)
 {
-    public static PublicMenuItemDto FromMenuItem(MenuItem item) => new(item.Name, item.Price);
+    public static PublicMenuItemDto FromMenuItem(MenuItem item, decimal unitPrice) => new(item.Name, unitPrice);
 }

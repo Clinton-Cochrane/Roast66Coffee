@@ -4,6 +4,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CoffeeShopApi.Models
 {
+   public enum PromotionType
+   {
+       Dollar = 1,
+       Percentage = 2
+   }
+
    public enum CategoryType
 {
     COFFEE,     // 0
@@ -39,6 +45,32 @@ namespace CoffeeShopApi.Models
 
         [Column("is_featured_on_home")]
         public bool IsFeaturedOnHome { get; set; }
+
+        [Column("promotion_type")]
+        public PromotionType? PromotionType { get; set; }
+
+        [Column("promotion_value", TypeName = "numeric(10,2)")]
+        public decimal? PromotionValue { get; set; }
+
+        [NotMapped]
+        public decimal EffectivePrice => CalculateEffectivePrice(Price, PromotionType, PromotionValue);
+
+        [NotMapped]
+        public string? Promotion => PromotionType switch
+        {
+            Models.PromotionType.Dollar when PromotionValue.HasValue => $"${PromotionValue.Value:0.##}",
+            Models.PromotionType.Percentage when PromotionValue.HasValue => $"{PromotionValue.Value:0.##}%",
+            _ => null
+        };
+
+        public static decimal CalculateEffectivePrice(decimal price, PromotionType? type, decimal? value)
+        {
+            if (type is null || value is null) return price;
+            var discounted = type == Models.PromotionType.Dollar
+                ? price - value.Value
+                : price * (1m - value.Value / 100m);
+            return Math.Round(discounted, 2, MidpointRounding.AwayFromZero);
+        }
 
     }
 }

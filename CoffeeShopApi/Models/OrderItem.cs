@@ -33,6 +33,9 @@ namespace CoffeeShopApi.Models
         [ForeignKey("MenuItemId")]
         public MenuItem? MenuItem { get; set; }
 
+        [Column("unit_price", TypeName = "numeric(10,2)")]
+        public decimal UnitPrice { get; set; }
+
         [InverseProperty("OrderItem")]
 
         public List<AddOn>? AddOns { get; set; }
@@ -64,5 +67,8 @@ namespace CoffeeShopApi.Models
 
         [ForeignKey("MenuItemId")]
         public MenuItem? MenuItem { get; set; }
+
+        [Column("unit_price", TypeName = "numeric(10,2)")]
+        public decimal UnitPrice { get; set; }
     }
 }

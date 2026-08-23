@@ -39,6 +39,8 @@ public class CheckoutOrderItemRequest
     public string? Notes { get; set; }
 
     public List<CheckoutAddOnItemRequest> AddOns { get; set; } = [];
+
+    public decimal? UnitPrice { get; set; }
 }
 
 public class CheckoutAddOnItemRequest
@@ -48,4 +50,6 @@ public class CheckoutAddOnItemRequest
 
     [Range(1, 100)]
     public int Quantity { get; set; }
+
+    public decimal? UnitPrice { get; set; }
 }

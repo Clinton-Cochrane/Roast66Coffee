@@ -6,6 +6,10 @@ export type MenuItemDto = {
   description: string;
   categoryType: number;
   isFeaturedOnHome: boolean;
+  effectivePrice?: number;
+  promotion?: string | null;
+  promotionType?: number | null;
+  promotionValue?: number | null;
 };
 
 export type OrderLineAddOnDto = {

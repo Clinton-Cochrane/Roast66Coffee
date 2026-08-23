@@ -6,7 +6,6 @@ import Button from "../common/Button";
 import Card from "../common/Card";
 import type { MenuItemDto } from "../../types/api";
 import { useI18n } from "../../i18n/LanguageContext";
-import { FaRegStar, FaStar } from "react-icons/fa";
 
 type CategoryOption = { id: number; name: string };
 
@@ -23,6 +22,7 @@ function ManageMenu() {
   const [selectedMenuItemId, setSelectedMenuItemId] = useState("");
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [updatingSpecialIds, setUpdatingSpecialIds] = useState<Set<number>>(() => new Set());
+  const [promotionInputs, setPromotionInputs] = useState<Record<number, string>>({});
   const [menuItemForm, setMenuItemForm] = useState<MenuItemFormState>({
     name: "",
     price: "",
@@ -33,7 +33,10 @@ function ManageMenu() {
   const fetchMenuItems = useCallback(() => {
     axios
       .get<MenuItemDto[]>("/admin/menu")
-      .then((response) => setMenuItems(response.data))
+      .then((response) => {
+        setMenuItems(response.data);
+        setPromotionInputs(Object.fromEntries(response.data.map((item) => [item.id, item.promotion ?? ""])));
+      })
       .catch(() => toast.error(t("adminMenu.fetchMenuError")));
   }, [t]);
 
@@ -71,6 +74,25 @@ function ManageMenu() {
         });
       }
     }
+  };
+
+  const updateMenuSpecial = (item: MenuItemDto) => {
+    const isSelected = item.categoryType !== 1;
+    axios.put(`/admin/menu/${item.id}/menu-special`, { isSelected })
+      .then(() => setMenuItems((items) => items.map((x) => x.id === item.id ? { ...x, categoryType: isSelected ? 1 : 3 } : x)))
+      .catch(() => toast.error("Could not update the menu special."));
+  };
+
+  const savePromotion = (item: MenuItemDto) => {
+    const promotion = promotionInputs[item.id] ?? "";
+    if (promotion === (item.promotion ?? "")) return;
+    axios.put(`/admin/menu/${item.id}/promotion`, { promotion })
+      .then(fetchMenuItems)
+      .catch((error: unknown) => {
+        setPromotionInputs((values) => ({ ...values, [item.id]: item.promotion ?? "" }));
+        const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
+        toast.error(message || "Could not save the promotion.");
+      });
   };
 
   const handleFormChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -247,31 +269,17 @@ function ManageMenu() {
                 {item.name} - ${item.price} - {item.description}
               </span>
               <span className="flex items-center gap-2">
-                <label
-                  className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 font-semibold ${
-                    item.isFeaturedOnHome
-                      ? "border-[#d39a22] bg-[#fff4bf] text-[#e0a400] shadow-[0_0_0_2px_rgba(224,164,0,0.16)]"
-                      : "border-[#d8c5b3] bg-white text-[#7b6d62] hover:border-[#d39a22] hover:text-[#b47b00]"
-                  }`}
-                  title={t("adminMenu.specialToggleHelp")}
-                >
-                  <input
-                    type="checkbox"
-                    checked={item.isFeaturedOnHome}
-                    disabled={
-                      updatingSpecialIds.has(item.id) ||
-                      (!item.isFeaturedOnHome && selectedSpecialCount >= 3)
-                    }
-                    onChange={() => handleHomepageSpecialChange(item)}
-                    className="sr-only"
-                  />
-                  {item.isFeaturedOnHome ? (
-                    <FaStar className="text-xl text-[#e0a400]" aria-hidden="true" />
-                  ) : (
-                    <FaRegStar className="text-xl" aria-hidden="true" />
-                  )}
-                  <span className="sr-only">{t("adminMenu.specialCheckbox", { name: item.name })}</span>
-                </label>
+                <button type="button" aria-label={`Toggle daily special for ${item.name}`} aria-pressed={item.isFeaturedOnHome}
+                  disabled={updatingSpecialIds.has(item.id) || (!item.isFeaturedOnHome && selectedSpecialCount >= 3)}
+                  onClick={() => handleHomepageSpecialChange(item)}
+                  className={`min-h-11 rounded border px-3 font-bold ${item.isFeaturedOnHome ? "bg-[#fff4bf] text-[#8a6200]" : "bg-white"}`}>DS</button>
+                <button type="button" aria-label={`Toggle menu special for ${item.name}`} aria-pressed={item.categoryType === 1}
+                  onClick={() => updateMenuSpecial(item)}
+                  className={`min-h-11 rounded border px-3 font-bold ${item.categoryType === 1 ? "bg-[#fff4bf] text-[#8a6200]" : "bg-white"}`}>MS</button>
+                <label className="sr-only" htmlFor={`promotion-${item.id}`}>Promotion for {item.name}</label>
+                <input id={`promotion-${item.id}`} value={promotionInputs[item.id] ?? ""}
+                  placeholder="how much off % or $" onChange={(event) => setPromotionInputs((values) => ({ ...values, [item.id]: event.target.value }))}
+                  onBlur={() => savePromotion(item)} className="w-28 rounded border p-2" />
                 <Button onClick={() => handleDelete(item.id)} color="red">
                   {t("adminMenu.delete")}
                 </Button>

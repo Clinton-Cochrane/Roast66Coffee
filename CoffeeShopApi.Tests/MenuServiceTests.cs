@@ -121,4 +121,41 @@ public class MenuServiceTests
         Assert.True(selected.IsFeaturedOnHome);
         Assert.Equal("New name", selected.Name);
     }
+
+    [Theory]
+    [InlineData("$2", 10, PromotionType.Dollar, 2, 8)]
+    [InlineData("32%", 10, PromotionType.Percentage, 32, 6.8)]
+    public void TryParsePromotion_ValidDiscounts(string input, decimal price, PromotionType expectedType, decimal expectedValue, decimal expectedPrice)
+    {
+        Assert.True(MenuService.TryParsePromotion(input, price, out var type, out var value));
+        Assert.Equal(expectedType, type);
+        Assert.Equal(expectedValue, value);
+        Assert.Equal(expectedPrice, MenuItem.CalculateEffectivePrice(price, type, value));
+    }
+
+    [Theory]
+    [InlineData("2")]
+    [InlineData("$10")]
+    [InlineData("100%")]
+    [InlineData("banana")]
+    public void TryParsePromotion_RejectsMalformedOrExcessiveDiscount(string input)
+    {
+        Assert.False(MenuService.TryParsePromotion(input, 10m, out _, out _));
+    }
+
+    [Fact]
+    public async Task MenuSpecialAndPromotion_DoNotChangeHomepageSelection()
+    {
+        await using var context = CreateInMemoryContext();
+        var item = new MenuItem { Name = "Independent", Price = 10m, CategoryType = CategoryType.DRINKS, IsFeaturedOnHome = true };
+        context.MenuItems.Add(item);
+        await context.SaveChangesAsync();
+        var service = new MenuService(context);
+
+        Assert.True(await service.SetMenuSpecialAsync(item.Id, true));
+        Assert.Equal(MenuItemUpdateResult.Updated, await service.SetPromotionAsync(item.Id, "$2"));
+        Assert.True(item.IsFeaturedOnHome);
+        Assert.Equal(CategoryType.SPECIALS, item.CategoryType);
+        Assert.Equal(8m, item.EffectivePrice);
+    }
 }

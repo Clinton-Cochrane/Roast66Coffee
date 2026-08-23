@@ -106,8 +106,23 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         return string.Join("|", parts);
     }
 
-    public async Task<Order> CreateOrderAsync(Order order)
+    public async Task<Order> CreateOrderAsync(Order order, bool preserveSnapshotPrices = false)
     {
+        var ids = (order.OrderItems ?? []).Select(x => x.MenuItemId)
+            .Concat((order.OrderItems ?? []).SelectMany(x => x.AddOns ?? []).Select(x => x.MenuItemId))
+            .Distinct().ToList();
+        var prices = await _context.MenuItems.Where(x => ids.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.EffectivePrice);
+        foreach (var item in order.OrderItems ?? [])
+        {
+            prices.TryGetValue(item.MenuItemId, out var price);
+            item.UnitPrice = preserveSnapshotPrices && item.UnitPrice > 0 ? item.UnitPrice : price;
+            foreach (var addOn in item.AddOns ?? [])
+            {
+                prices.TryGetValue(addOn.MenuItemId, out var addOnPrice);
+                addOn.UnitPrice = preserveSnapshotPrices && addOn.UnitPrice > 0 ? addOn.UnitPrice : addOnPrice;
+            }
+        }
         if (string.IsNullOrEmpty(order.TrackingToken))
         {
             order.TrackingToken = GenerateTrackingToken();
