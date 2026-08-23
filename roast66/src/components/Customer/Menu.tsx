@@ -44,14 +44,18 @@ function Menu() {
       {
         id: "specials" as const,
         titleKey: "menu.categorySpecials" as const,
-        items: menuItems.filter((item) => item.categoryType === CategoryType.SPECIALS),
+        items: menuItems.filter(
+          (item) => item.isFeaturedOnHome || item.categoryType === CategoryType.SPECIALS
+        ),
       },
       {
         id: "drinks" as const,
         titleKey: "menu.categoryDrinks" as const,
         items: menuItems.filter(
           (item) =>
-            item.categoryType === CategoryType.COFFEE || item.categoryType === CategoryType.DRINKS
+            !item.isFeaturedOnHome &&
+            (item.categoryType === CategoryType.COFFEE ||
+              item.categoryType === CategoryType.DRINKS)
         ),
       },
       {
