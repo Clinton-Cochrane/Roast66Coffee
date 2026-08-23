@@ -63,4 +63,62 @@ public class MenuServiceTests
         Assert.Contains(result, r => r.Name == "Latte");
         Assert.Contains(result, r => r.Name == "Mocha");
     }
+
+    [Fact]
+    public async Task SetHomepageSpecialAsync_RejectsFourthSelection()
+    {
+        await using var context = CreateInMemoryContext();
+        context.MenuItems.AddRange(
+            new MenuItem { Name = "One", Price = 1m, CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true },
+            new MenuItem { Name = "Two", Price = 2m, CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true },
+            new MenuItem { Name = "Three", Price = 3m, CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true },
+            new MenuItem { Name = "Four", Price = 4m, CategoryType = CategoryType.SPECIALS });
+        await context.SaveChangesAsync();
+        var fourth = await context.MenuItems.SingleAsync(item => item.Name == "Four");
+        var service = new MenuService(context);
+
+        var result = await service.SetHomepageSpecialAsync(fourth.Id, true);
+
+        Assert.Equal(HomepageSpecialSelectionResult.LimitReached, result);
+        Assert.False(fourth.IsFeaturedOnHome);
+    }
+
+    [Fact]
+    public async Task SetHomepageSpecialAsync_AllowsSelectionAfterOneIsRemoved()
+    {
+        await using var context = CreateInMemoryContext();
+        var selected = new MenuItem { Name = "Selected", Price = 1m, CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true };
+        var replacement = new MenuItem { Name = "Replacement", Price = 2m, CategoryType = CategoryType.SPECIALS };
+        context.MenuItems.AddRange(selected, replacement);
+        await context.SaveChangesAsync();
+        var service = new MenuService(context);
+
+        Assert.Equal(HomepageSpecialSelectionResult.Updated, await service.SetHomepageSpecialAsync(selected.Id, false));
+        Assert.Equal(HomepageSpecialSelectionResult.Updated, await service.SetHomepageSpecialAsync(replacement.Id, true));
+        Assert.False(selected.IsFeaturedOnHome);
+        Assert.True(replacement.IsFeaturedOnHome);
+    }
+
+    [Fact]
+    public async Task UpdateMenuItemAsync_PreservesHomepageSelection()
+    {
+        await using var context = CreateInMemoryContext();
+        var selected = new MenuItem { Name = "Old name", Price = 1m, CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true };
+        context.MenuItems.Add(selected);
+        await context.SaveChangesAsync();
+        var service = new MenuService(context);
+
+        var updated = await service.UpdateMenuItemAsync(new MenuItem
+        {
+            Id = selected.Id,
+            Name = "New name",
+            Price = 2m,
+            Description = "Updated",
+            CategoryType = CategoryType.DRINKS
+        });
+
+        Assert.True(updated);
+        Assert.True(selected.IsFeaturedOnHome);
+        Assert.Equal("New name", selected.Name);
+    }
 }

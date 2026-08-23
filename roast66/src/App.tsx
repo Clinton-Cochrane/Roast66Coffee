@@ -9,11 +9,14 @@ import {
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Navigation from "./components/Navigation";
+import "./styles/Customer.css";
+import "./styles/Navigation.css";
 import Footer from "./components/layout/Footer";
 import Loading from "./components/common/Loading";
 import { useI18n } from "./i18n/LanguageContext";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
+const AboutPage = lazy(() => import("./pages/AboutPage"));
 const MenuPage = lazy(() => import("./pages/MenuPage"));
 const OrderPage = lazy(() => import("./pages/OrderPage"));
 const OrderConfirmationPage = lazy(() => import("./pages/OrderConfirmationPage"));
@@ -55,6 +58,7 @@ function App() {
           <Suspense fallback={<Loading />}>
             <Routes>
               <Route path="/" element={<HomePage />} />
+              <Route path="/about" element={<AboutPage />} />
               <Route path="/menu" element={<MenuPage />} />
               <Route path="/order" element={<OrderPage />} />
               <Route path="/order/confirmation" element={<OrderConfirmationPage />} />

@@ -5,8 +5,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoffeeShopApi.Services
 {
+    public enum HomepageSpecialSelectionResult
+    {
+        Updated,
+        NotFound,
+        LimitReached
+    }
+
     public class MenuService(ApplicationDbContext context)
     {
+        public const int MaxHomepageSpecials = 3;
         private readonly ApplicationDbContext _context = context;
 
         public async Task<IEnumerable<MenuItem>> GetMenuItemsAsync()
@@ -21,6 +29,7 @@ namespace CoffeeShopApi.Services
 
         public async Task<MenuItem> CreateMenuItemAsync(MenuItem menuItem)
         {
+            menuItem.IsFeaturedOnHome = false;
             _context.MenuItems.Add(menuItem);
             await _context.SaveChangesAsync();
             return menuItem;
@@ -28,7 +37,16 @@ namespace CoffeeShopApi.Services
 
         public async Task<bool> UpdateMenuItemAsync(MenuItem menuItem)
         {
-            _context.Entry(menuItem).State = EntityState.Modified;
+            var existingItem = await _context.MenuItems.FindAsync(menuItem.Id);
+            if (existingItem == null)
+            {
+                return false;
+            }
+
+            existingItem.Name = menuItem.Name;
+            existingItem.Price = menuItem.Price;
+            existingItem.Description = menuItem.Description;
+            existingItem.CategoryType = menuItem.CategoryType;
 
             try
             {
@@ -46,6 +64,29 @@ namespace CoffeeShopApi.Services
                     throw;
                 }
             }
+        }
+
+        public async Task<HomepageSpecialSelectionResult> SetHomepageSpecialAsync(int id, bool isSelected)
+        {
+            var menuItem = await _context.MenuItems.FindAsync(id);
+            if (menuItem == null)
+            {
+                return HomepageSpecialSelectionResult.NotFound;
+            }
+
+            if (menuItem.IsFeaturedOnHome == isSelected)
+            {
+                return HomepageSpecialSelectionResult.Updated;
+            }
+
+            if (isSelected && await _context.MenuItems.CountAsync(item => item.IsFeaturedOnHome) >= MaxHomepageSpecials)
+            {
+                return HomepageSpecialSelectionResult.LimitReached;
+            }
+
+            menuItem.IsFeaturedOnHome = isSelected;
+            await _context.SaveChangesAsync();
+            return HomepageSpecialSelectionResult.Updated;
         }
 
         public async Task<bool> DeleteMenuItemAsync(int id)
@@ -72,13 +113,20 @@ namespace CoffeeShopApi.Services
         /// </summary>
         public async Task BulkReplaceAsync(IEnumerable<MenuItem> menuItems)
         {
-            var items = menuItems.Select(m => new MenuItem
+            var selectedCount = 0;
+            var items = menuItems.Select(m =>
             {
-                Name = m.Name,
-                Price = m.Price,
-                Description = m.Description ?? string.Empty,
-                CategoryType = m.CategoryType,
-                IsFeaturedOnHome = m.IsFeaturedOnHome
+                var isSelected = m.IsFeaturedOnHome && selectedCount < MaxHomepageSpecials;
+                if (isSelected) selectedCount++;
+
+                return new MenuItem
+                {
+                    Name = m.Name,
+                    Price = m.Price,
+                    Description = m.Description ?? string.Empty,
+                    CategoryType = m.CategoryType,
+                    IsFeaturedOnHome = isSelected
+                };
             }).ToList();
             _context.MenuItems.RemoveRange(_context.MenuItems);
             await _context.MenuItems.AddRangeAsync(items);

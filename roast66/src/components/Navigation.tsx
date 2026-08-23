@@ -125,7 +125,7 @@ function Navigation() {
               </details>
             </li>
             <li>
-              <Link to="/#home-story" className="r66-nav-link">
+              <Link to="/about" className="r66-nav-link">
                 {t("nav.contactAbout")}
               </Link>
             </li>

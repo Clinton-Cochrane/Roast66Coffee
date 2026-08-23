@@ -6,6 +6,7 @@ import Button from "../common/Button";
 import Card from "../common/Card";
 import type { MenuItemDto } from "../../types/api";
 import { useI18n } from "../../i18n/LanguageContext";
+import { FaRegStar, FaStar } from "react-icons/fa";
 
 type CategoryOption = { id: number; name: string };
 
@@ -14,7 +15,6 @@ type MenuItemFormState = {
   price: string | number;
   description: string;
   categoryType: number;
-  isFeaturedOnHome: boolean;
 };
 
 function ManageMenu() {
@@ -22,12 +22,12 @@ function ManageMenu() {
   const [menuItems, setMenuItems] = useState<MenuItemDto[]>([]);
   const [selectedMenuItemId, setSelectedMenuItemId] = useState("");
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [updatingSpecialIds, setUpdatingSpecialIds] = useState<Set<number>>(() => new Set());
   const [menuItemForm, setMenuItemForm] = useState<MenuItemFormState>({
     name: "",
     price: "",
     description: "",
     categoryType: 0,
-    isFeaturedOnHome: false,
   });
 
   const fetchMenuItems = useCallback(() => {
@@ -59,7 +59,6 @@ function ManageMenu() {
         price: 0,
         description: "",
         categoryType: 0,
-        isFeaturedOnHome: false,
       });
     } else {
       const selectedItem = menuItems.find((item) => item.id === parseInt(selectedId, 10));
@@ -69,7 +68,6 @@ function ManageMenu() {
           price: selectedItem.price.toString(),
           description: selectedItem.description,
           categoryType: selectedItem.categoryType,
-          isFeaturedOnHome: selectedItem.isFeaturedOnHome,
         });
       }
     }
@@ -80,9 +78,7 @@ function ManageMenu() {
     setMenuItemForm((prev) => ({
       ...prev,
       [name]:
-        name === "isFeaturedOnHome" && e.target instanceof HTMLInputElement
-          ? e.target.checked
-          : name === "price"
+        name === "price"
           ? parseFloat(value) || 0
           : name === "categoryType"
             ? parseInt(value, 10) || 0
@@ -101,7 +97,6 @@ function ManageMenu() {
       price: parseFloat(String(menuItemForm.price)) || 0,
       description: menuItemForm.description,
       categoryType: parseInt(String(menuItemForm.categoryType), 10) || 0,
-      isFeaturedOnHome: menuItemForm.isFeaturedOnHome,
     };
 
     if (selectedMenuItemId === "new") {
@@ -110,7 +105,7 @@ function ManageMenu() {
         .then(() => {
           toast.success(t("adminMenu.added"));
           fetchMenuItems();
-          setMenuItemForm({ name: "", price: "", description: "", categoryType: 0, isFeaturedOnHome: false });
+          setMenuItemForm({ name: "", price: "", description: "", categoryType: 0 });
           setSelectedMenuItemId("");
         })
         .catch(() => toast.error(t("adminMenu.failedAdd")));
@@ -120,7 +115,7 @@ function ManageMenu() {
         .then(() => {
           toast.success(t("adminMenu.updated"));
           fetchMenuItems();
-          setMenuItemForm({ name: "", price: "", description: "", categoryType: 0, isFeaturedOnHome: false });
+          setMenuItemForm({ name: "", price: "", description: "", categoryType: 0 });
           setSelectedMenuItemId("");
         })
         .catch(() => toast.error(t("adminMenu.failedUpdate")));
@@ -135,6 +130,44 @@ function ManageMenu() {
         fetchMenuItems();
       })
       .catch(() => toast.error(t("adminMenu.failedDelete")));
+  };
+
+  const selectedSpecialCount = menuItems.filter((item) => item.isFeaturedOnHome).length;
+
+  const handleHomepageSpecialChange = (item: MenuItemDto) => {
+    const isSelected = !item.isFeaturedOnHome;
+
+    setUpdatingSpecialIds((current) => new Set(current).add(item.id));
+    setMenuItems((current) =>
+      current.map((currentItem) =>
+        currentItem.id === item.id
+          ? { ...currentItem, isFeaturedOnHome: isSelected }
+          : currentItem
+      )
+    );
+
+    axios
+      .put(`/admin/menu/${item.id}/homepage-special`, { isSelected })
+      .then(() => {
+        toast.success(isSelected ? t("adminMenu.specialSelected") : t("adminMenu.specialRemoved"));
+      })
+      .catch(() => {
+        setMenuItems((current) =>
+          current.map((currentItem) =>
+            currentItem.id === item.id
+              ? { ...currentItem, isFeaturedOnHome: item.isFeaturedOnHome }
+              : currentItem
+          )
+        );
+        toast.error(t("adminMenu.specialUpdateFailed"));
+      })
+      .finally(() => {
+        setUpdatingSpecialIds((current) => {
+          const next = new Set(current);
+          next.delete(item.id);
+          return next;
+        });
+      });
   };
 
   return (
@@ -200,17 +233,6 @@ function ManageMenu() {
             ))}
           </select>
 
-          <label className="flex min-h-11 items-center gap-3 text-[#4a3326]">
-            <input
-              type="checkbox"
-              name="isFeaturedOnHome"
-              checked={menuItemForm.isFeaturedOnHome}
-              onChange={handleFormChange}
-              className="h-5 w-5 accent-[#a64b2a]"
-            />
-            {t("adminMenu.featureOnHome")}
-          </label>
-
           <Button type="submit" color="green">
             {selectedMenuItemId === "new" ? t("adminMenu.submitAdd") : t("adminMenu.submitUpdate")}
           </Button>
@@ -224,9 +246,36 @@ function ManageMenu() {
               <span className="flex-1">
                 {item.name} - ${item.price} - {item.description}
               </span>
-              <Button onClick={() => handleDelete(item.id)} color="red">
-                {t("adminMenu.delete")}
-              </Button>
+              <span className="flex items-center gap-2">
+                <label
+                  className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 font-semibold ${
+                    item.isFeaturedOnHome
+                      ? "border-[#d39a22] bg-[#fff4bf] text-[#e0a400] shadow-[0_0_0_2px_rgba(224,164,0,0.16)]"
+                      : "border-[#d8c5b3] bg-white text-[#7b6d62] hover:border-[#d39a22] hover:text-[#b47b00]"
+                  }`}
+                  title={t("adminMenu.specialToggleHelp")}
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.isFeaturedOnHome}
+                    disabled={
+                      updatingSpecialIds.has(item.id) ||
+                      (!item.isFeaturedOnHome && selectedSpecialCount >= 3)
+                    }
+                    onChange={() => handleHomepageSpecialChange(item)}
+                    className="sr-only"
+                  />
+                  {item.isFeaturedOnHome ? (
+                    <FaStar className="text-xl text-[#e0a400]" aria-hidden="true" />
+                  ) : (
+                    <FaRegStar className="text-xl" aria-hidden="true" />
+                  )}
+                  <span className="sr-only">{t("adminMenu.specialCheckbox", { name: item.name })}</span>
+                </label>
+                <Button onClick={() => handleDelete(item.id)} color="red">
+                  {t("adminMenu.delete")}
+                </Button>
+              </span>
             </li>
           ))}
         </ul>

@@ -1,73 +1,82 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import axios from "../../axiosConfig";
 import type { MenuItemDto } from "../../types/api";
 import { useI18n } from "../../i18n/LanguageContext";
-import Button from "../common/Button";
+import logo from "../../logo-sign.svg";
+
+const MAX_SPECIALS = 3;
 
 function FeaturedSpecials() {
   const { t } = useI18n();
-  const navigate = useNavigate();
-  const [items, setItems] = useState<MenuItemDto[]>([]);
+  const [specials, setSpecials] = useState<MenuItemDto[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
+
     axios
       .get<MenuItemDto[]>("/menu")
       .then(({ data }) => {
-        if (active) setItems(data.filter((item) => item.isFeaturedOnHome).slice(0, 3));
+        if (active) {
+          setSpecials(
+            data.filter((item) => item.isFeaturedOnHome).slice(0, MAX_SPECIALS)
+          );
+        }
       })
       .catch(() => {
-        if (active) setItems([]);
+        if (active) setSpecials([]);
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
       });
+
     return () => {
       active = false;
     };
   }, []);
 
   return (
-    <section aria-labelledby="featured-specials-title" className="py-12 sm:py-16">
-      <div className="mb-7 max-w-2xl">
-        <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#a64b2a]">
-          {t("home.featuredEyebrow")}
-        </p>
-        <h2 id="featured-specials-title" className="mt-2 text-3xl font-bold text-[#2c1d15] sm:text-4xl">
-          {t("home.featuredTitle")}
-        </h2>
-        <p className="mt-3 leading-7 text-[#5b4940]">{t("home.featuredBody")}</p>
+    <section className="r66-specials" aria-labelledby="daily-specials-title">
+      <div className="r66-specials-inner">
+        <header className="r66-specials-heading">
+          <div className="r66-specials-title-row">
+            <img src={logo} alt="" aria-hidden="true" />
+            <h2 id="daily-specials-title">{t("home.specialsTitle")}</h2>
+            <img src={logo} alt="" aria-hidden="true" />
+          </div>
+          <p>{t("home.specialsTagline")}</p>
+        </header>
+
+        {isLoading ? (
+          <div className="r66-specials-grid" aria-label={t("home.specialsLoading")}>
+            {Array.from({ length: MAX_SPECIALS }, (_, index) => (
+              <div className="r66-special-card r66-special-card-loading" key={index} aria-hidden="true" />
+            ))}
+          </div>
+        ) : specials.length > 0 ? (
+          <div className="r66-specials-grid">
+            {specials.map((special, index) => (
+              <article className="r66-special-card" key={special.id}>
+                <span className="r66-special-number" aria-hidden="true">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <div className="r66-special-copy">
+                  <h3>{special.name}</h3>
+                  <p>{special.description}</p>
+                </div>
+                <span className="r66-special-price">${special.price.toFixed(2)}</span>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <p className="r66-specials-empty">{t("home.specialsEmpty")}</p>
+        )}
+
+        <Link className="r66-specials-menu-link" to="/menu#specials">
+          {t("home.seeFullMenu")} <span aria-hidden="true">→</span>
+        </Link>
       </div>
-
-      {items.length ? (
-        <div className="grid gap-4 md:grid-cols-3">
-          {items.map((item, index) => (
-            <article key={item.id} className="r66-panel flex min-w-0 flex-col p-6">
-              <span className="mb-4 text-xs font-black tracking-[0.16em] text-[#6c89a2]">
-                {String(index + 1).padStart(2, "0")}
-              </span>
-              <h3 className="text-xl font-bold text-[#2c1d15]">{item.name}</h3>
-              <p className="mt-2 flex-1 leading-6 text-[#5b4940]">{item.description}</p>
-              <div className="mt-5 flex items-center justify-between gap-3">
-                <span className="font-bold text-[#a64b2a]">${item.price.toFixed(2)}</span>
-                <Button
-                  type="button"
-                  color="green"
-                  onClick={() => navigate("/order", { state: { menuItemId: item.id } })}
-                >
-                  {t("menu.orderThisItem")}
-                </Button>
-              </div>
-            </article>
-          ))}
-        </div>
-      ) : (
-        <p className="rounded-xl border border-dashed border-[#c9ab92] bg-[#fff9f2]/70 p-6 text-[#5b4940]">
-          {t("home.featuredEmpty")}
-        </p>
-      )}
-
-      <Link to="/menu#specials" className="mt-6 inline-flex min-h-11 items-center font-bold">
-        {t("home.seeFullMenu")} →
-      </Link>
     </section>
   );
 }

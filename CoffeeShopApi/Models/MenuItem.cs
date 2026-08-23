@@ -39,5 +39,6 @@ namespace CoffeeShopApi.Models
 
         [Column("is_featured_on_home")]
         public bool IsFeaturedOnHome { get; set; }
+
     }
 }
