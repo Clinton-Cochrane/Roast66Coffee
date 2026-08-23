@@ -176,6 +176,8 @@ describe("Menu", () => {
     renderMenu();
 
     expect(await screen.findByText("Vanilla Shot")).toBeInTheDocument();
+    expect(screen.getByText("Classic vanilla")).toHaveClass("text-[#898989]");
+    expect(screen.queryByText(/classic vanilla.*shot/i)).not.toBeInTheDocument();
     expect(screen.getByText("Choose flavors as add-ons while building your drink.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Order Vanilla Shot" })).not.toBeInTheDocument();
   });

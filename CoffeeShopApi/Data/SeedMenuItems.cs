@@ -40,24 +40,24 @@ namespace CoffeeShopApi.Data
                 new MenuItem { Name = "454 Punch", Price = 4.75M, Description = "Cherry, pomegranate, and lime energy drink", CategoryType = CategoryType.SPECIALS },
 
                 // Flavors
-                new MenuItem { Name = "Chocolate Shot", Price = 0.50M, Description = "Rich chocolate flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Vanilla Shot", Price = 0.50M, Description = "Classic vanilla flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Coconut Shot", Price = 0.50M, Description = "Tropical coconut flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Caramel Shot", Price = 0.50M, Description = "Sweet caramel flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Guarana Shot", Price = 0.50M, Description = "Energy-boosting guarana shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Blueberry Shot", Price = 0.50M, Description = "Fresh blueberry flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Grape Shot", Price = 0.50M, Description = "Juicy grape flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Lemon Shot", Price = 0.50M, Description = "Zesty lemon flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Passion Fruit Shot", Price = 0.50M, Description = "Exotic passion fruit flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Red Raspberry Shot", Price = 0.50M, Description = "Tangy red raspberry flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Pomegranate Shot", Price = 0.50M, Description = "Sweet pomegranate flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Cherry Shot", Price = 0.50M, Description = "Bold cherry flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "White Peach Shot", Price = 0.50M, Description = "Delicate white peach flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Lime Shot", Price = 0.50M, Description = "Refreshing lime flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Cucumber Shot", Price = 0.50M, Description = "Cool cucumber flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Mint Shot", Price = 0.50M, Description = "Cooling mint flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Strawberry Shot", Price = 0.50M, Description = "Sweet strawberry flavor shot", CategoryType = CategoryType.FLAVORS },
-                new MenuItem { Name = "Watermelon Shot", Price = 0.50M, Description = "Juicy watermelon flavor shot", CategoryType = CategoryType.FLAVORS }
+                new MenuItem { Name = "Chocolate Shot", Price = 0.50M, Description = "Rich chocolate flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Vanilla Shot", Price = 0.50M, Description = "Classic vanilla flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Coconut Shot", Price = 0.50M, Description = "Tropical coconut flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Caramel Shot", Price = 0.50M, Description = "Sweet caramel flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Guarana Shot", Price = 0.50M, Description = "Energy-boosting guarana", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Blueberry Shot", Price = 0.50M, Description = "Fresh blueberry flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Grape Shot", Price = 0.50M, Description = "Juicy grape flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Lemon Shot", Price = 0.50M, Description = "Zesty lemon flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Passion Fruit Shot", Price = 0.50M, Description = "Exotic passion fruit flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Red Raspberry Shot", Price = 0.50M, Description = "Tangy red raspberry flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Pomegranate Shot", Price = 0.50M, Description = "Sweet pomegranate flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Cherry Shot", Price = 0.50M, Description = "Bold cherry flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "White Peach Shot", Price = 0.50M, Description = "Delicate white peach flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Lime Shot", Price = 0.50M, Description = "Refreshing lime flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Cucumber Shot", Price = 0.50M, Description = "Cool cucumber flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Mint Shot", Price = 0.50M, Description = "Cooling mint flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Strawberry Shot", Price = 0.50M, Description = "Sweet strawberry flavor", CategoryType = CategoryType.FLAVORS },
+                new MenuItem { Name = "Watermelon Shot", Price = 0.50M, Description = "Juicy watermelon flavor", CategoryType = CategoryType.FLAVORS }
 
 
                 // Add more drinks as needed
