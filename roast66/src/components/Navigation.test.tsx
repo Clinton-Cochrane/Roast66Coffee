@@ -54,6 +54,25 @@ describe("Navigation", () => {
     expect(screen.getByRole("link", { name: /ordenar ahora/i })).toBeInTheDocument();
   });
 
+  it.each(["Menu", "Merch"])("closes the Shop dropdown after selecting %s", (linkName) => {
+    render(
+      <LanguageProvider>
+        <MemoryRouter>
+          <Navigation />
+        </MemoryRouter>
+      </LanguageProvider>
+    );
+
+    const shopMenu = screen.getByText("Shop").closest("details");
+    expect(shopMenu).not.toBeNull();
+
+    fireEvent.click(screen.getByText("Shop"));
+    expect(shopMenu).toHaveAttribute("open");
+
+    fireEvent.click(screen.getByRole("link", { name: linkName }));
+    expect(shopMenu).not.toHaveAttribute("open");
+  });
+
   it("shows a link to order-status when lookup session exists", async () => {
     sessionStorage.setItem(
       ORDER_STATUS_LOOKUP_SESSION_KEY,
