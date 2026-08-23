@@ -1,36 +1,51 @@
 import React from "react";
 import { FaInstagram } from "react-icons/fa";
+import { Link } from "react-router-dom";
 import { useI18n } from "../../i18n/LanguageContext";
+import logo from "../../logo-sign.svg";
 
 type FooterProps = {
   year?: number;
 };
 
-const Footer = ({ year = 2024 }: FooterProps) => {
+const Footer = ({ year = new Date().getFullYear() }: FooterProps) => {
   const { t } = useI18n();
 
   return (
-    <footer className="bg-[#2c1d15] text-[#f7efe6] py-5 border-t border-[#4a3326]">
-      <div className="container mx-auto flex flex-col md:flex-row justify-between items-center px-4 gap-2">
-        <p className="text-sm mb-2 md:mb-0">
-          &copy; {year} Roast 66 Coffee. {t("footer.rightsReserved")}
-        </p>
+    <footer className="r66-footer">
+      <div className="r66-footer-inner">
+        <div className="r66-footer-brand-block">
+          <Link to="/" className="r66-footer-brand" title={t("nav.homeTitle")}>
+            <img src={logo} alt="" aria-hidden="true" />
+            <span>{t("nav.brandName")}</span>
+          </Link>
+          <span className="r66-footer-divider" aria-hidden="true">•</span>
+          <p className="r66-footer-motto">{t("footer.motto")}</p>
+        </div>
 
-        <div className="flex items-center space-x-3">
+        <nav className="r66-footer-links" aria-label={t("footer.navigationLabel")}>
+          <Link to="/about">{t("nav.contactAbout")}</Link>
+          <Link to="/menu">{t("nav.menu")}</Link>
+          <Link to="/order">{t("nav.orderNow")}</Link>
+          <a href="https://roast-66-coffee.printify.me/products" target="_blank" rel="noopener noreferrer">
+            {t("nav.merch")}
+          </a>
+        </nav>
+
+        <div className="r66-footer-social">
           <a
             href="https://www.instagram.com/roast66coffee"
             target="_blank"
             rel="noopener noreferrer"
-            className="md:inline text-[#f7efe6] no-underline border-b-2 border-transparent hover:border-[#99bfdd] p-2"
+            className="r66-footer-social-link"
             title={t("footer.instagramTitle")}
           >
-            <span className="inline-flex items-center">
-              {t("footer.instagram")}
-              <FaInstagram className="text-xl mr-1" />
-            </span>
+            <FaInstagram aria-hidden="true" />
+            <span className="sr-only">{t("footer.instagram")}</span>
           </a>
         </div>
       </div>
+      <p className="r66-footer-legal">&copy; {year} Roast 66 Coffee. {t("footer.rightsReserved")}</p>
     </footer>
   );
 };
