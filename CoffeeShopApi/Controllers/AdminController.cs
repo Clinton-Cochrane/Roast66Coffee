@@ -157,6 +157,7 @@ namespace CoffeeShopApi.Controllers
         [HttpPost("menu")]
         public async Task<ActionResult<MenuItem>> PostMenuItem(MenuItem menuItem)
         {
+            menuItem.IsFeaturedOnHome = false;
             _context.MenuItems.Add(menuItem);
             await _context.SaveChangesAsync();
             return CreatedAtAction(nameof(GetMenuItems), new { id = menuItem.Id }, menuItem);
@@ -172,25 +173,31 @@ namespace CoffeeShopApi.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(menuItem).State = EntityState.Modified;
-
-            try
-            {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!MenuItemExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
+            var updated = await _menuService.UpdateMenuItemAsync(menuItem);
+            if (!updated) return NotFound();
 
             return NoContent();
+        }
+
+        public sealed record HomepageSpecialSelectionRequest(bool IsSelected);
+
+        [Authorize(Roles = "Admin")]
+        [HttpPut("menu/{id}/homepage-special")]
+        public async Task<IActionResult> SetHomepageSpecial(
+            int id,
+            [FromBody] HomepageSpecialSelectionRequest request)
+        {
+            var result = await _menuService.SetHomepageSpecialAsync(id, request.IsSelected);
+            return result switch
+            {
+                HomepageSpecialSelectionResult.Updated => NoContent(),
+                HomepageSpecialSelectionResult.NotFound => NotFound(),
+                HomepageSpecialSelectionResult.LimitReached => Conflict(new
+                {
+                    message = $"Only {MenuService.MaxHomepageSpecials} homepage specials can be selected."
+                }),
+                _ => StatusCode(StatusCodes.Status500InternalServerError)
+            };
         }
 
         // Delete a menu item

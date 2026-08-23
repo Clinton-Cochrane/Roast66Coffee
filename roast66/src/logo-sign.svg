@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 176" role="img" aria-labelledby="title">
+  <title id="title">Roast 66 Coffee route sign</title>
+
+  <!-- A simplified highway shield stays legible at navigation-icon sizes. -->
+  <path
+    fill="#2c1d1c"
+    d="M80 4c16 11 35 10 57-2l21 27c-14 16-17 34-12 56 8 36-13 65-49 74-8 2-14 7-17 14-3-7-9-12-17-14-36-9-57-38-49-74 5-22 2-40-12-56L23 2C45 14 64 15 80 4Z"
+  />
+  <path
+    fill="#fff9f2"
+    d="M80 14c15 9 32 9 53-1l14 17c-12 16-14 34-10 56 6 30-11 54-43 63-6 2-11 5-14 10-3-5-8-8-14-10-32-9-49-33-43-63 4-22 2-40-10-56l14-17c21 10 38 10 53 1Z"
+  />
+  <path
+    fill="none"
+    stroke="#2c1d1c"
+    stroke-linejoin="round"
+    stroke-width="2.5"
+    d="M80 20c14 8 30 8 50 0l9 11c-10 16-12 34-8 55 5 27-10 48-39 56-5 2-9 4-12 7-3-3-7-5-12-7-29-8-44-29-39-56 4-21 2-39-8-55l9-11c20 8 36 8 50 0Z"
+  />
+
+  <text
+    x="80"
+    y="54"
+    fill="#2c1d1c"
+    font-family="Arial Black, Arial, sans-serif"
+    font-size="23"
+    font-weight="900"
+    letter-spacing="1.2"
+    text-anchor="middle"
+  >ROAST</text>
+  <path fill="#2c1d1c" d="M23 62h114v6H23z" />
+  <text
+    x="80"
+    y="130"
+    fill="#2c1d1c"
+    font-family="Arial Black, Arial, sans-serif"
+    font-size="65"
+    font-weight="900"
+    letter-spacing="-5"
+    text-anchor="middle"
+  >66</text>
+</svg>

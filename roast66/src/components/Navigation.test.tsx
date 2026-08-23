@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import Navigation from "./Navigation";
 import { LanguageProvider } from "../i18n/LanguageContext";
@@ -20,6 +20,7 @@ vi.mock("../lib/orderStatusLookup", () => ({
 describe("Navigation", () => {
   beforeEach(() => {
     sessionStorage.clear();
+    localStorage.clear();
   });
 
   it("does not show order tracking dot without session", () => {
@@ -31,6 +32,26 @@ describe("Navigation", () => {
       </LanguageProvider>
     );
     expect(screen.queryByRole("link", { name: /return to order status/i })).toBeNull();
+    expect(screen.getByText("Local coffee. Timeless roads.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /order now/i })).toHaveAttribute("href", "/order");
+    expect(screen.getByRole("link", { name: "Instagram" })).toHaveAttribute(
+      "href",
+      "https://www.instagram.com/roast66coffee"
+    );
+  });
+
+  it("switches language from the header", async () => {
+    render(
+      <LanguageProvider>
+        <MemoryRouter>
+          <Navigation />
+        </MemoryRouter>
+      </LanguageProvider>
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /cambiar idioma/i }));
+    expect(screen.getByText("Café local. Caminos eternos.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /ordenar ahora/i })).toBeInTheDocument();
   });
 
   it("shows a link to order-status when lookup session exists", async () => {

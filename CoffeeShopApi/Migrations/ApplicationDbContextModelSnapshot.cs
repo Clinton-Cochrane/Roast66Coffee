@@ -69,6 +69,10 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("character varying(500)")
                         .HasColumnName("description");
 
+                    b.Property<bool>("IsFeaturedOnHome")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_featured_on_home");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)

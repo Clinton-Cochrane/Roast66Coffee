@@ -21,6 +21,7 @@ const mockMenuItem: MenuItemDto = {
   description: "Strong coffee",
   price: 3.5,
   categoryType: CategoryType.COFFEE,
+  isFeaturedOnHome: false,
 };
 
 const specialItem: MenuItemDto = {
@@ -29,6 +30,7 @@ const specialItem: MenuItemDto = {
   description: "A house special",
   price: 5.25,
   categoryType: CategoryType.SPECIALS,
+  isFeaturedOnHome: true,
 };
 
 const flavorItem: MenuItemDto = {
@@ -37,6 +39,7 @@ const flavorItem: MenuItemDto = {
   description: "Classic vanilla",
   price: 0.5,
   categoryType: CategoryType.FLAVORS,
+  isFeaturedOnHome: false,
 };
 
 function OrderStateProbe() {

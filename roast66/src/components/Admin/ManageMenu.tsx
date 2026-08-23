@@ -6,6 +6,7 @@ import Button from "../common/Button";
 import Card from "../common/Card";
 import type { MenuItemDto } from "../../types/api";
 import { useI18n } from "../../i18n/LanguageContext";
+import { FaRegStar, FaStar } from "react-icons/fa";
 
 type CategoryOption = { id: number; name: string };
 
@@ -21,6 +22,7 @@ function ManageMenu() {
   const [menuItems, setMenuItems] = useState<MenuItemDto[]>([]);
   const [selectedMenuItemId, setSelectedMenuItemId] = useState("");
   const [categories, setCategories] = useState<CategoryOption[]>([]);
+  const [updatingSpecialIds, setUpdatingSpecialIds] = useState<Set<number>>(() => new Set());
   const [menuItemForm, setMenuItemForm] = useState<MenuItemFormState>({
     name: "",
     price: "",
@@ -130,6 +132,44 @@ function ManageMenu() {
       .catch(() => toast.error(t("adminMenu.failedDelete")));
   };
 
+  const selectedSpecialCount = menuItems.filter((item) => item.isFeaturedOnHome).length;
+
+  const handleHomepageSpecialChange = (item: MenuItemDto) => {
+    const isSelected = !item.isFeaturedOnHome;
+
+    setUpdatingSpecialIds((current) => new Set(current).add(item.id));
+    setMenuItems((current) =>
+      current.map((currentItem) =>
+        currentItem.id === item.id
+          ? { ...currentItem, isFeaturedOnHome: isSelected }
+          : currentItem
+      )
+    );
+
+    axios
+      .put(`/admin/menu/${item.id}/homepage-special`, { isSelected })
+      .then(() => {
+        toast.success(isSelected ? t("adminMenu.specialSelected") : t("adminMenu.specialRemoved"));
+      })
+      .catch(() => {
+        setMenuItems((current) =>
+          current.map((currentItem) =>
+            currentItem.id === item.id
+              ? { ...currentItem, isFeaturedOnHome: item.isFeaturedOnHome }
+              : currentItem
+          )
+        );
+        toast.error(t("adminMenu.specialUpdateFailed"));
+      })
+      .finally(() => {
+        setUpdatingSpecialIds((current) => {
+          const next = new Set(current);
+          next.delete(item.id);
+          return next;
+        });
+      });
+  };
+
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold mb-4">{t("adminMenu.title")}</h2>
@@ -206,9 +246,36 @@ function ManageMenu() {
               <span className="flex-1">
                 {item.name} - ${item.price} - {item.description}
               </span>
-              <Button onClick={() => handleDelete(item.id)} color="red">
-                {t("adminMenu.delete")}
-              </Button>
+              <span className="flex items-center gap-2">
+                <label
+                  className={`inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 font-semibold ${
+                    item.isFeaturedOnHome
+                      ? "border-[#d39a22] bg-[#fff4bf] text-[#e0a400] shadow-[0_0_0_2px_rgba(224,164,0,0.16)]"
+                      : "border-[#d8c5b3] bg-white text-[#7b6d62] hover:border-[#d39a22] hover:text-[#b47b00]"
+                  }`}
+                  title={t("adminMenu.specialToggleHelp")}
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.isFeaturedOnHome}
+                    disabled={
+                      updatingSpecialIds.has(item.id) ||
+                      (!item.isFeaturedOnHome && selectedSpecialCount >= 3)
+                    }
+                    onChange={() => handleHomepageSpecialChange(item)}
+                    className="sr-only"
+                  />
+                  {item.isFeaturedOnHome ? (
+                    <FaStar className="text-xl text-[#e0a400]" aria-hidden="true" />
+                  ) : (
+                    <FaRegStar className="text-xl" aria-hidden="true" />
+                  )}
+                  <span className="sr-only">{t("adminMenu.specialCheckbox", { name: item.name })}</span>
+                </label>
+                <Button onClick={() => handleDelete(item.id)} color="red">
+                  {t("adminMenu.delete")}
+                </Button>
+              </span>
             </li>
           ))}
         </ul>

@@ -1,19 +1,15 @@
 import React from "react";
 import Welcome from "../components/Customer/Welcome";
-import About from "../components/Customer/About";
-import Location from "../components/Customer/Location";
+import FeaturedSpecials from "../components/Customer/FeaturedSpecials";
+import HomeMarketingLocation from "../components/Customer/HomeMarketingLocation";
 
 function HomePage() {
   return (
-    <div className="flex flex-col items-center px-3 py-6">
-      <div className="w-full max-w-5xl">
-        <Welcome />
-      </div>
-      <div className="mt-4 w-full max-w-3xl">
-        <About />
-      </div>
-      <div className="mt-4 w-full max-w-3xl">
-        <Location />
+    <div className="flex flex-col items-center">
+      <Welcome />
+      <FeaturedSpecials />
+      <div className="r66-home-connect-wrap">
+        <HomeMarketingLocation />
       </div>
     </div>
   );
