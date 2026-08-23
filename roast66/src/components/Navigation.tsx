@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { FaBars, FaChevronDown, FaTimes } from "react-icons/fa";
 
@@ -18,6 +18,7 @@ const merchUrl = "https://roast-66-coffee.printify.me/products";
 
 function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const shopMenuRef = useRef<HTMLDetailsElement>(null);
   const { locale, setLocale, t } = useI18n();
   const location = useLocation();
   const [orderTrackingSession, setOrderTrackingSession] =
@@ -75,6 +76,11 @@ function Navigation() {
   const navLinkClass = ({ isActive }: { isActive: boolean }) =>
     `r66-nav-link ${isActive ? "r66-nav-link-active" : ""}`;
 
+  const closeShopMenu = () => {
+    if (shopMenuRef.current) shopMenuRef.current.open = false;
+    setIsMenuOpen(false);
+  };
+
   return (
     <header className="r66-header">
       <nav className="r66-header-inner" aria-label={t("nav.primaryNavigation")}>
@@ -105,19 +111,25 @@ function Navigation() {
               </NavLink>
             </li>
             <li>
-              <details className="r66-shop-menu">
+              <details ref={shopMenuRef} className="r66-shop-menu">
                 <summary className="r66-nav-link">
                   {t("nav.shop")}
                   <FaChevronDown aria-hidden="true" />
                 </summary>
                 <ul className="r66-shop-dropdown">
                   <li>
-                    <NavLink to="/menu" className={navLinkClass}>
+                    <NavLink to="/menu" className={navLinkClass} onClick={closeShopMenu}>
                       {t("nav.menu")}
                     </NavLink>
                   </li>
                   <li>
-                    <a href={merchUrl} target="_blank" rel="noopener noreferrer" className="r66-nav-link">
+                    <a
+                      href={merchUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="r66-nav-link"
+                      onClick={closeShopMenu}
+                    >
                       {t("nav.merch")}
                     </a>
                   </li>
