@@ -165,7 +165,7 @@ function Menu() {
                         tone={id === "specials" ? "special" : "drink"}
                         className="flex min-h-[19rem] h-full flex-col !shadow-none hover:!shadow-none"
                       >
-                        <h4 className="mb-2 min-h-14 line-clamp-2 text-xl font-semibold text-[#4a3326]">
+                        <h4 className="mb-1 min-h-7 line-clamp-2 text-xl font-semibold text-[#4a3326]">
                           {item.name}
                         </h4>
                         <p className="text-[#a64b2a] font-semibold">${item.price.toFixed(2)}</p>
@@ -210,13 +210,18 @@ function Menu() {
                 <p className="mb-4 text-[0.98rem] leading-[1.6] text-[#6f5b4b]">
                   {t("menu.flavorsHelp")}
                 </p>
-                <div className="grid w-full max-w-5xl grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {flavorSection.items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex min-w-0 items-center justify-between gap-3 border-b-2 border-[#99bfdd] px-2 py-3"
+                      className="flex min-w-0 items-start justify-between gap-3 border-b-2 border-[#99bfdd] px-2 py-3"
                     >
-                      <span className="min-w-0 font-semibold text-[#4a3326]">{item.name}</span>
+                      <div className="min-w-0">
+                        <h4 className="font-semibold text-[#4a3326]">{item.name}</h4>
+                        <p className="mt-1 text-sm leading-snug text-[#898989]">
+                          {item.description}
+                        </p>
+                      </div>
                       <span className="shrink-0 font-semibold text-[#a64b2a]">
                         ${item.price.toFixed(2)}
                       </span>
