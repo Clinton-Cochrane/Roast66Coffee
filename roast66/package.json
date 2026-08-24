@@ -34,7 +34,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-vitest": "^0.5.4",
-    "globals": "^15.13.0",
+    "globals": "^17.11.0",
     "jsdom": "^25.0.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
