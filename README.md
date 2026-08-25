@@ -119,6 +119,21 @@ npm run dev
 
 The API listens on port 80 unless `PORT` is set. Ensure `VITE_API_URL` points to the actual API URL.
 
+### UI-only development (no API, database, or Docker)
+
+The frontend includes a snapshot of the local menu at
+`roast66/public/data/menu.json`. To run menu and layout work against that snapshot:
+
+```bash
+cd roast66
+npm install
+npm run dev:static
+```
+
+In this mode, public `GET /menu` requests are served from the snapshot. Features
+that write data, submit orders, or use admin APIs still require the backend and
+database. Run `npm run dev` to use the normal API-backed behavior.
+
 ## Configuration
 
 ASP.NET configuration uses double underscores in environment-variable names. For example, `Jwt:Key` becomes `Jwt__Key`.

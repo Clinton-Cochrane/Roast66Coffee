@@ -14,6 +14,7 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:static": "vite --mode static",
     "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
     "preview": "vite preview",
     "test": "vitest run",

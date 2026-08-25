@@ -24,6 +24,7 @@ vi.mock("axios", () => ({
 
 describe("axiosConfig interceptors", () => {
   beforeEach(async () => {
+    vi.unstubAllEnvs();
     vi.resetModules();
     localStorage.clear();
     requestHolder.fn = undefined;
@@ -47,6 +48,24 @@ describe("axiosConfig interceptors", () => {
       headers: Record<string, unknown>;
     };
     expect(result.headers.Authorization).toBeUndefined();
+  });
+
+  it("serves menu reads from the public snapshot in static test mode", async () => {
+    vi.stubEnv("VITE_USE_STATIC_MENU", "true");
+    vi.resetModules();
+    requestHolder.fn = undefined;
+    responseHolder.fn = undefined;
+    await import("./axiosConfig");
+
+    const result = requestHolder.fn!({
+      method: "get",
+      url: "/menu",
+      baseURL: "https://example.com/api",
+      headers: {},
+    });
+
+    expect(result.baseURL).toBeUndefined();
+    expect(result.url).toBe("/data/menu.json");
   });
 
   it("clears token and redirects cash users on 401", async () => {
