@@ -1,0 +1,298 @@
+[
+  {
+    "id": 1,
+    "name": "Espresso",
+    "price": 2.5,
+    "description": "Strong and bold espresso shot",
+    "categoryType": 0,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 2,
+    "name": "Latte",
+    "price": 3.5,
+    "description": "Creamy latte with milk foam",
+    "categoryType": 0,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 3,
+    "name": "Cappuccino",
+    "price": 3.0,
+    "description": "Rich cappuccino with steamed milk",
+    "categoryType": 0,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 4,
+    "name": "Americano",
+    "price": 2.75,
+    "description": "Espresso diluted with hot water",
+    "categoryType": 0,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 5,
+    "name": "Mocha",
+    "price": 4.0,
+    "description": "Chocolate espresso drink with steamed milk",
+    "categoryType": 0,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 6,
+    "name": "Energy Drink",
+    "price": 4.0,
+    "description": "Select Flavor from below",
+    "categoryType": 3,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 7,
+    "name": "Lemonade",
+    "price": 4.0,
+    "description": "Refreshing Iced Lemonade",
+    "categoryType": 3,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 8,
+    "name": "Refresher",
+    "price": 4.0,
+    "description": "It's like water but different",
+    "categoryType": 3,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 9,
+    "name": "Tesla",
+    "price": 85.0,
+    "description": "Room Temp Tap Water",
+    "categoryType": 3,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 10,
+    "name": "Mr. Brownie Shaken Espresso",
+    "price": 4.15,
+    "description": "Shaken espresso with brown sugar, cinnamon powder, and vanilla cold foam",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 13,
+    "name": "Blue Flame Nitro",
+    "price": 5.25,
+    "description": "Nitro cold brew with sweet cream and blueberry syrup",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 14,
+    "name": "GTO Grape Energy Boost",
+    "price": 4.5,
+    "description": "Grape energy drink with lemon and passion fruit",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 16,
+    "name": "Red SnotRod Energy Bump",
+    "price": 2.5,
+    "description": "Cherry, passion fruit, and white peach flavored energy drink",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 17,
+    "name": "Green Nova Refresher",
+    "price": 3.75,
+    "description": "Iced sparkling lime drink with cucumber and mint",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 18,
+    "name": "Pink Slip Punch",
+    "price": 3.5,
+    "description": "Strawberry, watermelon, and lemon punch",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 19,
+    "name": "454 Punch",
+    "price": 4.75,
+    "description": "Cherry, pomegranate, and lime energy drink",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 15,
+    "name": "Black SS Lemonade",
+    "price": 2.5,
+    "description": "Red raspberry, pomegranate, and bubbly lemonade",
+    "categoryType": 1,
+    "isFeaturedOnHome": true
+  },
+  {
+    "id": 11,
+    "name": "Mrs. Brownie Latte",
+    "price": 7.23,
+    "description": "Iced coconut and caramel latte",
+    "categoryType": 1,
+    "isFeaturedOnHome": true
+  },
+  {
+    "id": 12,
+    "name": "Shitbox LUV Fuel",
+    "price": 5.0,
+    "description": "Triple espresso with caramel drizzle and guarana syrup",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 20,
+    "name": "Chocolate Shot",
+    "price": 0.5,
+    "description": "Rich chocolate flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 21,
+    "name": "Vanilla Shot",
+    "price": 0.5,
+    "description": "Classic vanilla flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 22,
+    "name": "Coconut Shot",
+    "price": 0.5,
+    "description": "Tropical coconut flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 23,
+    "name": "Caramel Shot",
+    "price": 0.5,
+    "description": "Sweet caramel flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 24,
+    "name": "Guarana Shot",
+    "price": 0.5,
+    "description": "Energy-boosting guarana",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 25,
+    "name": "Blueberry Shot",
+    "price": 0.5,
+    "description": "Fresh blueberry flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 26,
+    "name": "Grape Shot",
+    "price": 0.5,
+    "description": "Juicy grape flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 27,
+    "name": "Lemon Shot",
+    "price": 0.5,
+    "description": "Zesty lemon flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 28,
+    "name": "Passion Fruit Shot",
+    "price": 0.5,
+    "description": "Exotic passion fruit flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 29,
+    "name": "Red Raspberry Shot",
+    "price": 0.5,
+    "description": "Tangy red raspberry flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 30,
+    "name": "Pomegranate Shot",
+    "price": 0.5,
+    "description": "Sweet pomegranate flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 31,
+    "name": "Cherry Shot",
+    "price": 0.5,
+    "description": "Bold cherry flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 32,
+    "name": "White Peach Shot",
+    "price": 0.5,
+    "description": "Delicate white peach flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 33,
+    "name": "Lime Shot",
+    "price": 0.5,
+    "description": "Refreshing lime flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 34,
+    "name": "Cucumber Shot",
+    "price": 0.5,
+    "description": "Cool cucumber flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 35,
+    "name": "Mint Shot",
+    "price": 0.5,
+    "description": "Cooling mint flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 36,
+    "name": "Strawberry Shot",
+    "price": 0.5,
+    "description": "Sweet strawberry flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 37,
+    "name": "Watermelon Shot",
+    "price": 0.5,
+    "description": "Juicy watermelon flavor",
+    "categoryType": 2,
+    "isFeaturedOnHome": true
+  }
+]

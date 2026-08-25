@@ -1,5 +1,5 @@
 import axios, { type InternalAxiosRequestConfig } from "axios";
-import { API_BASE_URL } from "./config";
+import { API_BASE_URL, USE_STATIC_MENU } from "./config";
 import { clearAdminSession, getAdminToken } from "./authSession";
 
 const instance = axios.create({
@@ -13,6 +13,15 @@ const isPublicPost = (config: InternalAxiosRequestConfig): boolean =>
 
 instance.interceptors.request.use(
   (config) => {
+    if (
+      USE_STATIC_MENU &&
+      config.method?.toLowerCase() === "get" &&
+      config.url === "/menu"
+    ) {
+      config.baseURL = undefined;
+      config.url = `${import.meta.env.BASE_URL}data/menu.json`;
+    }
+
     if (!isPublicPost(config)) {
       const token = getAdminToken();
       if (token) {

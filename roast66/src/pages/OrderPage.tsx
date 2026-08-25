@@ -1,8 +1,17 @@
-import React, { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import React, { useEffect, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
 import axios from "axios";
 import axiosInstance from "../axiosConfig";
 import { toast } from "react-toastify";
+import {
+  FaCheck,
+  FaChevronUp,
+  FaMagnifyingGlass,
+  FaPen,
+  FaPlus,
+  FaTrashCan,
+  FaXmark,
+} from "react-icons/fa6";
 import FormInput from "../components/common/FormInput";
 import Button from "../components/common/Button";
 import CategoryType from "../constants/categories";
@@ -10,11 +19,20 @@ import { useI18n } from "../i18n/LanguageContext";
 import { canOrderMenuItemDirectly } from "../utils/canOrderMenuItemDirectly";
 import type { MenuItemDto, OrderDto } from "../types/api";
 import PromotionPrice, { effectivePrice } from "../components/common/PromotionPrice";
+import "../styles/OrderPage.css";
 
 const ENABLE_STRIPE_CHECKOUT = import.meta.env.VITE_ENABLE_STRIPE_CHECKOUT === "true";
+const MOBILE_ORDER_MEDIA_QUERY = "(max-width: 960px)";
+const MAX_LINE_QUANTITY = 12;
 
 type CartAddOn = MenuItemDto & { quantity: number };
-type CartLine = MenuItemDto & { quantity: number; notes: string; addOns: CartAddOn[] };
+type CartLine = MenuItemDto & {
+  cartLineId: number;
+  quantity: number;
+  notes: string;
+  addOns: CartAddOn[];
+};
+type DrinkCategoryFilter = "dailySpecials" | "coffee" | "drinks" | "all";
 
 function OrderPage() {
   const { locale, t } = useI18n();
@@ -24,13 +42,87 @@ function OrderPage() {
   const [orderItems, setOrderItems] = useState<CartLine[]>([]);
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [drinkSearch, setDrinkSearch] = useState("");
+  const [activeDrinkCategory, setActiveDrinkCategory] =
+    useState<DrinkCategoryFilter>("dailySpecials");
+  const [isMobileOrderLayout, setIsMobileOrderLayout] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia(MOBILE_ORDER_MEDIA_QUERY).matches
+  );
+  const [isMobileOrderPanelOpen, setIsMobileOrderPanelOpen] = useState(false);
+  const [activeCartLineId, setActiveCartLineId] = useState<number | null>(null);
 
   const wakeInFlightRef = useRef(false);
+  const nextCartLineIdRef = useRef(1);
   const prefillAppliedForLocationKeyRef = useRef<string | null>(null);
+  const mobileOrderPanelRef = useRef<HTMLElement>(null);
+  const orderPanelContentRef = useRef<HTMLDivElement>(null);
+  const mobileOrderCloseButtonRef = useRef<HTMLButtonElement>(null);
+  const mobileOrderTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     void ensureMenuItemsLoaded();
   }, []);
+
+  useEffect(() => {
+    if (typeof window.matchMedia !== "function") return;
+
+    const mediaQuery = window.matchMedia(MOBILE_ORDER_MEDIA_QUERY);
+    const handleLayoutChange = (event: MediaQueryListEvent) => {
+      setIsMobileOrderLayout(event.matches);
+      if (!event.matches) {
+        setIsMobileOrderPanelOpen(false);
+      }
+    };
+
+    setIsMobileOrderLayout(mediaQuery.matches);
+    mediaQuery.addEventListener("change", handleLayoutChange);
+    return () => mediaQuery.removeEventListener("change", handleLayoutChange);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobileOrderLayout || !isMobileOrderPanelOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    mobileOrderCloseButtonRef.current?.focus();
+
+    const handleDialogKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setIsMobileOrderPanelOpen(false);
+        mobileOrderTriggerRef.current?.focus();
+        return;
+      }
+
+      if (event.key !== "Tab" || !mobileOrderPanelRef.current) return;
+
+      const focusableElements = Array.from(
+        mobileOrderPanelRef.current.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+        )
+      );
+      const firstFocusable = focusableElements[0];
+      const lastFocusable = focusableElements[focusableElements.length - 1];
+      if (!firstFocusable || !lastFocusable) return;
+
+      if (event.shiftKey && document.activeElement === firstFocusable) {
+        event.preventDefault();
+        lastFocusable.focus();
+      } else if (!event.shiftKey && document.activeElement === lastFocusable) {
+        event.preventDefault();
+        firstFocusable.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleDialogKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleDialogKeyDown);
+    };
+  }, [isMobileOrderLayout, isMobileOrderPanelOpen]);
 
   const fetchMenuItems = async (): Promise<number> => {
     try {
@@ -69,18 +161,39 @@ function OrderPage() {
     }
   };
 
-  const handleDropDownChange = (e: ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
-    if (!value) {
-      return;
+  const openMobileOrderPanel = (trigger?: HTMLButtonElement) => {
+    if (!isMobileOrderLayout) return;
+    if (trigger) {
+      mobileOrderTriggerRef.current = trigger;
     }
-    const item = JSON.parse(value) as MenuItemDto;
-    addItemToOrder(item);
+    setIsMobileOrderPanelOpen(true);
   };
 
-  const addItemToOrder = (item: MenuItemDto) => {
+  const closeMobileOrderPanel = () => {
+    setIsMobileOrderPanelOpen(false);
+    mobileOrderTriggerRef.current?.focus();
+  };
+
+  const editOrderItem = (cartLineId: number) => {
+    setActiveCartLineId(cartLineId);
+    requestAnimationFrame(() => {
+      const scrollContainer = isMobileOrderLayout
+        ? orderPanelContentRef.current
+        : mobileOrderPanelRef.current;
+      scrollContainer?.scrollTo({ top: 0 });
+    });
+  };
+
+  const addItemToOrder = (item: MenuItemDto, trigger?: HTMLButtonElement) => {
     if (canOrderMenuItemDirectly(item)) {
-      setOrderItems((prev) => [...prev, { ...item, quantity: 1, notes: "", addOns: [] }]);
+      const cartLineId = nextCartLineIdRef.current;
+      nextCartLineIdRef.current += 1;
+      setOrderItems((prev) => [
+        ...prev,
+        { ...item, cartLineId, quantity: 1, notes: "", addOns: [] },
+      ]);
+      setActiveCartLineId(cartLineId);
+      openMobileOrderPanel(trigger);
     } else {
       toast.warning(t("order.flavorStandaloneWarning"));
     }
@@ -116,13 +229,46 @@ function OrderPage() {
     }
 
     prefillAppliedForLocationKeyRef.current = location.key;
-    setOrderItems((prev) => [...prev, { ...item, quantity: 1, notes: "", addOns: [] }]);
+    const cartLineId = nextCartLineIdRef.current;
+    nextCartLineIdRef.current += 1;
+    setOrderItems((prev) => [
+      ...prev,
+      { ...item, cartLineId, quantity: 1, notes: "", addOns: [] },
+    ]);
+    setActiveCartLineId(cartLineId);
+    if (isMobileOrderLayout) {
+      setIsMobileOrderPanelOpen(true);
+    }
     clearPrefillState();
-  }, [menuItems, location.key, location.state, navigate, t]);
+  }, [isMobileOrderLayout, menuItems, location.key, location.state, navigate, t]);
 
   const currencyFormatter = new Intl.NumberFormat(locale, {
     style: "currency",
     currency: "USD",
+  });
+  const orderableMenuItems = menuItems.filter((item) => canOrderMenuItemDirectly(item));
+  const categoryFilters: Array<{ id: DrinkCategoryFilter; label: string }> = [
+    { id: "dailySpecials", label: t("order.categoryDailySpecials") },
+    { id: "coffee", label: t("order.categoryCoffee") },
+    { id: "drinks", label: t("order.categoryDrinks") },
+    { id: "all", label: t("order.categoryAll") },
+  ];
+  const normalizedDrinkSearch = drinkSearch.trim().toLocaleLowerCase(locale);
+  const visibleMenuItems = orderableMenuItems.filter((item) => {
+    const matchesCategory =
+      activeDrinkCategory === "all" ||
+      (activeDrinkCategory === "dailySpecials" &&
+        (item.categoryType === CategoryType.SPECIALS || item.isFeaturedOnHome)) ||
+      (activeDrinkCategory === "coffee" && item.categoryType === CategoryType.COFFEE) ||
+      (activeDrinkCategory === "drinks" && item.categoryType === CategoryType.DRINKS);
+
+    if (!matchesCategory || !normalizedDrinkSearch) {
+      return matchesCategory;
+    }
+
+    return `${item.name} ${item.description}`
+      .toLocaleLowerCase(locale)
+      .includes(normalizedDrinkSearch);
   });
 
   const calculateTotalPrice = (item: CartLine) => {
@@ -137,12 +283,30 @@ function OrderPage() {
   const calculateOrderTotal = () => {
     return orderItems.reduce((total, item) => total + calculateTotalPrice(item), 0);
   };
+  const orderItemCount = orderItems.reduce((total, item) => total + item.quantity, 0);
+  const orderedMenuItemIds = new Set(orderItems.map((item) => item.id));
+  const requestedActiveItemIndex = orderItems.findIndex(
+    (item) => item.cartLineId === activeCartLineId
+  );
+  const activeOrderItemIndex =
+    requestedActiveItemIndex >= 0 ? requestedActiveItemIndex : orderItems.length - 1;
+  const activeOrderItem = orderItems[activeOrderItemIndex];
 
   const handleQuantityChange = (index: number, quantity: string) => {
-    const newQuantity = Math.min(parseInt(quantity, 10) || 1, 99);
-    const newOrderItems = [...orderItems];
-    newOrderItems[index].quantity = newQuantity;
-    setOrderItems(newOrderItems);
+    const parsedQuantity = Number.parseInt(quantity, 10);
+    if (Number.isNaN(parsedQuantity)) return;
+    if (parsedQuantity <= 0) {
+      handleRemoveItem(index);
+      return;
+    }
+
+    setOrderItems((previousItems) =>
+      previousItems.map((item, itemIndex) =>
+        itemIndex === index
+          ? { ...item, quantity: Math.min(parsedQuantity, MAX_LINE_QUANTITY) }
+          : item
+      )
+    );
   };
 
   const handleNotesChange = (index: number, notes: string) => {
@@ -155,6 +319,9 @@ function OrderPage() {
     const removedItem = orderItems[index];
     const newOrderItems = orderItems.filter((_, i) => i !== index);
     setOrderItems(newOrderItems);
+    if (removedItem.cartLineId === activeCartLineId) {
+      setActiveCartLineId(null);
+    }
     toast.info(t("order.itemRemoved", { itemName: removedItem.name }));
   };
 
@@ -173,6 +340,32 @@ function OrderPage() {
 
     const el = document.getElementById(`flavor-select-${index}`) as HTMLSelectElement | null;
     if (el) el.value = "";
+  };
+
+  const handleAddOnQuantityChange = (
+    itemIndex: number,
+    addOnIndex: number,
+    quantity: string
+  ) => {
+    const parsedQuantity = Number.parseInt(quantity, 10);
+    if (Number.isNaN(parsedQuantity)) return;
+
+    setOrderItems((previousItems) =>
+      previousItems.map((item, currentItemIndex) => {
+        if (currentItemIndex !== itemIndex) return item;
+
+        const addOns =
+          parsedQuantity <= 0
+            ? item.addOns.filter((_, currentAddOnIndex) => currentAddOnIndex !== addOnIndex)
+            : item.addOns.map((addOn, currentAddOnIndex) =>
+                currentAddOnIndex === addOnIndex
+                  ? { ...addOn, quantity: Math.min(parsedQuantity, MAX_LINE_QUANTITY) }
+                  : addOn
+              );
+
+        return { ...item, addOns };
+      })
+    );
   };
 
   const hasValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
@@ -224,6 +417,7 @@ function OrderPage() {
       .then((response) => {
         const createdOrder = response.data;
         setOrderItems([]);
+        setActiveCartLineId(null);
         setCustomerName("");
         setCustomerEmail("");
         navigate("/order/confirmation", { state: { order: createdOrder } });
@@ -233,6 +427,7 @@ function OrderPage() {
           const existingOrder = error.response?.data?.order as OrderDto | undefined;
           const existingOrderId = error.response?.data?.existingOrderId as number | undefined;
           setOrderItems([]);
+          setActiveCartLineId(null);
           setCustomerName("");
           setCustomerEmail("");
           navigate("/order/duplicate", {
@@ -251,184 +446,449 @@ function OrderPage() {
   };
 
   return (
-    <div className="p-6 flex flex-col items-center">
-      <div className="w-full max-w-5xl">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-[0.01em] text-[#4a3326]">
-            {t("order.placeYourOrder")}
-          </h1>
-          <Link to="/order-status" className="text-[#6c89a2] hover:underline font-semibold">
+    <div className="r66-order-page">
+      <div className="r66-order-shell">
+        <div className="r66-order-heading-row">
+          <h1 className="r66-order-title">{t("order.placeYourOrder")}</h1>
+          <Link to="/order-status" className="r66-order-status-link">
             {t("order.checkOrderStatus")} →
           </Link>
         </div>
-        <p className="mb-6 text-[0.98rem] leading-[1.6] text-[#6f5b4b]">
-          {t("order.pageSubtitle")}
-        </p>
+        <p className="r66-order-subtitle">{t("order.pageSubtitle")}</p>
 
-        <div className="mb-1 flex gap-4 rounded-[14px] border border-[#dccdbe] bg-[#fffaf3]/[0.92] p-4 shadow-[0_10px_24px_rgba(54,33,19,0.12)] max-[820px]:flex-col">
-          <div className="flex-1 min-w-0">
-            <FormInput
-              type="text"
-              name="customerName"
-              placeholder={t("order.namePlaceholder")}
-              title={t("order.namePlaceholder")}
-              aria-label={t("order.namePlaceholder")}
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              required
-            />
-          </div>
-          <div className="flex-1 min-w-0">
-            <FormInput
-              type="email"
-              name="customerEmail"
-              placeholder={t("order.emailPlaceholder")}
-              title={t("order.emailPlaceholder")}
-              aria-label={t("order.emailPlaceholder")}
-              value={customerEmail}
-              onChange={(e) => setCustomerEmail(e.target.value)}
-            />
-            <div className="group relative -mt-1">
-              <span
-                tabIndex={0}
-                className="block w-full cursor-help overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-tight text-[#7a675a] focus:outline-none focus:text-[#5b4940]"
-                title={t("order.emailHelpText")}
-              >
+        <form onSubmit={handleOrderSubmit}>
+          <div className="r66-order-customer-grid">
+            <div className="min-w-0">
+              <FormInput
+                type="text"
+                name="customerName"
+                autoComplete="name"
+                placeholder={t("order.namePlaceholder")}
+                title={t("order.namePlaceholder")}
+                aria-label={t("order.namePlaceholder")}
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                required
+              />
+            </div>
+            <div className="min-w-0">
+              <FormInput
+                type="email"
+                name="customerEmail"
+                autoComplete="email"
+                inputMode="email"
+                spellCheck={false}
+                placeholder={t("order.emailPlaceholder")}
+                title={t("order.emailPlaceholder")}
+                aria-label={t("order.emailPlaceholder")}
+                aria-describedby="order-email-help"
+                value={customerEmail}
+                onChange={(e) => setCustomerEmail(e.target.value)}
+              />
+              <p id="order-email-help" className="r66-order-email-help">
                 {t("order.emailHelpText")}
-              </span>
-              <div className="pointer-events-none absolute bottom-full left-1 z-20 mb-1 hidden w-64 rounded-md border border-[#d8c8ba] bg-[#fffaf3] px-2 py-1 text-[11px] leading-tight text-[#5b4940] shadow-md group-hover:block group-focus-within:block">
-                {t("order.emailHelpText")}
-              </div>
+              </p>
             </div>
           </div>
-        </div>
 
-        <p className="text-[#5b4940] text-sm mb-4 text-center">{t("order.instructions")}</p>
+          <div className="r66-order-workspace">
+            <section className="r66-order-selector-panel" aria-labelledby="drink-selector-heading">
+              <h2 id="drink-selector-heading" className="r66-order-section-title">
+                {t("order.chooseDrink")}
+              </h2>
+              <p className="r66-order-selector-instructions">{t("order.instructions")}</p>
+              <div className="r66-order-search-field">
+                <FaMagnifyingGlass aria-hidden="true" />
+                <input
+                  type="search"
+                  name="drinkSearch"
+                  autoComplete="off"
+                  spellCheck={false}
+                  value={drinkSearch}
+                  onChange={(event) => setDrinkSearch(event.target.value)}
+                  onFocus={handleDropdownFocus}
+                  placeholder={t("order.searchDrinksPlaceholder")}
+                  aria-label={t("order.searchDrinksLabel")}
+                />
+              </div>
+              <nav className="r66-order-category-nav" aria-label={t("order.categoryNavigation")}>
+                {categoryFilters.map((category) => {
+                  const isActive = activeDrinkCategory === category.id;
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      className="r66-order-category-chip"
+                      aria-pressed={isActive}
+                      aria-controls="order-drink-results"
+                      onClick={() => setActiveDrinkCategory(category.id)}
+                    >
+                      {category.label}
+                    </button>
+                  );
+                })}
+              </nav>
+              <div id="order-drink-results">
+                {visibleMenuItems.length > 0 ? (
+                  <ul className="r66-order-drink-list" aria-label={t("order.availableDrinks")}>
+                    {visibleMenuItems.map((item) => {
+                      const isInOrder = orderedMenuItemIds.has(item.id);
+                      return (
+                        <li key={item.id}>
+                          <button
+                            type="button"
+                            className="r66-order-drink-row"
+                            data-in-order={isInOrder ? "true" : undefined}
+                            onClick={(event) => addItemToOrder(item, event.currentTarget)}
+                            aria-label={t(
+                              isInOrder ? "menu.orderAnotherItem" : "menu.orderItem",
+                              { itemName: item.name }
+                            )}
+                          >
+                            <span className="r66-order-drink-copy">
+                              <span className="r66-order-drink-name">{item.name}</span>
+                              <span className="r66-order-drink-description">{item.description}</span>
+                            </span>
+                            <span className="r66-order-drink-price">
+                              {currencyFormatter.format(effectivePrice(item))}
+                            </span>
+                            <span className="r66-order-drink-add-icon" aria-hidden="true">
+                              {isInOrder ? <FaCheck /> : <FaPlus />}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="r66-order-drinks-empty" role="status">
+                    {menuItems.length === 0
+                      ? t("order.drinksLoading")
+                      : orderableMenuItems.length === 0
+                        ? t("order.noDrinksAvailable")
+                        : t("order.noMatchingDrinks")}
+                  </p>
+                )}
+              </div>
+            </section>
 
-        <div className="flex items-center space-x-4 mb-4">
-          <select
-            id="menu-select"
-            onChange={handleDropDownChange}
-            onFocus={handleDropdownFocus}
-            className="w-full p-2 border border-[#cbb8a8] rounded-md mb-4 bg-[#fffaf3]"
-            aria-label={t("order.selectMenuItem")}
-          >
-            <option value="">{t("order.selectMenuItem")}</option>
-            {menuItems
-              .filter((item) => canOrderMenuItemDirectly(item))
-              .map((item) => (
-                <option key={item.id} value={JSON.stringify(item)}>
-                  {item.name} - {currencyFormatter.format(effectivePrice(item))} - {item.description}
-                </option>
-              ))}
-          </select>
-        </div>
+            {isMobileOrderLayout && isMobileOrderPanelOpen ? (
+              <div
+                className="r66-mobile-order-backdrop"
+                aria-hidden="true"
+                onClick={closeMobileOrderPanel}
+              />
+            ) : null}
 
-        <form onSubmit={handleOrderSubmit} className="space-y-4">
-          <ul className="mx-auto grid max-w-[600px] gap-[0.9rem]">
-            {orderItems.map((item, index) => (
-              <li
-                key={index}
-                data-testid="order-item"
-                className="flex flex-col gap-[0.65rem] rounded-[10px] border border-[#dccdbe] bg-[#fffaf3] p-[0.95rem] shadow-[0_3px_8px_rgba(54,33,19,0.08)] transition-[box-shadow,transform] duration-200 motion-safe:hover:-translate-y-px hover:shadow-[0_8px_16px_rgba(54,33,19,0.12)]"
-              >
-                <div className="relative flex items-center justify-center gap-4">
-                  <div className="flex items-center">
-                    <FormInput
-                      type="number"
-                      label={t("order.quantityLabel", { itemName: item.name })}
-                      className="!w-14 !p-1 text-center"
-                      value={item.quantity}
-                      min={1}
-                      max={99}
-                      onChange={(e) => handleQuantityChange(index, e.target.value)}
-                      required
-                    />
+            <aside
+              id="mobile-order-panel"
+              ref={mobileOrderPanelRef}
+              className={`r66-order-right-column ${
+                isMobileOrderLayout && isMobileOrderPanelOpen
+                  ? "r66-mobile-order-sheet-open"
+                  : ""
+              }`}
+              aria-label={!isMobileOrderLayout ? t("order.currentOrder") : undefined}
+              aria-labelledby={
+                isMobileOrderLayout && isMobileOrderPanelOpen
+                  ? "mobile-order-sheet-heading"
+                  : undefined
+              }
+              aria-hidden={
+                isMobileOrderLayout && !isMobileOrderPanelOpen ? true : undefined
+              }
+              aria-modal={
+                isMobileOrderLayout && isMobileOrderPanelOpen ? true : undefined
+              }
+              role={isMobileOrderLayout && isMobileOrderPanelOpen ? "dialog" : undefined}
+            >
+              <div ref={orderPanelContentRef} className="r66-order-panel">
+                {isMobileOrderLayout ? (
+                  <div className="r66-mobile-order-sheet-header">
+                    <h2 id="mobile-order-sheet-heading">{t("order.orderDetails")}</h2>
+                    <button
+                      ref={mobileOrderCloseButtonRef}
+                      type="button"
+                      className="r66-mobile-order-sheet-close"
+                      onClick={closeMobileOrderPanel}
+                      aria-label={t("order.closeOrderDetails")}
+                    >
+                      <FaXmark aria-hidden="true" />
+                    </button>
                   </div>
+                ) : null}
+                <section className="r66-order-customizer" aria-labelledby="order-customizer-heading">
+                  <h2 id="order-customizer-heading" className="sr-only">
+                    {t("order.customizeOrder")}
+                  </h2>
 
-                  <div className="flex-1 text-[1.15rem] font-bold tracking-[0.01em] text-[#4a3326]">
-                    <div>{item.name} - ${calculateTotalPrice(item).toFixed(2)}</div>
-                    {item.promotion ? <PromotionPrice item={item} className="text-sm font-semibold text-[#a64b2a]" /> : null}
+                  {orderItems.length === 0 ? (
+                    <div className="r66-order-empty-customizer">
+                      <h3>{t("order.customizeOrder")}</h3>
+                      <p>{t("order.customizerEmpty")}</p>
+                    </div>
+                  ) : activeOrderItem ? (
+                    <ul className="r66-order-customizer-list">
+                      <li
+                        key={activeOrderItem.cartLineId}
+                        className="r66-order-customizer-item"
+                      >
+                        <div className="r66-order-item-heading">
+                            <div>
+                              <h3>
+                                {t("order.customizeItem", {
+                                  itemName: activeOrderItem.name,
+                                })}
+                              </h3>
+                              <div className="r66-order-item-price">
+                                {currencyFormatter.format(calculateTotalPrice(activeOrderItem))}
+                              </div>
+                              {activeOrderItem.promotion ? (
+                                <PromotionPrice
+                                  item={activeOrderItem}
+                                  className="r66-order-promotion-price"
+                                />
+                              ) : null}
+                            </div>
+                            <Button
+                              type="button"
+                              onClick={() => handleRemoveItem(activeOrderItemIndex)}
+                              variant="link"
+                              className="r66-order-remove-button"
+                              color="red"
+                            >
+                              <FaTrashCan aria-hidden="true" />
+                              <span>{t("order.removeItem")}</span>
+                            </Button>
+                        </div>
+
+                        <div className="r66-order-control-group r66-order-quantity-group">
+                            <FormInput
+                              id={`order-quantity-${activeOrderItemIndex}`}
+                              type="number"
+                              label={t("order.quantity")}
+                              aria-label={t("order.quantityLabel", {
+                                itemName: activeOrderItem.name,
+                              })}
+                              aria-describedby="order-quantity-help"
+                              className="r66-order-quantity-input"
+                              value={activeOrderItem.quantity}
+                              min={0}
+                              max={MAX_LINE_QUANTITY}
+                              step={1}
+                              inputMode="numeric"
+                              onChange={(e) =>
+                                handleQuantityChange(activeOrderItemIndex, e.target.value)
+                              }
+                              required
+                            />
+                        </div>
+
+                        <div className="r66-order-control-group">
+                            <label
+                              htmlFor={`flavor-select-${activeOrderItemIndex}`}
+                              className="r66-order-control-label"
+                            >
+                              {t("order.addFlavor")}
+                            </label>
+                            <select
+                              id={`flavor-select-${activeOrderItemIndex}`}
+                              onChange={(e) =>
+                                handleAddFlavor(
+                                  activeOrderItemIndex,
+                                  JSON.parse(e.target.value) as MenuItemDto
+                                )
+                              }
+                              onFocus={handleDropdownFocus}
+                              className="r66-order-select"
+                            >
+                              <option value="">{t("order.addFlavor")}</option>
+                              {menuItems
+                                .filter(
+                                  (menuItem) => menuItem.categoryType === CategoryType.FLAVORS
+                                )
+                                .map((flavor) => (
+                                  <option key={flavor.id} value={JSON.stringify(flavor)}>
+                                    {flavor.name} - {flavor.promotion ? `${flavor.promotion} off, ` : ""}
+                                    {currencyFormatter.format(effectivePrice(flavor))}
+                                  </option>
+                                ))}
+                            </select>
+
+                            {activeOrderItem.addOns.length > 0 ? (
+                              <ul
+                                className="r66-order-flavor-list"
+                                aria-label={t("order.selectedFlavors")}
+                              >
+                                {activeOrderItem.addOns.map((addOn, addOnIndex) => (
+                                  <li key={addOnIndex} className="r66-order-flavor-row">
+                                    <div className="r66-order-flavor-copy">
+                                      <span className="r66-order-flavor-name">{addOn.name}</span>
+                                      <span className="r66-order-flavor-price">
+                                        {currencyFormatter.format(effectivePrice(addOn))}
+                                        {addOn.promotion
+                                          ? ` (${addOn.promotion} off; was ${currencyFormatter.format(addOn.price)})`
+                                          : ""}
+                                      </span>
+                                    </div>
+                                    <FormInput
+                                      type="number"
+                                      aria-label={t("order.quantityLabel", { itemName: addOn.name })}
+                                      aria-describedby="order-quantity-help"
+                                      className="r66-order-addon-quantity-input"
+                                      min={0}
+                                      max={MAX_LINE_QUANTITY}
+                                      step={1}
+                                      inputMode="numeric"
+                                      value={addOn.quantity}
+                                      onChange={(e) =>
+                                        handleAddOnQuantityChange(
+                                          activeOrderItemIndex,
+                                          addOnIndex,
+                                          e.target.value
+                                        )
+                                      }
+                                    />
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : null}
+                        </div>
+
+                        <div className="r66-order-control-group">
+                            <label
+                              htmlFor={`order-notes-${activeOrderItemIndex}`}
+                              className="r66-order-control-label"
+                            >
+                              {t("order.notesPlaceholder")}
+                            </label>
+                            <textarea
+                              id={`order-notes-${activeOrderItemIndex}`}
+                              name={`orderNotes-${activeOrderItemIndex}`}
+                              autoComplete="off"
+                              value={activeOrderItem.notes}
+                              onChange={(e) =>
+                                handleNotesChange(activeOrderItemIndex, e.target.value)
+                              }
+                              className="r66-order-notes"
+                              placeholder={t("order.notesPlaceholder")}
+                              rows={2}
+                            />
+                        </div>
+                      </li>
+                    </ul>
+                  ) : null}
+                </section>
+
+                <section className="r66-current-order" aria-labelledby="current-order-heading">
+                  <h2 id="current-order-heading" className="r66-order-section-title">
+                    {t("order.currentOrder")}
+                  </h2>
+
+                  {orderItems.length > 0 ? (
+                    <ul className="r66-current-order-list">
+                      {orderItems.map((item, index) => {
+                        const isEditing = index === activeOrderItemIndex;
+                        return (
+                        <li
+                          key={item.cartLineId}
+                          data-testid="order-item"
+                          className="r66-current-order-item"
+                        >
+                          <button
+                            type="button"
+                            className="r66-current-order-edit-button"
+                            aria-label={t("order.editItem", { itemName: item.name })}
+                            aria-pressed={isEditing}
+                            onClick={() => editOrderItem(item.cartLineId)}
+                          >
+                            <div className="r66-current-order-copy">
+                              <div className="r66-current-order-name-row">
+                                <span className="r66-current-order-name">{item.name}</span>
+                                <span className="r66-current-order-quantity">× {item.quantity}</span>
+                              </div>
+                              <p>
+                                {item.addOns.length > 0
+                                  ? item.addOns
+                                      .map((addOn) => `${addOn.name} × ${addOn.quantity}`)
+                                      .join(", ")
+                                  : t("order.noFlavors")}
+                              </p>
+                              {item.notes ? <p>{item.notes}</p> : null}
+                            </div>
+                            <span className="r66-current-order-price">
+                              {currencyFormatter.format(calculateTotalPrice(item))}
+                            </span>
+                            <FaPen className="r66-current-order-edit-icon" aria-hidden="true" />
+                          </button>
+                          <button
+                            type="button"
+                            className="r66-current-order-remove-button"
+                            aria-label={t("order.removeNamedItem", { itemName: item.name })}
+                            onClick={() => handleRemoveItem(index)}
+                          >
+                            <FaTrashCan aria-hidden="true" />
+                          </button>
+                        </li>
+                        );
+                      })}
+                    </ul>
+                  ) : (
+                    <p className="r66-current-order-empty">{t("order.currentOrderEmpty")}</p>
+                  )}
+
+                  <div
+                    className="r66-current-order-total-row"
+                    aria-live="polite"
+                    aria-atomic="true"
+                  >
+                    <span>{t("order.total")}</span>
+                    <span>{currencyFormatter.format(calculateOrderTotal())}</span>
                   </div>
 
                   <Button
-                    type="button"
-                    onClick={() => handleRemoveItem(index)}
-                    variant="link"
-                    className="absolute right-0 top-0 inline-flex !h-auto !w-auto items-center justify-center !p-1 text-xl no-underline transition-[color,background-color,transform] duration-200 hover:scale-110 hover:bg-[#f1ddd0]"
-                    color="red"
+                    type="submit"
+                    color="green"
+                    className="r66-place-order-button"
+                    disabled={orderItems.length === 0}
                   >
-                    X
+                    {t("order.placeOrder")}
                   </Button>
-                </div>
-
-                <div className="mt-3 border-t border-dashed border-[#ddcdbf] pt-2.5">
-                  <select
-                    id={`flavor-select-${index}`}
-                    onChange={(e) => handleAddFlavor(index, JSON.parse(e.target.value) as MenuItemDto)}
-                    onFocus={handleDropdownFocus}
-                    className="w-full p-2 border border-[#cbb8a8] rounded-md mb-2 bg-[#fffaf3]"
-                    aria-label={t("order.addFlavor")}
-                  >
-                    <option value="">{t("order.addFlavor")}</option>
-                    {menuItems
-                      .filter((menuItem) => menuItem.categoryType === CategoryType.FLAVORS)
-                      .map((flavor) => (
-                        <option key={flavor.id} value={JSON.stringify(flavor)}>
-                          {flavor.name} - {flavor.promotion ? `${flavor.promotion} off, ` : ""}{currencyFormatter.format(effectivePrice(flavor))}
-                        </option>
-                      ))}
-                  </select>
-
-                  {item.addOns.length > 0 ? (
-                    <ul className="mt-1 list-none pl-0">
-                      {item.addOns.map((addOn, addOnIndex) => (
-                        <li
-                          key={addOnIndex}
-                          className="flex items-center justify-between gap-2 text-sm text-[#4d3b31]"
-                        >
-                          <span>
-                            {addOn.name} - ${effectivePrice(addOn)} x {addOn.quantity}
-                            {addOn.promotion ? ` (${addOn.promotion} off; was $${addOn.price.toFixed(2)})` : ""}
-                          </span>
-                          <FormInput
-                            type="number"
-                            className="!w-14 !p-1 text-center"
-                            min={1}
-                            value={addOn.quantity}
-                            onChange={(e) => {
-                              const newOrderItems = [...orderItems];
-                              newOrderItems[index].addOns[addOnIndex].quantity = parseInt(
-                                e.target.value,
-                                10
-                              );
-                              setOrderItems(newOrderItems);
-                            }}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </div>
-
-                <FormInput
-                  type="text"
-                  placeholder={t("order.notesPlaceholder")}
-                  value={item.notes}
-                  onChange={(e) => handleNotesChange(index, e.target.value)}
-                  className="placeholder-gray-400"
-                />
-              </li>
-            ))}
-          </ul>
-
-          <div className="font-bold text-xl text-[#4a3326]">
-            {t("order.total")}: {currencyFormatter.format(calculateOrderTotal())}
+                </section>
+              </div>
+            </aside>
           </div>
 
-          <Button type="submit" color="green" disabled={orderItems.length === 0}>
-            {t("order.placeOrder")}
-          </Button>
+          {isMobileOrderLayout ? (
+            <div className="r66-mobile-order-bar">
+              <button
+                type="button"
+                onClick={(event) => openMobileOrderPanel(event.currentTarget)}
+                aria-controls="mobile-order-panel"
+                aria-expanded={isMobileOrderPanelOpen}
+              >
+                <span className="r66-mobile-order-bar-copy">
+                  <span>{t("order.currentOrder")}</span>
+                  <span>
+                    {t(orderItemCount === 1 ? "order.itemCountOne" : "order.itemCountMany", {
+                      count: orderItemCount,
+                    })}
+                  </span>
+                </span>
+                <span className="r66-mobile-order-bar-total">
+                  {currencyFormatter.format(calculateOrderTotal())}
+                </span>
+                <span className="r66-mobile-order-bar-action">
+                  {t("order.viewOrder")}
+                  <FaChevronUp aria-hidden="true" />
+                </span>
+              </button>
+            </div>
+          ) : null}
+
+          <p id="order-quantity-help" className="sr-only">
+            {t("order.quantityHelp")}
+          </p>
         </form>
       </div>
     </div>
