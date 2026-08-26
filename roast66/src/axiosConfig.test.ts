@@ -50,8 +50,21 @@ describe("axiosConfig interceptors", () => {
     expect(result.headers.Authorization).toBeUndefined();
   });
 
-  it("serves menu reads from the public snapshot in static test mode", async () => {
-    vi.stubEnv("VITE_USE_STATIC_MENU", "true");
+  it("serves menu reads from the public snapshot by default on localhost", () => {
+    const result = requestHolder.fn!({
+      method: "get",
+      url: "/menu",
+      baseURL: "https://example.com/api",
+      headers: {},
+    });
+
+    expect(window.location.hostname).toBe("localhost");
+    expect(result.baseURL).toBeUndefined();
+    expect(result.url).toBe("/data/menu.json");
+  });
+
+  it("allows local menu reads to explicitly use the API", async () => {
+    vi.stubEnv("VITE_USE_STATIC_MENU", "false");
     vi.resetModules();
     requestHolder.fn = undefined;
     responseHolder.fn = undefined;
@@ -64,8 +77,8 @@ describe("axiosConfig interceptors", () => {
       headers: {},
     });
 
-    expect(result.baseURL).toBeUndefined();
-    expect(result.url).toBe("/data/menu.json");
+    expect(result.baseURL).toBe("https://example.com/api");
+    expect(result.url).toBe("/menu");
   });
 
   it("clears token and redirects cash users on 401", async () => {

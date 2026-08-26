@@ -42,6 +42,7 @@ function OrderPage() {
   const [orderItems, setOrderItems] = useState<CartLine[]>([]);
   const [customerName, setCustomerName] = useState("");
   const [customerEmail, setCustomerEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [drinkSearch, setDrinkSearch] = useState("");
   const [activeDrinkCategory, setActiveDrinkCategory] =
     useState<DrinkCategoryFilter>("dailySpecials");
@@ -55,6 +56,7 @@ function OrderPage() {
   const [activeCartLineId, setActiveCartLineId] = useState<number | null>(null);
 
   const wakeInFlightRef = useRef(false);
+  const submissionInFlightRef = useRef(false);
   const nextCartLineIdRef = useRef(1);
   const prefillAppliedForLocationKeyRef = useRef<string | null>(null);
   const mobileOrderPanelRef = useRef<HTMLElement>(null);
@@ -370,8 +372,11 @@ function OrderPage() {
 
   const hasValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
-  const handleOrderSubmit = (e: FormEvent) => {
+  const handleOrderSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (submissionInFlightRef.current) {
+      return;
+    }
     if (orderItems.length === 0) {
       toast.error(t("order.orderRequiredError"));
       return;
@@ -391,58 +396,64 @@ function OrderPage() {
         })),
       })),
     };
+    submissionInFlightRef.current = true;
+    setIsSubmitting(true);
+
+    const resetSubmissionState = () => {
+      submissionInFlightRef.current = false;
+      setIsSubmitting(false);
+    };
+
     if (ENABLE_STRIPE_CHECKOUT) {
       const idempotencyKey =
         window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-      axiosInstance
-        .post("/payments/checkout-session", orderData, {
+      try {
+        const response = await axiosInstance.post("/payments/checkout-session", orderData, {
           headers: { "X-Idempotency-Key": idempotencyKey },
-        })
-        .then((response) => {
-          const checkoutUrl = response?.data?.checkoutUrl as string | undefined;
-          if (!checkoutUrl) {
-            throw new Error(t("order.checkoutMissingUrl"));
-          }
-          window.location.assign(checkoutUrl);
-        })
-        .catch((error: unknown) => {
-          console.error("Checkout session creation failed:", error);
-          toast.error(t("order.checkoutFailed"));
         });
+        const checkoutUrl = response?.data?.checkoutUrl as string | undefined;
+        if (!checkoutUrl) {
+          throw new Error(t("order.checkoutMissingUrl"));
+        }
+        window.location.assign(checkoutUrl);
+      } catch (error: unknown) {
+        console.error("Checkout session creation failed:", error);
+        toast.error(t("order.checkoutFailed"));
+        resetSubmissionState();
+      }
       return;
     }
 
-    axiosInstance
-      .post<OrderDto>("/admin/orders", orderData)
-      .then((response) => {
-        const createdOrder = response.data;
+    try {
+      const response = await axiosInstance.post<OrderDto>("/admin/orders", orderData);
+      const createdOrder = response.data;
+      setOrderItems([]);
+      setActiveCartLineId(null);
+      setCustomerName("");
+      setCustomerEmail("");
+      navigate("/order/confirmation", { state: { order: createdOrder } });
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error) && error.response?.status === 409) {
+        const existingOrder = error.response?.data?.order as OrderDto | undefined;
+        const existingOrderId = error.response?.data?.existingOrderId as number | undefined;
         setOrderItems([]);
         setActiveCartLineId(null);
         setCustomerName("");
         setCustomerEmail("");
-        navigate("/order/confirmation", { state: { order: createdOrder } });
-      })
-      .catch((error: unknown) => {
-        if (axios.isAxiosError(error) && error.response?.status === 409) {
-          const existingOrder = error.response?.data?.order as OrderDto | undefined;
-          const existingOrderId = error.response?.data?.existingOrderId as number | undefined;
-          setOrderItems([]);
-          setActiveCartLineId(null);
-          setCustomerName("");
-          setCustomerEmail("");
-          navigate("/order/duplicate", {
-            state: { order: existingOrder, existingOrderId },
-          });
-        } else {
-          console.error(
-            "Order submission failed:",
-            axios.isAxiosError(error) ? error.response?.status : undefined,
-            axios.isAxiosError(error) ? error.response?.data : undefined,
-            error
-          );
-          toast.error(t("order.submitFailed"));
-        }
-      });
+        navigate("/order/duplicate", {
+          state: { order: existingOrder, existingOrderId },
+        });
+      } else {
+        console.error(
+          "Order submission failed:",
+          axios.isAxiosError(error) ? error.response?.status : undefined,
+          axios.isAxiosError(error) ? error.response?.data : undefined,
+          error
+        );
+        toast.error(t("order.submitFailed"));
+        resetSubmissionState();
+      }
+    }
   };
 
   return (
@@ -850,9 +861,16 @@ function OrderPage() {
                     type="submit"
                     color="green"
                     className="r66-place-order-button"
-                    disabled={orderItems.length === 0}
+                    disabled={orderItems.length === 0 || isSubmitting}
                   >
-                    {t("order.placeOrder")}
+                    {isSubmitting ? (
+                      <span className="r66-order-submit-progress" aria-live="polite">
+                        <span className="r66-order-submit-spinner" aria-hidden="true" />
+                        {t("order.placingOrder")}
+                      </span>
+                    ) : (
+                      t("order.placeOrder")
+                    )}
                   </Button>
                 </section>
               </div>

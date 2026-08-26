@@ -7,6 +7,17 @@ namespace CoffeeShopApi.Data
 {
     public static class SeedMenuItems
     {
+        public static async Task<bool> SeedIfEmptyAsync(ApplicationDbContext context)
+        {
+            if (await context.MenuItems.AnyAsync())
+            {
+                return false;
+            }
+
+            await SeedAsync(context);
+            return true;
+        }
+
         public static async Task SeedAsync(ApplicationDbContext context)
         {
             // List of drinks to insert/update

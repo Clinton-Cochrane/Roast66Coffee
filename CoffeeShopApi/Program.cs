@@ -32,6 +32,11 @@ namespace CoffeeShopApi
                     ApplyMigrations(host);
                     return;
                 }
+                if (args.Length == 1 && string.Equals(args[0], "initialize-local", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyMigrations(host, seedMenuIfEmpty: true);
+                    return;
+                }
 
                 host.Run();
             }
@@ -46,7 +51,7 @@ namespace CoffeeShopApi
             }
         }
 
-        private static void ApplyMigrations(IHost host)
+        private static void ApplyMigrations(IHost host, bool seedMenuIfEmpty = false)
         {
             using var scope = host.Services.CreateScope();
             var services = scope.ServiceProvider;
@@ -58,6 +63,9 @@ namespace CoffeeShopApi
 
                 if (env.IsEnvironment("Testing"))
                     throw new InvalidOperationException("The migrate command cannot run in Testing.");
+                if (seedMenuIfEmpty && !env.IsDevelopment())
+                    throw new InvalidOperationException(
+                        "The initialize-local command can only run in Development.");
 
                 Console.WriteLine("Acquiring the database migration lock...");
                 context.Database.OpenConnection();
@@ -66,6 +74,17 @@ namespace CoffeeShopApi
                 {
                     Console.WriteLine("Applying database migrations...");
                     context.Database.Migrate();
+                    if (seedMenuIfEmpty)
+                    {
+                        Console.WriteLine("Ensuring the local menu snapshot is seeded...");
+                        var seeded = SeedMenuItems.SeedIfEmptyAsync(context)
+                            .GetAwaiter()
+                            .GetResult();
+                        Console.WriteLine(
+                            seeded
+                                ? "Local menu snapshot seeded."
+                                : "Local menu already exists; leaving it unchanged.");
+                    }
                 }
                 finally
                 {

@@ -146,6 +146,14 @@ function mockMobileOrderLayout(matches: boolean) {
   });
 }
 
+async function buildBasicOrder() {
+  fireEvent.click(screen.getByRole("button", { name: "Coffee" }));
+  fireEvent.click(await screen.findByRole("button", { name: "Order Espresso" }));
+  fireEvent.change(screen.getByRole("textbox", { name: "Your Name" }), {
+    target: { value: "Ada Lovelace" },
+  });
+}
+
 describe("OrderPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -360,6 +368,93 @@ describe("OrderPage", () => {
     });
     expect(mockNavigate).toHaveBeenCalledWith("/order/confirmation", {
       state: { order: { id: 44, orderItems: [] } },
+    });
+  });
+
+  it("shows submission progress and prevents duplicate requests", async () => {
+    mockGet.mockResolvedValue({ data: menuPayload });
+
+    let resolvePost: ((value: { data: { id: number } }) => void) | undefined;
+    mockPost.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePost = resolve;
+        })
+    );
+
+    renderOrderPage({ pathname: "/order", state: {} });
+    await buildBasicOrder();
+
+    const placeOrderButton = screen.getByRole("button", { name: "Place Order" });
+    const form = placeOrderButton.closest("form");
+    expect(form).not.toBeNull();
+
+    fireEvent.click(placeOrderButton);
+
+    const submittingButton = await screen.findByRole("button", { name: "Placing order…" });
+    expect(submittingButton).toBeDisabled();
+    expect(mockPost).toHaveBeenCalledTimes(1);
+
+    fireEvent.submit(form as HTMLFormElement);
+    expect(mockPost).toHaveBeenCalledTimes(1);
+
+    resolvePost?.({ data: { id: 42 } });
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/order/confirmation", {
+        state: { order: { id: 42 } },
+      });
+    });
+  });
+
+  it("restores the current-order submit button after a failed request", async () => {
+    mockGet.mockResolvedValue({ data: menuPayload });
+    mockPost.mockRejectedValue(new Error("Network unavailable"));
+
+    renderOrderPage({ pathname: "/order", state: {} });
+    await buildBasicOrder();
+
+    fireEvent.click(screen.getByRole("button", { name: "Place Order" }));
+
+    await waitFor(() => {
+      expect(toastFns.error).toHaveBeenCalledWith(
+        "Failed to place the order. Please try again or check the console for details."
+      );
+    });
+
+    expect(screen.getByRole("button", { name: "Place Order" })).toBeEnabled();
+  });
+
+  it("keeps submission feedback visible until a duplicate order is identified", async () => {
+    mockGet.mockResolvedValue({ data: menuPayload });
+
+    let rejectPost: ((reason: unknown) => void) | undefined;
+    mockPost.mockImplementation(
+      () =>
+        new Promise((_, reject) => {
+          rejectPost = reject;
+        })
+    );
+
+    renderOrderPage({ pathname: "/order", state: {} });
+    await buildBasicOrder();
+
+    fireEvent.click(screen.getByRole("button", { name: "Place Order" }));
+
+    expect(await screen.findByRole("button", { name: "Placing order…" })).toBeDisabled();
+
+    rejectPost?.({
+      isAxiosError: true,
+      response: {
+        status: 409,
+        data: { order: { id: 42 }, existingOrderId: 42 },
+      },
+    });
+
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith("/order/duplicate", {
+        state: { order: { id: 42 }, existingOrderId: 42 },
+      });
     });
   });
 

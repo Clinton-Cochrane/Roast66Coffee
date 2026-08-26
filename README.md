@@ -78,27 +78,32 @@ docker-compose.yml    Local frontend, backend, and PostgreSQL stack
    cp roast66/.env.example roast66/.env
    ```
 
-2. Start PostgreSQL, the API, and the frontend:
+2. Start PostgreSQL, initialize the local database, and start the API and frontend:
 
    ```bash
    docker compose up --build -d
    ```
 
-3. Apply database migrations once:
+   Compose applies pending migrations and seeds the default menu only when the
+   local database is empty. Existing local menu and order data are preserved.
 
-   ```bash
-   docker compose exec backend dotnet CoffeeShopApi.dll migrate
-   ```
-
-4. Open the services:
+3. Open the services:
 
    - Frontend: `http://localhost:3000`
    - API: `http://localhost:5001`
    - API health: `http://localhost:5001/api/health`
 
-5. Sign in at `/admin` and use **Seed Default Menu** if the database has no menu data.
-
 The Docker connection string must use `Host=postgres-db`, which is already shown in `CoffeeShopApi/.env.example`.
+
+To discard all local orders and menu edits and recreate a clean snapshot:
+
+```bash
+docker compose down --volumes
+docker compose up --build -d
+```
+
+The first command permanently removes only this Compose project's local database
+volume. The initializer recreates the schema and default menu on the next start.
 
 ### Run without Docker
 
@@ -119,10 +124,14 @@ npm run dev
 
 The API listens on port 80 unless `PORT` is set. Ensure `VITE_API_URL` points to the actual API URL.
 
-### UI-only development (no API, database, or Docker)
+### Local menu snapshot
 
 The frontend includes a snapshot of the local menu at
-`roast66/public/data/menu.json`. To run menu and layout work against that snapshot:
+`roast66/public/data/menu.json`. Vite development on localhost and loopback uses
+that snapshot for public menu reads by default. Docker Compose explicitly uses
+the initialized API menu so displayed item IDs always match order submissions.
+
+To run menu and layout work without an API, database, or Docker:
 
 ```bash
 cd roast66
@@ -130,9 +139,9 @@ npm install
 npm run dev:static
 ```
 
-In this mode, public `GET /menu` requests are served from the snapshot. Features
-that write data, submit orders, or use admin APIs still require the backend and
-database. Run `npm run dev` to use the normal API-backed behavior.
+Features that write data, submit orders, or use admin APIs still require the
+backend and database. Set `VITE_USE_STATIC_MENU=false` to force a local build to
+read the menu from the API instead.
 
 ## Configuration
 
@@ -166,6 +175,7 @@ Keep this value stable during normal deployments. Rotating it immediately invali
 | Setting | Purpose |
 | --- | --- |
 | `VITE_API_URL` | API base URL including `/api`, with no trailing slash |
+| `VITE_USE_STATIC_MENU` | Overrides menu data selection. Localhost defaults to the bundled JSON snapshot; set `false` to force API reads or `true` to use the snapshot on any host. |
 | `VITE_ENABLE_STRIPE_CHECKOUT` | Enables Stripe checkout UI when set to `true` |
 | `VITE_VAPID_PUBLIC_KEY` | Optional public key for staff web push |
 
