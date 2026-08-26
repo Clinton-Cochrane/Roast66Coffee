@@ -1,4 +1,18 @@
 services:
+  local-db-init:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    command: ["initialize-local"]
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    env_file:
+      - CoffeeShopApi/.env
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    restart: "no"
+
   backend:
     build:
       context: .
@@ -7,16 +21,19 @@ services:
       - "5001:80"
     environment:
       - ASPNETCORE_URLS=http://0.0.0.0:80
+      - ASPNETCORE_ENVIRONMENT=Development
     env_file:
       - CoffeeShopApi/.env
     depends_on:
-      postgres-db:
-        condition: service_healthy
+      local-db-init:
+        condition: service_completed_successfully
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        VITE_USE_STATIC_MENU: "false"
     ports:
       - "3000:80"
     env_file:

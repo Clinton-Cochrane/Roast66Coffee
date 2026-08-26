@@ -32,6 +32,19 @@ public class MenuSeedDataTests
     }
 
     [Fact]
+    public async Task LocalSeed_SeedsOnlyWhenMenuIsEmpty()
+    {
+        await using var context = CreateContext();
+
+        Assert.True(await SeedMenuItems.SeedIfEmptyAsync(context));
+        var seededCount = await context.MenuItems.CountAsync();
+
+        Assert.False(await SeedMenuItems.SeedIfEmptyAsync(context));
+        Assert.Equal(seededCount, await context.MenuItems.CountAsync());
+        Assert.Single(context.MenuItems.Where(item => item.Name == "Watermelon Shot"));
+    }
+
+    [Fact]
     public void DuplicateCleanupMigration_ReassignsReferencesBeforeDeletingDuplicates()
     {
         var operations = new TestableRemoveDuplicateWatermelonShot().BuildOperations();
