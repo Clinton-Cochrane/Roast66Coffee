@@ -146,6 +146,7 @@ export const en = {
     itemCountMany: "{{count}} items",
     total: "Total",
     placeOrder: "Place Order",
+    placingOrder: "Placing order…",
     item: "Item",
     addOnDuplicateWarning: "This flavor has already been added.",
     flavorStandaloneWarning:

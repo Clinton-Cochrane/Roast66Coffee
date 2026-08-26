@@ -147,6 +147,7 @@ export const esMx: Messages = {
     itemCountMany: "{{count}} artículos",
     total: "Total",
     placeOrder: "Hacer pedido",
+    placingOrder: "Enviando pedido…",
     item: "Artículo",
     addOnDuplicateWarning: "Este sabor ya fue agregado.",
     flavorStandaloneWarning:
