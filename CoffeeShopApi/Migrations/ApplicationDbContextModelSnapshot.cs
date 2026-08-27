@@ -286,10 +286,15 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("paidutc");
 
-                    b.Property<string>("StripePaymentIntentId")
+                    b.Property<string>("PaymentProvider")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("paymentprovider");
+
+                    b.Property<string>("PaymentReference")
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
-                        .HasColumnName("stripepaymentintentid");
+                        .HasColumnName("paymentreference");
 
                     b.Property<string>("TrackingToken")
                         .IsRequired()
@@ -342,25 +347,34 @@ namespace CoffeeShopApi.Migrations
                     b.ToTable("orderitems");
                 });
 
-            modelBuilder.Entity("CoffeeShopApi.Models.Payments.PaymentCheckoutDraft", b =>
+            modelBuilder.Entity("CoffeeShopApi.Models.Payments.Payment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
-                    b.Property<string>("CheckoutSessionId")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("checkoutsessionid");
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(10,2)")
+                        .HasColumnName("amount");
 
                     b.Property<DateTime?>("CompletedUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("completedutc");
 
+                    b.Property<DateTime?>("ConfirmedByStaffUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmedbystaffutc");
+
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("createdutc");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
 
                     b.Property<string>("CustomerName")
                         .IsRequired()
@@ -381,6 +395,11 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("text")
                         .HasColumnName("idempotencykey");
 
+                    b.Property<string>("Method")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("method");
+
                     b.Property<int?>("OrderId")
                         .HasColumnType("integer")
                         .HasColumnName("orderid");
@@ -390,18 +409,41 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("text")
                         .HasColumnName("payloadjson");
 
-                    b.Property<string>("Status")
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("ProviderCheckoutId")
                         .IsRequired()
                         .HasColumnType("text")
-                        .HasColumnName("status");
+                        .HasColumnName("providercheckoutid");
 
-                    b.Property<string>("StripePaymentIntentId")
+                    b.Property<string>("ProviderPaymentId")
                         .HasColumnType("text")
-                        .HasColumnName("stripepaymentintentid");
+                        .HasColumnName("providerpaymentid");
+
+                    b.Property<DateTime?>("RefundedUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refundedutc");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(24)
+                        .HasColumnType("character varying(24)")
+                        .HasColumnName("status");
 
                     b.HasKey("Id");
 
-                    b.ToTable("paymentcheckoutdrafts");
+                    b.HasIndex("OrderId");
+
+                    b.HasIndex("Provider", "IdempotencyKey");
+
+                    b.HasIndex("Provider", "ProviderCheckoutId")
+                        .IsUnique();
+
+                    b.ToTable("payments");
                 });
 
             modelBuilder.Entity("CoffeeShopApi.Models.StaffPushSubscription", b =>
@@ -489,6 +531,16 @@ namespace CoffeeShopApi.Migrations
                         .IsRequired();
 
                     b.Navigation("MenuItem");
+
+                    b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("CoffeeShopApi.Models.Payments.Payment", b =>
+                {
+                    b.HasOne("CoffeeShopApi.Models.Order", "Order")
+                        .WithMany()
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Order");
                 });

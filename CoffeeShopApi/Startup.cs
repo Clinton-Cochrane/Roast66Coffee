@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
 using Serilog;
 using System.Security.Claims;
+using CoffeeShopApi.Services.Payments;
 
 namespace CoffeeShopApi
 {
@@ -50,7 +51,8 @@ namespace CoffeeShopApi
             services.AddScoped<OrderEmailNotificationService>();
             services.AddScoped<NotificationRetentionService>();
             services.AddScoped<StaffPushNotificationService>();
-            services.AddScoped<StripePaymentService>();
+            services.AddScoped<PaymentService>();
+            services.AddScoped<IPaymentGateway, StripePaymentGateway>();
             services.AddScoped<SupportEmailService>();
             services.AddSingleton<KeepAliveStateStore>();
             services.AddHostedService<ConnectionWarmupService>();

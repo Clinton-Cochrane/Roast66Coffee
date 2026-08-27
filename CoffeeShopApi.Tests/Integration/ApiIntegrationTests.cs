@@ -430,11 +430,11 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task CreateCheckoutSession_WithoutStripeConfig_Returns503()
+    public async Task CreateCheckoutSession_WithoutPaymentProviderConfig_Returns503()
     {
         var payload = new
         {
-            customerName = "Stripe Test",
+            customerName = "Payment Test",
             customerPhone = "5550001234",
             orderItems = new[]
             {
@@ -457,7 +457,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     {
         var payload = new
         {
-            customerName = "Stripe Test",
+            customerName = "Payment Test",
             customerPhone = "5550001234",
             orderItems = Array.Empty<object>()
         };

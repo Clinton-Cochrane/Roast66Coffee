@@ -35,7 +35,7 @@ function OrderConfirmationPage() {
         <h1 className="text-2xl font-bold mb-4">{t("orderConfirmation.fallbackTitle")}</h1>
         <p className="text-[#5b4940] mb-4">
           {t("orderConfirmation.fallbackDescriptionStart")}{" "}
-          <Link to="/order-status" className="text-[#6c89a2] underline">
+          <Link to="/order-status" className="text-[#4d6f8a] underline">
             {t("orderStatus.title")}
           </Link>{" "}
           {t("orderConfirmation.fallbackDescriptionEnd")}
@@ -144,7 +144,7 @@ function OrderConfirmationPage() {
           {t("orderConfirmation.laterStatusStart")}{" "}
           <Link
             to={`/order-status?token=${encodeURIComponent(trackingToken)}`}
-            className="text-[#6c89a2] underline"
+            className="text-[#4d6f8a] underline"
           >
             {t("orderStatus.title")}
           </Link>{" "}

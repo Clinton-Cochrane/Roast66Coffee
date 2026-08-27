@@ -1,9 +1,7 @@
 using CoffeeShopApi.Models.Payments;
-using CoffeeShopApi.Services;
+using CoffeeShopApi.Services.Payments;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using Stripe;
-using Stripe.Checkout;
 
 namespace CoffeeShopApi.Controllers;
 
@@ -11,17 +9,14 @@ namespace CoffeeShopApi.Controllers;
 [Route("api/[controller]")]
 public class PaymentsController : ControllerBase
 {
-    private readonly StripePaymentService _stripePaymentService;
-    private readonly IConfiguration _configuration;
+    private readonly PaymentService _paymentService;
     private readonly ILogger<PaymentsController> _logger;
 
     public PaymentsController(
-        StripePaymentService stripePaymentService,
-        IConfiguration configuration,
+        PaymentService paymentService,
         ILogger<PaymentsController> logger)
     {
-        _stripePaymentService = stripePaymentService;
-        _configuration = configuration;
+        _paymentService = paymentService;
         _logger = logger;
     }
 
@@ -43,82 +38,87 @@ public class PaymentsController : ControllerBase
             }
         }
 
-        if (!_stripePaymentService.IsConfigured())
+        if (!_paymentService.IsConfigured())
         {
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new
             {
-                message = "Stripe is not configured for this environment."
+                message = "Online payments are not configured for this environment."
             });
         }
 
         var key = string.IsNullOrWhiteSpace(idempotencyKey) ? Guid.NewGuid().ToString("N") : idempotencyKey.Trim();
         try
         {
-            var (checkoutUrl, sessionId) = await _stripePaymentService.CreateCheckoutSessionAsync(
+            var checkout = await _paymentService.CreateCheckoutAsync(
                 request,
                 key,
-                cancellationToken);
+                cancellationToken: cancellationToken);
 
-            return Ok(new { checkoutUrl, sessionId });
+            return Ok(new
+            {
+                checkout.CheckoutUrl,
+                checkout.CheckoutId,
+                sessionId = checkout.CheckoutId,
+                checkout.Provider
+            });
         }
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (PaymentProviderUnavailableException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
     }
 
     [HttpPost("webhook")]
-    public async Task<IActionResult> HandleWebhook(CancellationToken cancellationToken)
-    {
-        var webhookSecret = _configuration["Stripe:WebhookSecret"];
-        if (string.IsNullOrWhiteSpace(webhookSecret))
-        {
-            return StatusCode(StatusCodes.Status503ServiceUnavailable);
-        }
+    public Task<IActionResult> HandleDefaultWebhook(CancellationToken cancellationToken) =>
+        HandleWebhook(null, cancellationToken);
 
+    [HttpPost("{provider}/webhook")]
+    public async Task<IActionResult> HandleProviderWebhook(
+        string provider,
+        CancellationToken cancellationToken) =>
+        await HandleWebhook(provider, cancellationToken);
+
+    private async Task<IActionResult> HandleWebhook(
+        string? provider,
+        CancellationToken cancellationToken)
+    {
         string json;
         using (var reader = new StreamReader(Request.Body))
         {
             json = await reader.ReadToEndAsync(cancellationToken);
         }
 
-        var stripeSignature = Request.Headers["Stripe-Signature"];
-        Event stripeEvent;
         try
         {
-            stripeEvent = EventUtility.ConstructEvent(json, stripeSignature, webhookSecret);
+            var headers = Request.Headers.ToDictionary(
+                header => header.Key,
+                header => header.Value.ToString(),
+                StringComparer.OrdinalIgnoreCase);
+            await _paymentService.HandleWebhookAsync(
+                provider,
+                json,
+                headers,
+                cancellationToken);
+            return Ok();
         }
-        catch (Exception ex)
+        catch (PaymentWebhookException ex)
         {
-            _logger.LogWarning(ex, "Invalid Stripe webhook signature.");
+            _logger.LogWarning(ex, "Invalid {Provider} payment webhook.", provider ?? _paymentService.DefaultProviderName);
             return BadRequest();
         }
-
-        switch (stripeEvent.Type)
+        catch (PaymentWebhookRetryException ex)
         {
-            case EventTypes.CheckoutSessionCompleted:
-            {
-                var session = stripeEvent.Data.Object as Session;
-                if (session != null)
-                {
-                    await _stripePaymentService.HandleCheckoutCompletedAsync(
-                        session.Id,
-                        session.PaymentIntentId,
-                        cancellationToken);
-                }
-                break;
-            }
-            case EventTypes.PaymentIntentPaymentFailed:
-            {
-                var intent = stripeEvent.Data.Object as PaymentIntent;
-                if (intent != null)
-                {
-                    await _stripePaymentService.HandlePaymentFailedAsync(intent.Id, cancellationToken);
-                }
-                break;
-            }
+            _logger.LogWarning(ex, "Payment webhook arrived before its local payment record was available.");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
-
-        return Ok();
+        catch (PaymentProviderUnavailableException ex)
+        {
+            _logger.LogWarning(ex, "Payment webhook provider is unavailable.");
+            return StatusCode(StatusCodes.Status503ServiceUnavailable);
+        }
     }
 }

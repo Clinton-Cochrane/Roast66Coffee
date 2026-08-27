@@ -33,12 +33,12 @@
   padding-bottom: clamp(1.175rem, 2.35vw, 2.175rem);
 }
 
-.r66-hero-copy { position: relative; z-index: 2; }
+.r66-hero-copy { position: relative; z-index: 2; min-width: 0; }
 
 .r66-hero-eyebrow {
   margin: 0 0 0.75rem;
-  color: #a64b2a;
-  font-family: Georgia, "Times New Roman", serif;
+  color: var(--r66-rust);
+  font-family: var(--r66-font-ui);
   font-size: clamp(1.15rem, 2vw, 1.55rem);
   font-style: italic;
   font-weight: 700;
@@ -49,11 +49,12 @@
   max-width: 42rem;
   margin: 0;
   color: #2c1d1c;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
+  font-family: var(--r66-font-display);
   font-size: clamp(3.5rem, 6vw, 6.4rem);
   font-weight: 900;
   letter-spacing: 0.015em;
   line-height: 0.88;
+  overflow-wrap: anywhere;
   text-transform: uppercase;
 }
 
@@ -71,7 +72,7 @@
   max-width: 34rem;
   margin: 1rem 0 0;
   color: #4f3b32;
-  font-size: clamp(1rem, 1.6vw, 1.14rem);
+  font-size: clamp(1.125rem, 1.6vw, 1.25rem);
   line-height: 1.55;
 }
 
@@ -92,9 +93,9 @@
   padding: 0.7rem 1.35rem;
   border: 2px solid #4a3326;
   border-radius: 0.45rem;
-  font-size: 0.9rem;
-  font-weight: 900;
-  letter-spacing: 0.07em;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
   text-decoration: none;
   text-transform: uppercase;
   transition: transform 150ms ease, background 150ms ease, color 150ms ease;
@@ -106,7 +107,7 @@
   box-shadow: 0 3px 0 rgba(44, 29, 28, 0.25);
 }
 
-.r66-hero-order:hover { transform: translateY(-1px); background: #bf5832; color: #ffffff; }
+.r66-hero-order:hover { transform: translateY(-1px); background: var(--r66-rust-dark); color: #ffffff; }
 .r66-hero-order img { width: 1.8rem; height: 1.8rem; }
 .r66-hero-menu { background: rgba(255, 249, 242, 0.55); color: #3c2922; }
 .r66-hero-menu:hover { background: #fff9f2; color: #2c1d1c; }
@@ -231,17 +232,18 @@
 .r66-specials-title-row img { width: 2rem; height: 2rem; }
 .r66-specials-title-row h2 {
   margin: 0;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
+  font-family: var(--r66-font-display);
   font-size: clamp(1.65rem, 3vw, 2.15rem);
+  font-weight: 800;
   letter-spacing: 0.055em;
   line-height: 1;
   text-transform: uppercase;
 }
 .r66-specials-heading > p {
   margin: 0.55rem 0 0;
-  font-size: 0.78rem;
+  font-size: 0.875rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
@@ -264,19 +266,22 @@
   place-items: center;
   border-radius: 999px;
   background: #2c1d1c;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-family: var(--r66-font-display);
+  font-weight: 800;
   letter-spacing: 0.06em;
 }
 .r66-special-copy h3 {
   margin: 0;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-family: var(--r66-font-display);
   font-size: 1.12rem;
+  font-weight: 800;
   letter-spacing: 0.045em;
   line-height: 1.15;
+  overflow-wrap: anywhere;
   text-transform: uppercase;
 }
-.r66-special-copy p { margin: 0.55rem 0 0; color: #ffe8d6; font-size: 0.9rem; line-height: 1.35; }
-.r66-special-price { font-weight: 900; white-space: nowrap; }
+.r66-special-copy p { margin: 0.55rem 0 0; color: #ffe8d6; font-size: 1rem; line-height: 1.5; overflow-wrap: anywhere; }
+.r66-special-price { font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .r66-special-card-loading {
   animation: r66-special-pulse 1.3s ease-in-out infinite alternate;
   background: rgba(255, 238, 222, 0.12);
@@ -285,16 +290,23 @@
 .r66-specials-menu-link {
   display: flex;
   width: fit-content;
-  min-height: 2.4rem;
+  max-width: 100%;
+  min-height: 3rem;
   align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
   gap: 2rem;
   margin: 0.375rem auto 0;
   padding: 0.35rem 1.5rem;
   border: 1px solid #ffe8d6;
   border-radius: 0.4rem;
   color: #fff9f2;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-family: var(--r66-font-display);
+  font-size: 1rem;
+  font-weight: 800;
   letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+  text-align: center;
   text-decoration: none;
   text-transform: uppercase;
 }
@@ -309,8 +321,12 @@
 
 @media (max-width: 480px) {
   .r66-specials-inner { width: min(100% - 1.5rem, 80rem); }
-  .r66-special-card { grid-template-columns: auto minmax(0, 1fr); }
-  .r66-special-price { grid-column: 2; }
+  .r66-specials-title-row { flex-wrap: wrap; }
+  .r66-specials-title-row h2 { overflow-wrap: anywhere; text-align: center; }
+  .r66-special-card { grid-template-columns: minmax(0, 1fr); }
+  .r66-special-copy { min-width: 0; }
+  .r66-special-price { grid-column: auto; }
+  .r66-specials-menu-link { width: 100%; gap: 0.75rem; }
 }
 
 .welcome, .menu, .order, .order-confirmation {
@@ -416,9 +432,9 @@
 .r66-about-booking-kicker {
   margin: 0 0 0.8rem;
   color: #943f24;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.17em;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -426,11 +442,12 @@
   max-width: 46rem;
   margin: 0;
   color: #2c1d1c;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
+  font-family: var(--r66-font-display);
   font-size: clamp(3.35rem, 6.8vw, 6.75rem);
   font-weight: 900;
   letter-spacing: 0.015em;
   line-height: 0.88;
+  overflow-wrap: anywhere;
   text-transform: uppercase;
 }
 
@@ -466,9 +483,9 @@
   background: #a94727;
   box-shadow: 0 3px 0 rgba(44, 29, 28, 0.25);
   color: #ffffff;
-  font-size: 0.88rem;
-  font-weight: 900;
-  letter-spacing: 0.065em;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.055em;
   text-decoration: none;
   text-transform: uppercase;
   transition: background-color 150ms ease, color 150ms ease;
@@ -485,8 +502,8 @@
   align-items: center;
   padding-inline: 0.25rem;
   color: #4a3326;
-  font-size: 0.86rem;
-  font-weight: 900;
+  font-size: 1rem;
+  font-weight: 700;
   letter-spacing: 0.055em;
   text-decoration-thickness: 2px;
   text-transform: uppercase;
@@ -497,7 +514,7 @@
   max-width: 38rem;
   margin: 1rem 0 0;
   color: #6b5548;
-  font-size: 0.88rem;
+  font-size: 1rem;
   line-height: 1.55;
 }
 
@@ -552,9 +569,9 @@
 .r66-about-story-heading p {
   margin: 0;
   color: #99bfdd;
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.17em;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -562,8 +579,9 @@
   max-width: 28rem;
   margin: 1.6rem 0 0;
   color: #fff9f2;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--r66-font-display);
   font-size: clamp(2rem, 4vw, 3.15rem);
+  font-weight: 800;
   line-height: 1.08;
 }
 
@@ -592,8 +610,8 @@
   border: 1px solid #806251;
   border-radius: 999px;
   color: #fff4e8;
-  font-size: 0.7rem;
-  font-weight: 800;
+  font-size: 0.875rem;
+  font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -621,11 +639,12 @@
   max-width: 48rem;
   margin: 0;
   color: #2c1d1c;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
+  font-family: var(--r66-font-display);
   font-size: clamp(2.6rem, 5vw, 4.75rem);
   font-weight: 900;
   letter-spacing: 0.02em;
   line-height: 0.95;
+  overflow-wrap: anywhere;
   text-transform: uppercase;
 }
 
@@ -665,16 +684,18 @@
   right: 1.5rem;
   margin: 0;
   color: #cbbbad;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-family: var(--r66-font-display);
   font-size: 1.5rem;
+  font-weight: 800;
   letter-spacing: 0.08em;
 }
 
 .r66-about-value-card h3 {
   margin: 1.5rem 0 0;
   color: #2c1d1c;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--r66-font-ui);
   font-size: 1.45rem;
+  font-weight: 700;
 }
 
 .r66-about-value-card > p:last-child {
@@ -709,11 +730,12 @@
   max-width: 48rem;
   margin: 0;
   color: #fff9f2;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
+  font-family: var(--r66-font-display);
   font-size: clamp(3rem, 5.8vw, 5.8rem);
   font-weight: 900;
   letter-spacing: 0.02em;
   line-height: 0.92;
+  overflow-wrap: anywhere;
   text-transform: uppercase;
 }
 
@@ -742,7 +764,7 @@
   max-width: 40rem;
   margin: 1rem 0 0;
   color: #c9b5a7;
-  font-size: 0.86rem;
+  font-size: 1rem;
   line-height: 1.6;
 }
 
@@ -757,8 +779,9 @@
 
 .r66-about-request-card h3 {
   margin: 0;
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: var(--r66-font-display);
   font-size: clamp(1.65rem, 3vw, 2.15rem);
+  font-weight: 800;
 }
 
 .r66-about-request-card > p {
@@ -781,7 +804,7 @@
   align-items: center;
   gap: 0.8rem;
   color: #4f3b32;
-  font-size: 0.92rem;
+  font-size: 1rem;
   font-weight: 700;
   line-height: 1.45;
 }
@@ -794,8 +817,9 @@
   border-radius: 999px;
   background: #a94727;
   color: #ffffff;
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  font-size: 0.82rem;
+  font-family: var(--r66-font-display);
+  font-size: 0.875rem;
+  font-weight: 800;
   letter-spacing: 0.04em;
 }
 
@@ -875,8 +899,9 @@
 .r66-footer-brand:hover { color: #ffffff; }
 .r66-footer-brand img { width: 2.75rem; height: 2.75rem; object-fit: contain; }
 .r66-footer-brand span {
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-family: var(--r66-font-display);
   font-size: 1rem;
+  font-weight: 800;
   letter-spacing: 0.07em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -884,17 +909,17 @@
 .r66-footer-divider { color: #d9a574; }
 .r66-footer-motto {
   margin: 0;
-  color: #c55a32;
-  font-size: 0.72rem;
-  font-weight: 900;
-  letter-spacing: 0.12em;
+  color: var(--r66-copper-on-dark);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
 }
 .r66-footer-links { display: flex; align-items: center; justify-content: center; gap: 1.75rem; }
 .r66-footer-links a {
   color: #f7e9dd;
-  font-size: 0.72rem;
+  font-size: 0.875rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-decoration: none;
@@ -919,16 +944,21 @@
   margin: 0 auto;
   padding: 0 0 0.4rem;
   color: #bfa99a;
-  font-size: 0.68rem;
+  font-size: 0.875rem;
 }
 @media (max-width: 1000px) {
   .r66-footer-inner { grid-template-columns: 1fr auto; padding-block: 0.625rem; }
   .r66-footer-links { grid-column: 1 / -1; grid-row: 2; justify-content: flex-start; flex-wrap: wrap; }
 }
 @media (max-width: 600px) {
-  .r66-footer-inner { grid-template-columns: 1fr; width: min(100% - 1.5rem, 80rem); gap: 1.25rem; }
+  .r66-footer-inner { grid-template-columns: minmax(0, 1fr); width: min(100% - 1.5rem, 80rem); gap: 1.25rem; }
   .r66-footer-brand-block { flex-wrap: wrap; }
-  .r66-footer-links { grid-column: auto; grid-row: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .r66-footer-brand,
+  .r66-footer-brand span,
+  .r66-footer-motto,
+  .r66-footer-links,
+  .r66-footer-links a { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+  .r66-footer-links { grid-column: auto; grid-row: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
   .r66-footer-social { justify-content: flex-start; }
   .r66-footer-legal { width: min(100% - 1.5rem, 80rem); }
 }

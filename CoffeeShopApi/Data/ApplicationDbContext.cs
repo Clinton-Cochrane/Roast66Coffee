@@ -18,7 +18,7 @@ namespace CoffeeShopApi.Data
         public DbSet<NotificationSettings> NotificationSettings { get; set; } = null!;
         public DbSet<NotificationMessage> NotificationMessages { get; set; } = null!;
         public DbSet<StaffPushSubscription> StaffPushSubscriptions { get; set; } = null!;
-        public DbSet<PaymentCheckoutDraft> PaymentCheckoutDrafts { get; set; } = null!;
+        public DbSet<Payment> Payments { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -30,6 +30,16 @@ namespace CoffeeShopApi.Data
             modelBuilder.Entity<Order>()
                 .HasIndex(order => order.TrackingToken)
                 .IsUnique();
+            modelBuilder.Entity<Payment>()
+                .HasIndex(payment => new { payment.Provider, payment.IdempotencyKey });
+            modelBuilder.Entity<Payment>()
+                .HasIndex(payment => new { payment.Provider, payment.ProviderCheckoutId })
+                .IsUnique();
+            modelBuilder.Entity<Payment>()
+                .HasOne(payment => payment.Order)
+                .WithMany()
+                .HasForeignKey(payment => payment.OrderId)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

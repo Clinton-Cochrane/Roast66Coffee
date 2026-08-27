@@ -37,7 +37,7 @@ function HomePhoto({
         }`}
       >
         <FaCamera
-          className={`text-3xl ${tone === "light" ? "text-[#a64b2a]" : "text-[#99bfdd]"}`}
+          className={`text-3xl ${tone === "light" ? "text-[#a94727]" : "text-[#99bfdd]"}`}
           aria-hidden="true"
         />
         <span className="min-w-0 max-w-full break-words text-sm font-bold uppercase tracking-[0.14em]">

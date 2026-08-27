@@ -44,18 +44,19 @@
 }
 
 .r66-brand-name {
-  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
+  font-family: var(--r66-font-display);
   font-size: clamp(1.45rem, 2vw, 2rem);
+  font-weight: 800;
   line-height: 1;
-  letter-spacing: 0.055em;
+  letter-spacing: 0.045em;
 }
 
 .r66-brand-motto {
   margin-top: 0.4rem;
-  color: #c55a32;
-  font-size: 0.67rem;
-  font-weight: 800;
-  letter-spacing: 0.16em;
+  color: var(--r66-copper-on-dark);
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 
 .r66-navigation-menu {
@@ -79,7 +80,7 @@
   gap: 0.4rem;
   border-bottom: 2px solid transparent;
   color: #f7e9dd;
-  font-size: 0.95rem;
+  font-size: 1rem;
   font-weight: 600;
   text-decoration: none;
   transition: color 150ms ease, border-color 150ms ease;
@@ -87,7 +88,7 @@
 
 .r66-nav-link:hover,
 .r66-nav-link-active {
-  border-color: #c55a32;
+  border-color: var(--r66-copper-on-dark);
   color: #ffffff;
 }
 
@@ -128,12 +129,12 @@
   border-radius: 0.45rem;
   background: transparent;
   color: #f7e9dd;
-  font-size: 0.72rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }
 
-.r66-language-switch:hover { border-color: #c55a32; color: #ffffff; }
+.r66-language-switch:hover { border-color: var(--r66-copper-on-dark); color: #ffffff; }
 
 .r66-order-now {
   display: inline-flex;
@@ -142,17 +143,17 @@
   gap: 0.75rem;
   padding: 0.65rem 0.85rem 0.65rem 1.1rem;
   border-radius: 0.5rem;
-  background: #ae4b28;
+  background: var(--r66-rust);
   color: #ffffff;
-  font-size: 0.78rem;
-  font-weight: 900;
-  letter-spacing: 0.09em;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
   text-decoration: none;
   text-transform: uppercase;
   box-shadow: 0 3px 0 rgba(0, 0, 0, 0.2);
 }
 
-.r66-order-now:hover { background: #c15a32; color: #ffffff; }
+.r66-order-now:hover { background: var(--r66-rust-dark); color: #ffffff; }
 .r66-order-now img { width: 2rem; height: 2rem; object-fit: contain; }
 
 .r66-tracking-link {
@@ -160,8 +161,8 @@
   top: -0.3rem;
   right: -0.3rem;
   display: grid;
-  width: 1.4rem;
-  height: 1.4rem;
+  width: 1.5rem;
+  height: 1.5rem;
   place-items: center;
   border-radius: 999px;
   background: #fff9f2;
@@ -184,7 +185,7 @@
 
   .r66-brand-logo { width: 3.5rem; height: 3.5rem; }
   .r66-brand-name { font-size: 1.45rem; }
-  .r66-brand-motto { font-size: 0.58rem; }
+  .r66-brand-motto { font-size: 0.875rem; }
 
   .r66-mobile-toggle {
     display: grid;
@@ -236,5 +237,35 @@
   .r66-brand { gap: 0.55rem; }
   .r66-brand-logo { width: 3rem; height: 3rem; }
   .r66-brand-name { font-size: 1.12rem; }
-  .r66-brand-motto { font-size: 0.48rem; letter-spacing: 0.1em; }
+  .r66-brand-motto { font-size: 0.875rem; letter-spacing: 0.055em; }
+}
+
+@media (max-width: 360px) {
+  .r66-brand {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .r66-brand > span {
+    min-width: 0;
+  }
+
+  .r66-brand-logo {
+    width: 48px;
+    height: 48px;
+  }
+
+  .r66-brand-name {
+    line-height: 0.95;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .r66-brand-motto { display: none; }
+
+  .r66-mobile-toggle {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+  }
 }

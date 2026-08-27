@@ -1,17 +1,17 @@
 import React, { type ReactNode } from "react";
 
 const colorClasses = {
-  blue: "bg-[#6c89a2] text-white hover:bg-[#58728a] hover:text-white",
+  blue: "bg-[#4d6f8a] text-white hover:bg-[#3d5b73] hover:text-white",
   green: "bg-[#4a3326] text-white hover:bg-[#2c1d15] hover:text-white",
-  red: "bg-[#a64b2a] text-white hover:bg-[#893b1f] hover:text-white",
+  red: "bg-[#a94727] text-white hover:bg-[#893b1f] hover:text-white",
   yellow: "bg-[#c77e42] text-black hover:bg-[#aa6935] hover:text-black",
   gray: "bg-[#7b6d62] text-white hover:bg-[#66584f] hover:text-white",
 } as const;
 
 const linkTextClasses = {
-  blue: "text-[#6c89a2] hover:text-[#58728a]",
+  blue: "text-[#4d6f8a] hover:text-[#3d5b73]",
   green: "text-[#4a3326] hover:text-[#2c1d15]",
-  red: "text-[#a64b2a] hover:text-[#893b1f]",
+  red: "text-[#a94727] hover:text-[#893b1f]",
   yellow: "text-[#c77e42] hover:text-[#aa6935]",
   gray: "text-[#7b6d62] hover:text-[#66584f]",
 } as const;

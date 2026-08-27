@@ -17,9 +17,12 @@ import { useI18n } from "../i18n/LanguageContext";
 import { fetchOrderLookup } from "../lib/orderStatusLookup";
 import type { OrderDto, OrderLineItemDto } from "../types/api";
 
-const ENABLE_STRIPE_PREPAY = import.meta.env.VITE_ENABLE_STRIPE_CHECKOUT === "true";
+const ENABLE_ONLINE_PREPAY =
+  import.meta.env.VITE_ENABLE_ONLINE_PAYMENTS === "true" ||
+  import.meta.env.VITE_ENABLE_STRIPE_CHECKOUT === "true";
 
-const STRIPE_PREPAY_RETURN_KEY = "stripePrepayReturn";
+const PAYMENT_PREPAY_RETURN_KEY = "paymentPrepayReturn";
+const LEGACY_STRIPE_PREPAY_RETURN_KEY = "stripePrepayReturn";
 
 function OrderStatusPage() {
   const { locale, t } = useI18n();
@@ -40,7 +43,9 @@ function OrderStatusPage() {
       return;
     }
 
-    const raw = sessionStorage.getItem(STRIPE_PREPAY_RETURN_KEY);
+    const raw =
+      sessionStorage.getItem(PAYMENT_PREPAY_RETURN_KEY) ??
+      sessionStorage.getItem(LEGACY_STRIPE_PREPAY_RETURN_KEY);
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as { trackingToken?: string };
@@ -48,7 +53,8 @@ function OrderStatusPage() {
       } catch {
         /* ignore */
       }
-      sessionStorage.removeItem(STRIPE_PREPAY_RETURN_KEY);
+      sessionStorage.removeItem(PAYMENT_PREPAY_RETURN_KEY);
+      sessionStorage.removeItem(LEGACY_STRIPE_PREPAY_RETURN_KEY);
     }
 
     if (checkout === "success") {
@@ -144,7 +150,7 @@ function OrderStatusPage() {
     const idempotencyKey =
       window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
     sessionStorage.setItem(
-      STRIPE_PREPAY_RETURN_KEY,
+      PAYMENT_PREPAY_RETURN_KEY,
       JSON.stringify({ trackingToken: trackingToken.trim() })
     );
     setPrepayLoading(true);
@@ -165,7 +171,7 @@ function OrderStatusPage() {
       }
       window.location.assign(checkoutUrl);
     } catch (err: unknown) {
-      sessionStorage.removeItem(STRIPE_PREPAY_RETURN_KEY);
+      sessionStorage.removeItem(PAYMENT_PREPAY_RETURN_KEY);
       const msg = axios.isAxiosError(err)
         ? (err.response?.data as { message?: string })?.message ||
           (err.response?.status === 503
@@ -284,7 +290,7 @@ function OrderStatusPage() {
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <h2 className="text-xl font-bold">{t("orderStatus.statusHeader")}</h2>
             <span
-              className={`text-xs font-semibold uppercase tracking-wide px-2 py-0.5 rounded ${
+              className={`text-sm font-semibold uppercase tracking-wide px-2 py-0.5 rounded ${
                 isCompleted
                   ? "bg-gray-200 text-gray-600"
                   : "bg-emerald-100 text-emerald-800"
@@ -293,7 +299,7 @@ function OrderStatusPage() {
               {isCompleted ? t("orderStatus.trackingCompleteBadge") : t("orderStatus.liveBadge")}
             </span>
             {lastUpdatedAt ? (
-              <span className="text-xs text-gray-400 w-full sm:w-auto sm:ml-auto">
+              <span className="text-sm text-gray-500 w-full sm:w-auto sm:ml-auto">
                 {t("orderStatus.lastUpdated", {
                   time: dateTimeFormatter.format(lastUpdatedAt),
                 })}
@@ -301,7 +307,7 @@ function OrderStatusPage() {
             ) : null}
           </div>
           <OrderTracker currentStatus={statusValue} />
-          {ENABLE_STRIPE_PREPAY && !isPaid ? (
+          {ENABLE_ONLINE_PREPAY && !isPaid ? (
             <div className="mt-6 pt-4 border-t border-gray-200">
               <p className="text-gray-600 text-sm mb-3">{t("orderStatus.secureCheckoutDescription")}</p>
               <Button
