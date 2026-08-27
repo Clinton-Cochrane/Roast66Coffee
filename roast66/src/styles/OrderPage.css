@@ -879,6 +879,20 @@
   }
 }
 
+@media (max-width: 360px) {
+  .r66-mobile-order-bar > button {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .r66-mobile-order-bar-action {
+    grid-column: 1 / -1;
+    justify-content: center;
+    justify-self: stretch;
+    text-align: center;
+    white-space: normal;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .r66-order-right-column {
     transition: none;

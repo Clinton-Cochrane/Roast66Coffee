@@ -15,7 +15,7 @@ function Location() {
           href="https://www.instagram.com/roast66coffee"
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-md bg-[#fff9f2] px-4 py-2 font-bold text-[#4a3326] no-underline hover:bg-white hover:text-[#2c1d15]"
+          className="mt-4 inline-flex min-h-11 max-w-full flex-wrap items-center justify-center gap-2 break-words rounded-md bg-[#fff9f2] px-4 py-2 text-center font-bold text-[#4a3326] no-underline hover:bg-white hover:text-[#2c1d15]"
         >
           <FaInstagram aria-hidden="true" />
           {t("home.followInstagram")}

@@ -239,3 +239,33 @@
   .r66-brand-name { font-size: 1.12rem; }
   .r66-brand-motto { font-size: 0.875rem; letter-spacing: 0.055em; }
 }
+
+@media (max-width: 360px) {
+  .r66-brand {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .r66-brand > span {
+    min-width: 0;
+  }
+
+  .r66-brand-logo {
+    width: 48px;
+    height: 48px;
+  }
+
+  .r66-brand-name {
+    line-height: 0.95;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .r66-brand-motto { display: none; }
+
+  .r66-mobile-toggle {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+  }
+}
