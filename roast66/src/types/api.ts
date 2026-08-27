@@ -27,6 +27,7 @@ export type OrderLineItemDto = {
   MenuItem?: { name?: string; price?: number };
   /** Present on some API responses for order lines with flavor add-ons */
   addOns?: OrderLineAddOnDto[];
+  AddOns?: OrderLineAddOnDto[];
 };
 
 export type OrderDto = {

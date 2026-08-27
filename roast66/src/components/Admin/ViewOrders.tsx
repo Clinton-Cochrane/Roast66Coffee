@@ -8,6 +8,7 @@ import { ORDER_STATUS, type OrderStatusValue } from "../../constants/orderStatus
 import { getOrderStatusFromDto } from "../../constants/orderStatusParse";
 import { useI18n } from "../../i18n/LanguageContext";
 import type { NotificationLogEntry, OrderDto, OrderLineItemDto } from "../../types/api";
+import "../../styles/Admin.css";
 
 const POLL_INTERVAL_MS = 60000;
 
@@ -124,7 +125,7 @@ function ViewOrders() {
       if (aDone !== bDone) return aDone ? 1 : -1;
       const da = orderDateMs(a);
       const db = orderDateMs(b);
-      return db - da;
+      return da - db || orderId(a) - orderId(b);
     });
     return list;
   }, [orders]);
@@ -216,7 +217,11 @@ function ViewOrders() {
             const lineItems: OrderLineItemDto[] = order.orderItems || order.OrderItems || [];
 
             return (
-              <Card key={id} title={t("adminOrders.orderCardTitle", { id })} className="mb-2">
+              <Card
+                key={id}
+                title={t("adminOrders.orderCardTitle", { id })}
+                className={`mb-2 ${isComplete ? "r66-admin-completed-order" : ""}`}
+              >
                 <div className="flex items-center gap-2 mb-4 flex-wrap">
                   <span
                     className={`px-2 py-1 rounded text-sm font-medium ${
@@ -238,61 +243,79 @@ function ViewOrders() {
                     {loadingNotifications ? t("adminOrders.loading") : t("adminOrders.refreshNotifications")}
                   </Button>
                 </div>
-                <p className="mb-1">
-                  <strong>{t("adminOrders.customerLabel")}</strong>{" "}
-                  {order.customerName ?? order.CustomerName}
-                </p>
-                {(order.customerPhone ?? order.CustomerPhone) ? (
+                <div className={isComplete ? "r66-admin-completed-copy" : undefined}>
                   <p className="mb-1">
-                    <strong>{t("adminOrders.phoneLabel")}</strong>{" "}
-                    {order.customerPhone ?? order.CustomerPhone}
+                    <strong>{t("adminOrders.customerLabel")}</strong>{" "}
+                    {order.customerName ?? order.CustomerName}
                   </p>
-                ) : null}
-                <p className="mb-4">
-                  <strong>{t("adminOrders.dateLabel")}</strong>{" "}
-                  {new Date(order.orderDate ?? order.OrderDate ?? 0).toLocaleString()}
-                </p>
+                  {(order.customerPhone ?? order.CustomerPhone) ? (
+                    <p className="mb-1">
+                      <strong>{t("adminOrders.phoneLabel")}</strong>{" "}
+                      {order.customerPhone ?? order.CustomerPhone}
+                    </p>
+                  ) : null}
+                  <p className="mb-4">
+                    <strong>{t("adminOrders.dateLabel")}</strong>{" "}
+                    {new Date(order.orderDate ?? order.OrderDate ?? 0).toLocaleString()}
+                  </p>
 
-                <ul className="space-y-2">
-                  {lineItems.map((item, idx) => (
-                    <li key={item.id ?? idx} className="flex flex-col border-b pb-2">
-                      {item.menuItem?.name || item.MenuItem?.name ? (
-                        <>
-                          <span>
-                            <strong>{t("adminOrders.itemLabel")}</strong>{" "}
-                            {item.menuItem?.name ?? item.MenuItem?.name}
-                          </span>
-                          <span>
-                            {" "}
-                            <strong>{t("adminOrders.qtyLabel")}</strong> {item.quantity}
-                          </span>
-                          {item.notes ? (
-                            <span>
-                              {" "}
-                              <strong>{t("adminOrders.notesLabel")}</strong> {item.notes}
-                            </span>
-                          ) : null}
-                        </>
-                      ) : (
-                        <span className="text-red-500">{t("adminOrders.itemUnavailable")}</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-4 pt-3 border-t border-gray-200">
-                  <p className="font-semibold mb-2">{t("adminOrders.notificationDelivery")}</p>
-                  {notifications.length === 0 ? (
-                    <p className="text-sm text-gray-500">{t("adminOrders.noNotificationsYet")}</p>
-                  ) : (
-                    <ul className="text-sm space-y-1">
-                      {notifications.slice(0, 4).map((entry) => (
-                        <li key={entry.id}>
-                          {entry.recipientRole}: {entry.templateKey} -{" "}
-                          <span className="font-medium">{entry.status}</span>
+                  <ul className="space-y-2">
+                    {lineItems.map((item, idx) => {
+                      const addOns = item.addOns ?? item.AddOns ?? [];
+
+                      return (
+                        <li key={item.id ?? idx} className="flex flex-col border-b pb-2">
+                          {item.menuItem?.name || item.MenuItem?.name ? (
+                            <>
+                              <span>
+                                <strong>{t("adminOrders.itemLabel")}</strong>{" "}
+                                {item.menuItem?.name ?? item.MenuItem?.name}
+                              </span>
+                              <span>
+                                {" "}
+                                <strong>{t("adminOrders.qtyLabel")}</strong> {item.quantity}
+                              </span>
+                              {addOns.length > 0 ? (
+                                <span>
+                                  <strong>{t("adminOrders.shotsLabel")}</strong>{" "}
+                                  {addOns
+                                    .map((addOn) => {
+                                      const name = addOn.menuItem?.name ?? addOn.MenuItem?.name;
+                                      return name ? `${name} × ${addOn.quantity}` : null;
+                                    })
+                                    .filter(Boolean)
+                                    .join(", ")}
+                                </span>
+                              ) : null}
+                              {item.notes ? (
+                                <span>
+                                  {" "}
+                                  <strong>{t("adminOrders.notesLabel")}</strong> {item.notes}
+                                </span>
+                              ) : null}
+                            </>
+                          ) : (
+                            <span className="text-red-500">{t("adminOrders.itemUnavailable")}</span>
+                          )}
                         </li>
-                      ))}
-                    </ul>
-                  )}
+                      );
+                    })}
+                  </ul>
+                  <div className="mt-4 pt-3 border-t border-gray-200">
+                    <p className="font-semibold mb-2">{t("adminOrders.notificationDelivery")}</p>
+                    {notifications.length === 0 ? (
+                      <p className="text-sm">{t("adminOrders.noNotificationsYet")}</p>
+                    ) : (
+                      <ul className="text-sm space-y-1">
+                        {notifications.slice(0, 4).map((entry) => (
+                          <li key={entry.id}>
+                            {entry.recipientRole}: {entry.templateKey} -{" "}
+                            <span className="font-medium">{entry.status}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </div>
               </Card>
             );
