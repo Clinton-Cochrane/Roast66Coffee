@@ -55,18 +55,6 @@ services:
         sync: false
       - key: Stripe__WebhookSecret
         sync: false
-      - key: Twilio__AccountSID
-        sync: false
-      - key: Twilio__AuthToken
-        sync: false
-      - key: Twilio__FromPhoneNumber
-        sync: false
-      - key: Twilio__AdminPhoneNumber
-        sync: false
-      - key: Twilio__MessagingServiceSid
-        sync: false
-      - key: Twilio__StatusCallbackUrl
-        sync: false
       - key: Notifications__SmsEnabled
         value: "false"
       - key: Push__Subject

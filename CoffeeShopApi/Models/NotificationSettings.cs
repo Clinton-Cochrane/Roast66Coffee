@@ -35,7 +35,7 @@ namespace CoffeeShopApi.Models
         public string? TrailerEmail { get; set; }
 
         [StringLength(32)]
-        [Column("twiliofromphonenumber")]
-        public string? TwilioFromPhoneNumber { get; set; }
+        [Column("smsfromaddress")]
+        public string? SmsFromAddress { get; set; }
     }
 }

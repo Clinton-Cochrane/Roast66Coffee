@@ -36,6 +36,10 @@ public class NotificationMessage
     [Column("channel")]
     public string Channel { get; set; } = "sms";
 
+    [StringLength(50)]
+    [Column("provider")]
+    public string? Provider { get; set; }
+
     [Required]
     [StringLength(64)]
     [Column("templatekey")]

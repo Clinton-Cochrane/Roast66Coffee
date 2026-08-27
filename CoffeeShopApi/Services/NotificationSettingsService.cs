@@ -27,7 +27,7 @@ namespace CoffeeShopApi.Services
                 existingSettings.AdminEmail = settings.AdminEmail;
                 existingSettings.BaristaEmail = settings.BaristaEmail;
                 existingSettings.TrailerEmail = settings.TrailerEmail;
-                existingSettings.TwilioFromPhoneNumber = settings.TwilioFromPhoneNumber;
+                existingSettings.SmsFromAddress = settings.SmsFromAddress;
                 _context.NotificationSettings.Update(existingSettings);
             }
             else

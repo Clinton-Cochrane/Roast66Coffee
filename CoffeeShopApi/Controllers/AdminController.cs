@@ -312,7 +312,7 @@ namespace CoffeeShopApi.Controllers
                 AdminEmail = model.AdminEmail,
                 BaristaEmail = model.BaristaEmail,
                 TrailerEmail = model.TrailerEmail,
-                TwilioFromPhoneNumber = model.TwilioFromPhoneNumber
+                SmsFromAddress = model.SmsFromAddress
             };
             await _notificationSettingsService.SaveNotificationSettingsAsync(settings, cancellationToken);
             return Ok();
@@ -367,6 +367,7 @@ namespace CoffeeShopApi.Controllers
                 n.Id,
                 n.EventType,
                 n.Channel,
+                n.Provider,
                 n.RecipientRole,
                 n.RecipientPhone,
                 n.RecipientEmail,
@@ -391,23 +392,6 @@ namespace CoffeeShopApi.Controllers
                 cancellationToken);
 
             return NoContent();
-        }
-
-        [AllowAnonymous]
-        [HttpPost("notifications/twilio-status-callback")]
-        public async Task<IActionResult> TwilioStatusCallback(
-            [FromForm(Name = "MessageSid")] string? messageSid,
-            [FromForm(Name = "MessageStatus")] string? messageStatus,
-            [FromForm(Name = "ErrorMessage")] string? errorMessage,
-            CancellationToken cancellationToken)
-        {
-            if (string.IsNullOrWhiteSpace(messageSid) || string.IsNullOrWhiteSpace(messageStatus))
-            {
-                return Ok();
-            }
-
-            await _notificationService.UpdateProviderStatusAsync(messageSid, messageStatus, errorMessage, cancellationToken);
-            return Ok();
         }
 
         /// <summary>
@@ -501,7 +485,7 @@ namespace CoffeeShopApi.Controllers
         public string? TrailerEmail { get; set; }
 
         [StringLength(32)]
-        public string? TwilioFromPhoneNumber { get; set; }
+        public string? SmsFromAddress { get; set; }
     }
 
     public class ForgotPasswordRequest

@@ -34,7 +34,7 @@ The application is a React single-page frontend backed by an ASP.NET Core API an
 - Public order creation, tracking, login, and password-support endpoints are rate limited.
 - Production migrations run as a locked, one-time deployment step rather than during application startup.
 
-Online payments and Twilio SMS are feature-gated and disabled by default until their production integrations are approved and hardened. Payments use a provider-neutral application service; Stripe is the included gateway.
+Online payments and external SMS are feature-gated and disabled by default until their production integrations are approved and hardened. Payments use a provider-neutral application service; Stripe is the included gateway. SMS uses a provider-neutral sender contract with a disabled default implementation, so no SMS vendor is installed or contacted by default.
 
 ## Architecture
 
@@ -186,7 +186,7 @@ Vite settings are embedded at build time, so changing them requires rebuilding t
 - Resend: customer and support email delivery
 - Web Push/VAPID: staff-device notifications
 - Payments: provider-neutral checkout with Stripe as the included gateway, disabled by default
-- Twilio: optional SMS, disabled by default
+- SMS: provider-neutral sender contract with no provider installed, disabled by default
 - Supabase heartbeat: optional free-tier connection warmup
 
 Online payment configuration uses `Payments__DefaultProvider` (currently `stripe`) and
@@ -194,6 +194,10 @@ Online payment configuration uses `Payments__DefaultProvider` (currently `stripe
 such as `Stripe__SecretKey` and `Stripe__WebhookSecret`. The legacy
 `POST /api/payments/webhook` route targets the default provider; provider-specific webhook
 routes use `POST /api/payments/{provider}/webhook`.
+
+SMS delivery is isolated behind `ISmsSender`. To add a provider, implement that contract,
+register the adapter in dependency injection, and expose a provider-specific authenticated
+delivery-status webhook that normalizes updates through `NotificationService`.
 
 See the checked-in `.env.example` and `appsettings.Example.json` files for the complete key list.
 

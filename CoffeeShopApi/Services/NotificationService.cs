@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
+using CoffeeShopApi.Services.Sms;
 using Microsoft.EntityFrameworkCore;
 
 namespace CoffeeShopApi.Services;
@@ -15,7 +16,7 @@ public class NotificationService
     private readonly IConfiguration _configuration;
     private readonly ApplicationDbContext _context;
     private readonly NotificationSettingsService _settingsService;
-    private readonly TwilioService _twilioService;
+    private readonly ISmsSender _smsSender;
     private readonly OrderEmailNotificationService _orderEmailNotificationService;
     private readonly StaffPushNotificationService _staffPushNotificationService;
 
@@ -23,14 +24,14 @@ public class NotificationService
         IConfiguration configuration,
         ApplicationDbContext context,
         NotificationSettingsService settingsService,
-        TwilioService twilioService,
+        ISmsSender smsSender,
         OrderEmailNotificationService orderEmailNotificationService,
         StaffPushNotificationService staffPushNotificationService)
     {
         _configuration = configuration;
         _context = context;
         _settingsService = settingsService;
-        _twilioService = twilioService;
+        _smsSender = smsSender;
         _orderEmailNotificationService = orderEmailNotificationService;
         _staffPushNotificationService = staffPushNotificationService;
     }
@@ -41,7 +42,7 @@ public class NotificationService
         var staffBody = $"Roast 66: New order #{order.Id} from {order.CustomerName} ({order.CustomerPhone}), {itemCount} item(s).";
         var customerBody = $"Roast 66: We received your order #{order.Id}. Track status at /order-status?token={order.TrackingToken}.";
         var settings = await _settingsService.GetNotificationSettingsAsync(cancellationToken);
-        var twilioFromPhone = NormalizePhone(settings?.TwilioFromPhoneNumber ?? string.Empty);
+        var smsFromAddress = NormalizeSenderAddress(settings?.SmsFromAddress);
 
         var recipients = await GetStaffRecipientsAsync(cancellationToken);
         foreach (var recipient in recipients)
@@ -56,7 +57,7 @@ public class NotificationService
                 body: staffBody,
                 orderId: order.Id,
                 payload: new { orderId = order.Id, order.CustomerName, order.CustomerPhone, itemCount },
-                fromPhoneNumber: twilioFromPhone,
+                smsFromAddress: smsFromAddress,
                 cancellationToken: cancellationToken);
         }
 
@@ -73,7 +74,7 @@ public class NotificationService
                 body: customerBody,
                 orderId: order.Id,
                 payload: new { orderId = order.Id, order.CustomerName, order.CustomerPhone, itemCount },
-                fromPhoneNumber: twilioFromPhone,
+                smsFromAddress: smsFromAddress,
                 cancellationToken: cancellationToken);
         }
 
@@ -89,7 +90,7 @@ public class NotificationService
                 body: string.Empty,
                 orderId: order.Id,
                 payload: new { orderId = order.Id, order.CustomerName, order.CustomerEmail, itemCount },
-                fromPhoneNumber: string.Empty,
+                smsFromAddress: null,
                 cancellationToken: cancellationToken);
         }
 
@@ -100,7 +101,7 @@ public class NotificationService
     {
         var customerPhone = NormalizePhone(order.CustomerPhone ?? string.Empty);
         var settings = await _settingsService.GetNotificationSettingsAsync(cancellationToken);
-        var twilioFromPhone = NormalizePhone(settings?.TwilioFromPhoneNumber ?? string.Empty);
+        var smsFromAddress = NormalizeSenderAddress(settings?.SmsFromAddress);
 
         if (!string.IsNullOrWhiteSpace(customerPhone))
         {
@@ -115,7 +116,7 @@ public class NotificationService
                 body: body,
                 orderId: order.Id,
                 payload: new { orderId = order.Id, order.CustomerName, order.CustomerPhone, status = order.OrderStatus.ToString() },
-                fromPhoneNumber: twilioFromPhone,
+                smsFromAddress: smsFromAddress,
                 cancellationToken: cancellationToken);
         }
 
@@ -131,7 +132,7 @@ public class NotificationService
                 body: string.Empty,
                 orderId: order.Id,
                 payload: new { orderId = order.Id, order.CustomerName, order.CustomerEmail, status = order.OrderStatus.ToString() },
-                fromPhoneNumber: string.Empty,
+                smsFromAddress: null,
                 cancellationToken: cancellationToken);
         }
     }
@@ -157,18 +158,19 @@ public class NotificationService
     }
 
     public async Task UpdateProviderStatusAsync(
+        string provider,
         string providerMessageId,
         string providerStatus,
         string? providerError,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(providerMessageId))
+        if (string.IsNullOrWhiteSpace(provider) || string.IsNullOrWhiteSpace(providerMessageId))
         {
             return;
         }
 
         var existing = await _context.NotificationMessages
-            .Where(x => x.ProviderMessageId == providerMessageId)
+            .Where(x => x.Provider == provider && x.ProviderMessageId == providerMessageId)
             .OrderByDescending(x => x.CreatedUtc)
             .FirstOrDefaultAsync(cancellationToken);
 
@@ -197,7 +199,7 @@ public class NotificationService
         string body,
         int orderId,
         object payload,
-        string fromPhoneNumber,
+        string? smsFromAddress,
         CancellationToken cancellationToken)
     {
         var normalizedPhone = NormalizePhone(recipientPhone);
@@ -223,6 +225,7 @@ public class NotificationService
             RecipientPhone = normalizedPhone,
             RecipientEmail = normalizedEmail,
             Channel = channel,
+            Provider = channel == "sms" ? _smsSender.ProviderName : null,
             TemplateKey = templateKey,
             OrderId = orderId,
             PayloadJson = JsonSerializer.Serialize(payload),
@@ -242,10 +245,10 @@ public class NotificationService
         }
 
         var smsEnabled = _configuration.GetValue("Notifications:SmsEnabled", false);
-        if (!smsEnabled || !_twilioService.IsConfigured())
+        if (!smsEnabled || !_smsSender.IsConfigured())
         {
             message.Status = "skipped";
-            message.LastError = !smsEnabled ? "SMS channel is disabled." : "Twilio is not configured.";
+            message.LastError = !smsEnabled ? "SMS channel is disabled." : "SMS provider is not configured.";
             message.UpdatedUtc = DateTime.UtcNow;
             await _context.SaveChangesAsync(cancellationToken);
             return;
@@ -257,7 +260,10 @@ public class NotificationService
             message.AttemptCount = attempt;
             try
             {
-                message.ProviderMessageId = await _twilioService.SendSmsAsync(normalizedPhone, body, fromPhoneNumber);
+                var result = await _smsSender.SendAsync(
+                    new SmsSendRequest(normalizedPhone, body, smsFromAddress),
+                    cancellationToken);
+                message.ProviderMessageId = result.ProviderMessageId;
                 message.Status = "sent";
                 message.LastError = null;
                 message.SentUtc = DateTime.UtcNow;
@@ -351,7 +357,7 @@ public class NotificationService
         var recipients = new List<(string Role, string Phone)>();
         var settings = await _settingsService.GetNotificationSettingsAsync(cancellationToken);
 
-        AddIfPresent(recipients, "admin", settings?.AdminPhoneNumber ?? _configuration["Twilio:AdminPhoneNumber"]);
+        AddIfPresent(recipients, "admin", settings?.AdminPhoneNumber);
         AddIfPresent(recipients, "barista", settings?.BaristaPhoneNumber);
         AddIfPresent(recipients, "trailer", settings?.TrailerPhoneNumber);
         return recipients;
@@ -398,5 +404,11 @@ public class NotificationService
     {
         var trimmed = email?.Trim();
         return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed.ToLowerInvariant();
+    }
+
+    private static string? NormalizeSenderAddress(string? senderAddress)
+    {
+        var trimmed = senderAddress?.Trim();
+        return string.IsNullOrWhiteSpace(trimmed) ? null : trimmed;
     }
 }

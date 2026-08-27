@@ -3,6 +3,7 @@ using CoffeeShopApi.Models;
 using CoffeeShopApi.Models.Payments;
 using CoffeeShopApi.Services;
 using CoffeeShopApi.Services.Payments;
+using CoffeeShopApi.Services.Sms;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
@@ -120,7 +121,7 @@ public class PaymentServiceTests
             options.UseInMemoryDatabase($"payment-tests-{Guid.NewGuid():N}"));
         services.AddScoped<OrderService>();
         services.AddScoped<NotificationSettingsService>();
-        services.AddScoped<TwilioService>();
+        services.AddScoped<ISmsSender, DisabledSmsSender>();
         services.AddScoped<OrderEmailNotificationService>();
         services.AddScoped<StaffPushNotificationService>();
         services.AddScoped<NotificationService>();
