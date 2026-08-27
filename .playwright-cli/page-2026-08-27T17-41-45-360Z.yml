@@ -1,0 +1,52 @@
+- generic [ref=e3]:
+  - link "Skip to main content" [ref=e4] [cursor=pointer]:
+    - /url: "#main-content"
+  - banner [ref=e5]:
+    - navigation "Primary navigation" [ref=e6]:
+      - link "Roast 66 Coffee logo Roast 66 Coffee Local coffee. Timeless roads." [ref=e7] [cursor=pointer]:
+        - /url: /
+        - img "Roast 66 Coffee logo" [ref=e8]
+        - generic [ref=e9]:
+          - generic [ref=e10]: Roast 66 Coffee
+          - generic [ref=e11]: Local coffee. Timeless roads.
+      - generic [ref=e12]:
+        - list [ref=e13]:
+          - listitem [ref=e14]:
+            - link "Home" [ref=e15] [cursor=pointer]:
+              - /url: /
+          - listitem [ref=e16]:
+            - group [ref=e17]:
+              - generic "Shop" [ref=e18] [cursor=pointer]
+          - listitem [ref=e21]:
+            - link "Contact / About" [ref=e22] [cursor=pointer]:
+              - /url: /about
+          - listitem [ref=e23]:
+            - link "Instagram" [ref=e24] [cursor=pointer]:
+              - /url: https://www.instagram.com/roast66coffee
+        - generic [ref=e25]:
+          - button "Cambiar idioma a Español" [ref=e26] [cursor=pointer]: EN / ES
+          - link "Order Now" [ref=e28] [cursor=pointer]:
+            - /url: /order
+  - main [active] [ref=e30]:
+    - img [ref=e32]:
+      - generic [ref=e35]: ☕
+  - contentinfo [ref=e38]:
+    - generic [ref=e39]:
+      - generic [ref=e40]:
+        - link "Roast 66 Coffee" [ref=e41] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e44]: •
+        - paragraph [ref=e45]: Local roots. Open roads.
+      - navigation "Footer navigation" [ref=e46]:
+        - link "Contact / About" [ref=e47] [cursor=pointer]:
+          - /url: /about
+        - link "Menu" [ref=e48] [cursor=pointer]:
+          - /url: /menu
+        - link "Order Now" [ref=e49] [cursor=pointer]:
+          - /url: /order
+        - link "Merch" [ref=e50] [cursor=pointer]:
+          - /url: https://roast-66-coffee.printify.me/products
+      - link "Instagram" [ref=e52] [cursor=pointer]:
+        - /url: https://www.instagram.com/roast66coffee
+    - paragraph [ref=e56]: © 2026 Roast 66 Coffee. All rights reserved.
+  - region "Notifications Alt+T"

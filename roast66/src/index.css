@@ -1,24 +1,67 @@
+@font-face {
+  font-family: "Source Sans 3 Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url("@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-normal.woff2")
+    format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Source Sans 3 Variable";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 200 900;
+  src: url("@fontsource-variable/source-sans-3/files/source-sans-3-latin-wght-italic.woff2")
+    format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 800;
+  src: url("@fontsource/barlow-condensed/files/barlow-condensed-latin-800-normal.woff2")
+    format("woff2");
+}
+
+@font-face {
+  font-family: "Barlow Condensed";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 900;
+  src: url("@fontsource/barlow-condensed/files/barlow-condensed-latin-900-normal.woff2")
+    format("woff2");
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
+  --r66-font-ui: "Source Sans 3 Variable", "Segoe UI", Arial, sans-serif;
+  --r66-font-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+
   --r66-cream: #f4ece1;
   --r66-cream-soft: #fbf6ee;
   --r66-espresso: #4a3326;
-  --r66-espresso-deep: #2c1d15;
-  --r66-rust: #a64b2a;
+  --r66-espresso-deep: #2c1d1c;
+  --r66-rust: #a94727;
   --r66-rust-dark: #893b1f;
+  --r66-copper-on-dark: #e39a7a;
   --r66-baby-blue: #99bfdd;
-  --r66-slate-blue: #6c89a2;
-  --r66-text: #2f2621;
+  --r66-slate-blue: #4d6f8a;
+  --r66-text: #2c1d1c;
+  --r66-text-soft: #4f3b32;
+  --r66-focus-on-light: #1d4ed8;
+  --r66-focus-on-dark: #99bfdd;
 }
 
 /* Global body styles */
 body {
   margin: 0;
   padding: 0;
-  font-family: "Trebuchet MS", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-family: var(--r66-font-ui);
   background:
     radial-gradient(circle at 10% 10%, rgba(153, 191, 221, 0.2), transparent 28%),
     radial-gradient(circle at 85% 0%, rgba(166, 75, 42, 0.1), transparent 35%),
@@ -26,8 +69,8 @@ body {
   color: var(--r66-text);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  font-synthesis: none;
   line-height: 1.5;
-  letter-spacing: 0.01em;
 }
 
 a {
@@ -60,6 +103,14 @@ a:hover {
 }
 
 :focus-visible {
-  outline: 3px solid #1d4ed8;
+  outline: 3px solid var(--r66-focus-on-light);
   outline-offset: 2px;
+}
+
+.r66-header :focus-visible,
+.r66-specials :focus-visible,
+.r66-about-story-card :focus-visible,
+.r66-about-booking :focus-visible,
+.r66-footer :focus-visible {
+  outline-color: var(--r66-focus-on-dark);
 }

@@ -235,8 +235,8 @@ export const esMx: Messages = {
       "Las actualizaciones por SMS aún no están disponibles para este pedido.",
     lastSmsEvent: "Último evento SMS:",
     secureCheckoutDescription:
-      "Paga con tarjeta por adelantado para recoger más rápido. Te enviaremos al pago seguro (Stripe).",
-    prepayButton: "Pagar por adelantado con tarjeta (Stripe)",
+      "Paga por adelantado de forma segura para recoger más rápido. Los métodos disponibles aparecerán al pagar.",
+    prepayButton: "Pagar en línea de forma segura",
     redirecting: "Redirigiendo...",
     paymentUnavailable: "El pago en línea no está disponible en este momento.",
     paymentStartFailed: "No se pudo iniciar el pago. Intenta de nuevo.",

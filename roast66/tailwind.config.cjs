@@ -4,11 +4,15 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: "#8B4513",
-        secondary: "#ad8453",
-        accent: "#5DADE2",
-        dark: "#333333",
-        light: "#AAAAAA",
+        primary: "#a94727",
+        secondary: "#4a3326",
+        accent: "#4d6f8a",
+        dark: "#2c1d1c",
+        light: "#f4ece1",
+      },
+      fontFamily: {
+        sans: ['"Source Sans 3 Variable"', '"Segoe UI"', "Arial", "sans-serif"],
+        display: ['"Barlow Condensed"', '"Arial Narrow"', "sans-serif"],
       },
     },
   },

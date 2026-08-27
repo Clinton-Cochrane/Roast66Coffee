@@ -34,7 +34,7 @@ The application is a React single-page frontend backed by an ASP.NET Core API an
 - Public order creation, tracking, login, and password-support endpoints are rate limited.
 - Production migrations run as a locked, one-time deployment step rather than during application startup.
 
-Stripe checkout and Twilio SMS are feature-gated and disabled by default until their production integrations are approved and hardened.
+Online payments and Twilio SMS are feature-gated and disabled by default until their production integrations are approved and hardened. Payments use a provider-neutral application service; Stripe is the included gateway.
 
 ## Architecture
 
@@ -176,7 +176,7 @@ Keep this value stable during normal deployments. Rotating it immediately invali
 | --- | --- |
 | `VITE_API_URL` | API base URL including `/api`, with no trailing slash |
 | `VITE_USE_STATIC_MENU` | Overrides menu data selection. Localhost defaults to the bundled JSON snapshot; set `false` to force API reads or `true` to use the snapshot on any host. |
-| `VITE_ENABLE_STRIPE_CHECKOUT` | Enables Stripe checkout UI when set to `true` |
+| `VITE_ENABLE_ONLINE_PAYMENTS` | Enables the configured online checkout UI when set to `true` |
 | `VITE_VAPID_PUBLIC_KEY` | Optional public key for staff web push |
 
 Vite settings are embedded at build time, so changing them requires rebuilding the static site.
@@ -185,9 +185,15 @@ Vite settings are embedded at build time, so changing them requires rebuilding t
 
 - Resend: customer and support email delivery
 - Web Push/VAPID: staff-device notifications
-- Stripe: optional checkout, disabled by default
+- Payments: provider-neutral checkout with Stripe as the included gateway, disabled by default
 - Twilio: optional SMS, disabled by default
 - Supabase heartbeat: optional free-tier connection warmup
+
+Online payment configuration uses `Payments__DefaultProvider` (currently `stripe`) and
+`Payments__FrontendBaseUrl`. Provider credentials remain isolated under their own prefix,
+such as `Stripe__SecretKey` and `Stripe__WebhookSecret`. The legacy
+`POST /api/payments/webhook` route targets the default provider; provider-specific webhook
+routes use `POST /api/payments/{provider}/webhook`.
 
 See the checked-in `.env.example` and `appsettings.Example.json` files for the complete key list.
 
@@ -256,7 +262,7 @@ Deployment flow:
 1. Connect the GitHub repository to Render and create a Blueprint instance.
 2. Populate every `sync: false` secret in the Render dashboard.
 3. Confirm `Admin__Username`, `Admin__Password`, and `Jwt__Key` before the first production deployment.
-4. Confirm `AllowedOrigins`, `Stripe__FrontendBaseUrl`, and `VITE_API_URL` use the actual Render URLs.
+4. Confirm `AllowedOrigins`, `Payments__FrontendBaseUrl`, and `VITE_API_URL` use the actual Render URLs.
 5. Let the API pre-deploy command apply migrations.
 6. Seed the menu explicitly if this is a new database.
 

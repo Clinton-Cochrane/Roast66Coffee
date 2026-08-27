@@ -229,8 +229,8 @@ export const en = {
     smsUnavailable: "SMS updates are not yet available for this order.",
     lastSmsEvent: "Last SMS event:",
     secureCheckoutDescription:
-      "Pay ahead with a card so pickup is quick - you will be sent to our secure checkout (Stripe).",
-    prepayButton: "Prepay with card (Stripe)",
+      "Pay ahead securely so pickup is quick. Available payment methods appear at checkout.",
+    prepayButton: "Pay securely online",
     redirecting: "Redirecting...",
     paymentUnavailable: "Online payment is not available right now.",
     paymentStartFailed: "Unable to start payment. Please try again.",

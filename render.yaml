@@ -47,12 +47,14 @@ services:
         sync: false
       - key: KeepAlive__SupabaseServiceRoleKey
         sync: false
+      - key: Payments__DefaultProvider
+        value: "stripe"
+      - key: Payments__FrontendBaseUrl
+        value: "https://roast66-web.onrender.com"
       - key: Stripe__SecretKey
         sync: false
       - key: Stripe__WebhookSecret
         sync: false
-      - key: Stripe__FrontendBaseUrl
-        value: "https://roast66-web.onrender.com"
       - key: Twilio__AccountSID
         sync: false
       - key: Twilio__AuthToken
@@ -89,8 +91,8 @@ services:
       - key: VITE_API_URL
         value: "https://roast66coffee.onrender.com/api"
         sync: false
-      # Set to "true" to enable Stripe Checkout (order page) and prepay on Order Status; rebuild static site after changing.
-      - key: VITE_ENABLE_STRIPE_CHECKOUT
+      # Set to "true" to enable the configured payment provider; rebuild the static site after changing.
+      - key: VITE_ENABLE_ONLINE_PAYMENTS
         value: "false"
         sync: false
       - key: VITE_VAPID_PUBLIC_KEY

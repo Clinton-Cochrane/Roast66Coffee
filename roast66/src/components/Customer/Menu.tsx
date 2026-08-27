@@ -93,7 +93,7 @@ function Menu() {
           <p className="mb-7 text-center text-[0.98rem] leading-[1.6] text-[#6f5b4b]">
             {t("menu.pageSubtitle")}
           </p>
-          <div className="flex items-center justify-center gap-3 text-xs uppercase font-semibold tracking-[0.08em] text-[#6c89a2]">
+          <div className="flex items-center justify-center gap-3 text-sm uppercase font-semibold tracking-[0.08em] text-[#4d6f8a]">
             <span className="text-[#b59e8c]" aria-hidden="true">
               |
             </span>
@@ -127,7 +127,7 @@ function Menu() {
                       className={`inline-flex min-h-11 items-center rounded-full border px-5 py-2 font-semibold no-underline transition-colors focus-visible:outline-none ${
                         isActive
                           ? "border-[#c77e42] bg-[#c77e42] text-black hover:text-black"
-                          : "border-[#cdb9a7] bg-[#fff9f2] text-[#4a3326] hover:border-[#a64b2a] hover:text-[#a64b2a]"
+                          : "border-[#cdb9a7] bg-[#fff9f2] text-[#4a3326] hover:border-[#a94727] hover:text-[#a94727]"
                       }`}
                     >
                       {t(titleKey)}
@@ -173,7 +173,7 @@ function Menu() {
                         <h4 className="mb-1 min-h-7 line-clamp-2 text-xl font-semibold text-[#4a3326]">
                           {item.name}
                         </h4>
-                        <PromotionPrice item={item} className="text-[#a64b2a] font-semibold" />
+                        <PromotionPrice item={item} className="text-[#a94727] font-semibold" />
                         <div className="min-h-[4.5rem]">
                           <p className="line-clamp-2 text-[#5b4940]">{item.description}</p>
                         </div>
@@ -227,7 +227,7 @@ function Menu() {
                           {item.description}
                         </p>
                       </div>
-                      <PromotionPrice item={item} className="shrink-0 font-semibold text-[#a64b2a]" />
+                      <PromotionPrice item={item} className="shrink-0 font-semibold text-[#a94727]" />
                     </div>
                   ))}
                 </div>

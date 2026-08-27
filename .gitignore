@@ -51,6 +51,7 @@ features.md
 
 # Ignore markdown files except README
 *.md
+!AGENTS.md
 !README.md
 !**/README.md
 !docs/operations/*.md
