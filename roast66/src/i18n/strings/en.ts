@@ -99,6 +99,51 @@ export const en = {
     marketingImageAlt: "Roast 66 Coffee trailer set up at a community pop-up",
     marketingImagePending: "Second trailer photo coming soon",
   },
+  about: {
+    eyebrow: "Owner-run. Road-ready.",
+    titleLead: "Coffee that shows up",
+    titleAccent: "for your people.",
+    intro:
+      "Roast 66 is a mobile coffee trailer serving handcrafted drinks, easy conversation, and a warm welcome wherever we park.",
+    requestTrailer: "Request the trailer",
+    viewMenu: "See what we serve",
+    actionNote: "Planning an event? Send the date, location, and estimated guest count to get started.",
+    opensNewWindow: "opens Instagram in a new window",
+    storyLabel: "The Roast 66 story",
+    storyKicker: "Our story",
+    storyTitle: "Born from cars. Fueled by coffee.",
+    storyBody:
+      "A love of classic cars, homemade drinks, and bringing people together became a coffee trailer with a Route 66 heart. Today, every stop is a chance to make something good and share it with the neighborhood.",
+    storyHighlightsLabel: "Roast 66 highlights",
+    storyHighlightOwner: "Owner-run",
+    storyHighlightMobile: "Mobile trailer",
+    storyHighlightLocal: "Community-minded",
+    valuesKicker: "What we bring",
+    valuesTitle: "A coffee stop with a little road dust on it.",
+    valuesIntro:
+      "No velvet ropes and no complicated routine—just memorable drinks served with care from a trailer made to gather around.",
+    craftTitle: "Made with care",
+    craftBody:
+      "Familiar favorites and playful specials are prepared one drink at a time, with the kind of attention a neighborhood stop deserves.",
+    mobileTitle: "Ready to roll",
+    mobileBody:
+      "The Roast 66 trailer brings the coffee shop to pop-ups, markets, workplaces, parties, and community events.",
+    peopleTitle: "Here for the gathering",
+    peopleBody:
+      "Coffee is the reason to stop. Friendly service and a shared moment are what make the stop worth remembering.",
+    bookingKicker: "Your event, our next stop",
+    bookingTitle: "Bring Roast 66 to the gathering.",
+    bookingBody:
+      "Planning a market, team morning, private party, or community get-together? Message us on Instagram with a few event basics and we’ll take it from there.",
+    startRequest: "Start an event request",
+    generalNote: "Have a general question? You can send that through the same Instagram inbox.",
+    requestDetailsTitle: "What to send us",
+    requestDetailsIntro: "A short message with these details helps us understand your event:",
+    requestDate: "Your preferred date and time",
+    requestLocation: "The venue, city, or general location",
+    requestGuests: "Your estimated guest count",
+    requestNotes: "Anything else that would make the stop a good fit",
+  },
   order: {
     placeYourOrder: "Place Your Order",
     checkOrderStatus: "Check Order Status",
