@@ -100,6 +100,54 @@ export const esMx: Messages = {
     marketingImageAlt: "Remolque de Roast 66 Coffee instalado en un evento comunitario",
     marketingImagePending: "Próximamente: segunda foto del remolque",
   },
+  about: {
+    eyebrow: "De su dueña. Lista para rodar.",
+    titleLead: "Café que llega",
+    titleAccent: "para reunir a los tuyos.",
+    intro:
+      "Roast 66 es un remolque móvil de café que sirve bebidas artesanales, buenas conversaciones y una cálida bienvenida dondequiera que estacionemos.",
+    requestTrailer: "Solicita el remolque",
+    viewMenu: "Conoce lo que servimos",
+    actionNote:
+      "¿Planeas un evento? Envíanos la fecha, ubicación y cantidad estimada de invitados para comenzar.",
+    opensNewWindow: "abre Instagram en una ventana nueva",
+    storyLabel: "La historia de Roast 66",
+    storyKicker: "Nuestra historia",
+    storyTitle: "Nacido de los autos. Impulsado por el café.",
+    storyBody:
+      "El amor por los autos clásicos, las bebidas caseras y reunir a la gente se convirtió en un remolque de café con corazón de Ruta 66. Hoy, cada parada es una oportunidad para preparar algo bueno y compartirlo con la comunidad.",
+    storyHighlightsLabel: "Lo que distingue a Roast 66",
+    storyHighlightOwner: "Atendido por su dueña",
+    storyHighlightMobile: "Remolque móvil",
+    storyHighlightLocal: "Enfocado en la comunidad",
+    valuesKicker: "Lo que llevamos",
+    valuesTitle: "Una parada de café con espíritu de carretera.",
+    valuesIntro:
+      "Sin complicaciones: solo bebidas memorables servidas con atención desde un remolque hecho para reunir a la gente.",
+    craftTitle: "Hecho con esmero",
+    craftBody:
+      "Favoritos conocidos y especiales divertidos se preparan una bebida a la vez, con la atención que merece una parada de barrio.",
+    mobileTitle: "Listo para rodar",
+    mobileBody:
+      "El remolque de Roast 66 lleva la cafetería a eventos locales, mercados, lugares de trabajo, fiestas y reuniones comunitarias.",
+    peopleTitle: "Aquí para reunirnos",
+    peopleBody:
+      "El café es la razón para detenerse. El servicio amable y el momento compartido hacen que la parada sea inolvidable.",
+    bookingKicker: "Tu evento, nuestra próxima parada",
+    bookingTitle: "Lleva Roast 66 a tu reunión.",
+    bookingBody:
+      "¿Planeas un mercado, una mañana de equipo, una fiesta privada o un evento comunitario? Envíanos por Instagram los datos básicos y nosotros te ayudaremos con lo demás.",
+    startRequest: "Inicia una solicitud",
+    generalNote:
+      "¿Tienes una pregunta general? También puedes enviarla al mismo buzón de Instagram.",
+    requestDetailsTitle: "Qué debes enviarnos",
+    requestDetailsIntro:
+      "Un mensaje breve con estos datos nos ayuda a entender tu evento:",
+    requestDate: "Tu fecha y horario preferidos",
+    requestLocation: "El lugar, la ciudad o la ubicación general",
+    requestGuests: "La cantidad estimada de invitados",
+    requestNotes: "Cualquier otro detalle que nos ayude a atenderte mejor",
+  },
   order: {
     placeYourOrder: "Haz tu pedido",
     checkOrderStatus: "Ver estado del pedido",

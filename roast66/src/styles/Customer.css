@@ -345,18 +345,505 @@
     cursor: pointer;
   }
 
-.about {
-  padding: 20px;
-  margin: 20px auto;
-  max-width: 600px;
-  text-align: center;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  background-color: #f9f9f9;
+.r66-about {
+  width: 100%;
+  overflow: hidden;
+  background: #f4ece1;
 }
 
-.about h2 {
+.r66-about-shell {
+  width: min(100% - 3rem, 80rem);
+  margin-inline: auto;
+}
+
+.r66-about-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-bottom: 1px solid #d8b79d;
+  background:
+    radial-gradient(circle at 8% 12%, rgba(255, 255, 255, 0.85), transparent 27%),
+    radial-gradient(circle at 92% 22%, rgba(153, 191, 221, 0.28), transparent 28%),
+    #f8eee2;
+}
+
+.r66-about-hero::before,
+.r66-about-booking::before {
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.7' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.04'/%3E%3C/svg%3E");
+  content: "";
+  pointer-events: none;
+}
+
+.r66-about-road {
+  position: absolute;
+  right: -7rem;
+  bottom: -2rem;
+  z-index: -1;
+  width: min(62rem, 66vw);
+  fill: none;
+  stroke: #d9a574;
+  stroke-linecap: round;
+  stroke-width: 28;
+  opacity: 0.48;
+}
+
+.r66-about-road-center {
+  stroke: #fff4e7;
+  stroke-dasharray: 28 24;
+  stroke-width: 3;
+  opacity: 0.96;
+}
+
+.r66-about-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(24rem, 0.92fr);
+  align-items: center;
+  gap: clamp(2.5rem, 6vw, 6rem);
+  padding-block: clamp(3.75rem, 7vw, 7.5rem);
+}
+
+.r66-about-hero-copy {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+}
+
+.r66-about-eyebrow,
+.r66-about-section-kicker,
+.r66-about-booking-kicker {
+  margin: 0 0 0.8rem;
+  color: #943f24;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.r66-about-title {
+  max-width: 46rem;
+  margin: 0;
+  color: #2c1d1c;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
+  font-size: clamp(3.35rem, 6.8vw, 6.75rem);
+  font-weight: 900;
+  letter-spacing: 0.015em;
+  line-height: 0.88;
+  text-transform: uppercase;
+}
+
+.r66-about-title span { display: block; }
+.r66-about-title-accent { color: #a94727; }
+
+.r66-about-intro {
+  max-width: 41rem;
+  margin: 1.5rem 0 0;
+  color: #4f3b32;
+  font-size: clamp(1.05rem, 1.6vw, 1.2rem);
+  line-height: 1.7;
+}
+
+.r66-about-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.r66-about-primary-action,
+.r66-about-booking-action {
+  display: inline-flex;
+  min-height: 3.5rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.3rem;
+  border: 2px solid #4a3326;
+  border-radius: 0.45rem;
+  background: #a94727;
+  box-shadow: 0 3px 0 rgba(44, 29, 28, 0.25);
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 900;
+  letter-spacing: 0.065em;
+  text-decoration: none;
+  text-transform: uppercase;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+
+.r66-about-primary-action:hover {
+  background: #8f371d;
+  color: #ffffff;
+}
+
+.r66-about-secondary-action {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  padding-inline: 0.25rem;
   color: #4a3326;
+  font-size: 0.86rem;
+  font-weight: 900;
+  letter-spacing: 0.055em;
+  text-decoration-thickness: 2px;
+  text-transform: uppercase;
+  text-underline-offset: 0.35rem;
+}
+
+.r66-about-action-note {
+  max-width: 38rem;
+  margin: 1rem 0 0;
+  color: #6b5548;
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.r66-about-story-card {
+  position: relative;
+  min-width: 0;
+  padding: clamp(1.75rem, 4vw, 3rem);
+  overflow: hidden;
+  border: 1px solid #664638;
+  border-radius: 1rem;
+  background:
+    linear-gradient(140deg, rgba(169, 71, 39, 0.2), transparent 48%),
+    #2c1d1c;
+  box-shadow: 0 22px 55px rgba(54, 33, 19, 0.24);
+  color: #fff9f2;
+}
+
+.r66-about-story-card::after {
+  position: absolute;
+  right: -3.5rem;
+  bottom: -4.5rem;
+  width: 11rem;
+  height: 11rem;
+  border: 1.25rem solid rgba(153, 191, 221, 0.14);
+  border-radius: 999px;
+  content: "";
+}
+
+.r66-about-story-heading {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.r66-about-logo-mark {
+  display: grid;
+  width: 4.5rem;
+  height: 4.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid #8f6b57;
+  border-radius: 999px;
+  background: #fff9f2;
+}
+
+.r66-about-logo-mark img {
+  width: 3.4rem;
+  height: 3.4rem;
+  object-fit: contain;
+}
+
+.r66-about-story-heading p {
+  margin: 0;
+  color: #99bfdd;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.17em;
+  text-transform: uppercase;
+}
+
+.r66-about-story-card h2 {
+  max-width: 28rem;
+  margin: 1.6rem 0 0;
+  color: #fff9f2;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 4vw, 3.15rem);
+  line-height: 1.08;
+}
+
+.r66-about-story-body {
+  position: relative;
+  z-index: 1;
+  margin: 1.25rem 0 0;
+  color: #e8d8cb;
+  font-size: 1rem;
+  line-height: 1.75;
+}
+
+.r66-about-story-tags {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+  margin: 1.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.r66-about-story-tags li {
+  padding: 0.4rem 0.7rem;
+  border: 1px solid #806251;
+  border-radius: 999px;
+  color: #fff4e8;
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.r66-about-values {
+  padding-block: clamp(4rem, 7vw, 7rem);
+  background:
+    linear-gradient(rgba(255, 249, 242, 0.76), rgba(255, 249, 242, 0.76)),
+    repeating-linear-gradient(90deg, transparent 0 5rem, rgba(74, 51, 38, 0.035) 5rem 5.05rem);
+}
+
+.r66-about-section-heading {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(20rem, 0.85fr);
+  gap: 1rem 4rem;
+  align-items: end;
+}
+
+.r66-about-section-heading .r66-about-section-kicker {
+  grid-column: 1 / -1;
+  margin-bottom: -0.1rem;
+}
+
+.r66-about-section-heading h2 {
+  max-width: 48rem;
+  margin: 0;
+  color: #2c1d1c;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
+  font-size: clamp(2.6rem, 5vw, 4.75rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 0.95;
+  text-transform: uppercase;
+}
+
+.r66-about-section-heading > p:last-child {
+  margin: 0;
+  color: #5b4940;
+  font-size: 1.02rem;
+  line-height: 1.7;
+}
+
+.r66-about-values-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.15rem;
+  margin-top: 3rem;
+}
+
+.r66-about-value-card {
+  position: relative;
+  min-width: 0;
+  padding: 1.75rem;
+  border: 1px solid #dccdbe;
+  border-top: 0.35rem solid #a94727;
+  border-radius: 0.65rem;
+  background: #fffaf3;
+  box-shadow: 0 10px 26px rgba(54, 33, 19, 0.08);
+}
+
+.r66-about-value-card > svg {
+  color: #a94727;
+  font-size: 1.65rem;
+}
+
+.r66-about-value-number {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  margin: 0;
+  color: #cbbbad;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 1.5rem;
+  letter-spacing: 0.08em;
+}
+
+.r66-about-value-card h3 {
+  margin: 1.5rem 0 0;
+  color: #2c1d1c;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.45rem;
+}
+
+.r66-about-value-card > p:last-child {
+  margin: 0.8rem 0 0;
+  color: #5b4940;
+  line-height: 1.7;
+}
+
+.r66-about-booking {
+  position: relative;
+  isolation: isolate;
+  padding-block: clamp(4rem, 7vw, 6.5rem);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 88% 15%, rgba(153, 191, 221, 0.18), transparent 28%),
+    linear-gradient(112deg, rgba(137, 45, 19, 0.2), transparent 45%),
+    #2c1d1c;
+  color: #fff9f2;
+}
+
+.r66-about-booking-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(23rem, 0.75fr);
+  align-items: center;
+  gap: clamp(2.5rem, 7vw, 7rem);
+}
+
+.r66-about-booking-copy { min-width: 0; }
+.r66-about-booking-kicker { color: #99bfdd; }
+
+.r66-about-booking-copy h2 {
+  max-width: 48rem;
+  margin: 0;
+  color: #fff9f2;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", "Arial Narrow", sans-serif;
+  font-size: clamp(3rem, 5.8vw, 5.8rem);
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+
+.r66-about-booking-copy > p:not(.r66-about-booking-kicker):not(.r66-about-general-note) {
+  max-width: 42rem;
+  margin: 1.5rem 0 0;
+  color: #e8d8cb;
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.r66-about-booking-action {
+  margin-top: 2rem;
+  border-color: #fff9f2;
+  background: #fff9f2;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.3);
+  color: #4a3326;
+}
+
+.r66-about-booking-action:hover {
+  background: #99bfdd;
+  color: #2c1d1c;
+}
+
+.r66-about-general-note {
+  max-width: 40rem;
+  margin: 1rem 0 0;
+  color: #c9b5a7;
+  font-size: 0.86rem;
+  line-height: 1.6;
+}
+
+.r66-about-request-card {
+  padding: clamp(1.5rem, 3.5vw, 2.5rem);
+  border: 1px solid #ddc8b8;
+  border-radius: 0.85rem;
+  background: #fff9f2;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.22);
+  color: #2c1d1c;
+}
+
+.r66-about-request-card h3 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(1.65rem, 3vw, 2.15rem);
+}
+
+.r66-about-request-card > p {
+  margin: 0.75rem 0 0;
+  color: #675145;
+  line-height: 1.6;
+}
+
+.r66-about-request-card ol {
+  display: grid;
+  gap: 0.9rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.r66-about-request-card li {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: center;
+  gap: 0.8rem;
+  color: #4f3b32;
+  font-size: 0.92rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
+.r66-about-request-card li span {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 999px;
+  background: #a94727;
+  color: #ffffff;
+  font-family: Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 900px) {
+  .r66-about-hero-grid,
+  .r66-about-booking-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .r66-about-hero-grid { gap: 3rem; }
+  .r66-about-road { right: -20rem; width: 58rem; opacity: 0.35; }
+  .r66-about-story-card { max-width: 44rem; }
+
+  .r66-about-section-heading {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .r66-about-section-heading .r66-about-section-kicker { grid-column: auto; }
+  .r66-about-values-grid { grid-template-columns: 1fr; }
+  .r66-about-value-card { padding: 1.5rem; }
+  .r66-about-request-card { max-width: 40rem; }
+}
+
+@media (max-width: 560px) {
+  .r66-about-shell { width: min(100% - 1.5rem, 80rem); }
+  .r66-about-hero-grid { padding-block: 3.25rem; }
+  .r66-about-title { font-size: clamp(2.8rem, 15vw, 4rem); }
+
+  .r66-about-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .r66-about-primary-action,
+  .r66-about-booking-action {
+    width: 100%;
+    padding-inline: 0.85rem;
+    text-align: center;
+  }
+
+  .r66-about-secondary-action { justify-content: center; }
+  .r66-about-story-card { padding: 1.5rem; }
+  .r66-about-logo-mark { width: 3.75rem; height: 3.75rem; }
+  .r66-about-logo-mark img { width: 2.8rem; height: 2.8rem; }
+  .r66-about-story-tags { align-items: flex-start; flex-direction: column; }
+  .r66-about-values-grid { margin-top: 2rem; }
+  .r66-about-booking-copy h2 { font-size: clamp(2.8rem, 14vw, 4rem); }
 }
 
 .location {
