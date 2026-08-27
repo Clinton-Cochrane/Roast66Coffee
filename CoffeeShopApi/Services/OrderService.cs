@@ -18,6 +18,9 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         return await _context.Orders
             .Include(o => o.OrderItems)
             .ThenInclude(oi => oi.MenuItem)
+            .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.AddOns!)
+            .ThenInclude(a => a.MenuItem)
             .ToListAsync();
     }
 

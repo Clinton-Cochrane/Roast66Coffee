@@ -166,6 +166,69 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
+    public async Task GetAdminOrders_IncludesShotsAndTheirMenuItems()
+    {
+        int drinkId;
+        int shotId;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var drink = new MenuItem
+            {
+                Name = $"Admin drink {Guid.NewGuid():N}",
+                Price = 4.00m,
+                Description = "Integration test drink",
+                CategoryType = CategoryType.DRINKS
+            };
+            var shot = new MenuItem
+            {
+                Name = $"Admin shot {Guid.NewGuid():N}",
+                Price = 0.50m,
+                Description = "Integration test shot",
+                CategoryType = CategoryType.FLAVORS
+            };
+            context.MenuItems.AddRange(drink, shot);
+            await context.SaveChangesAsync();
+            drinkId = drink.Id;
+            shotId = shot.Id;
+        }
+
+        var customerName = $"Admin shots {Guid.NewGuid():N}";
+        var order = new Order
+        {
+            CustomerName = customerName,
+            CustomerPhone = $"555{Random.Shared.Next(1000000, 9999999)}",
+            OrderItems =
+            [
+                new OrderItem
+                {
+                    MenuItemId = drinkId,
+                    Quantity = 1,
+                    AddOns = [new AddOn { MenuItemId = shotId, Quantity = 2 }]
+                }
+            ]
+        };
+        var postResponse = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        postResponse.EnsureSuccessStatusCode();
+
+        var token = await GetAdminToken();
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/admin/orders");
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var orders = await response.Content.ReadFromJsonAsync<List<Order>>(JsonOptions);
+        var adminOrder = Assert.Single(orders!, candidate => candidate.CustomerName == customerName);
+        var orderItem = Assert.Single(adminOrder.OrderItems);
+        var addOn = Assert.Single(orderItem.AddOns!);
+        Assert.Equal(2, addOn.Quantity);
+        Assert.Equal(shotId, addOn.MenuItemId);
+        Assert.NotNull(addOn.MenuItem);
+        Assert.StartsWith("Admin shot ", addOn.MenuItem!.Name);
+    }
+
+    [Fact]
     public async Task NotificationSettings_SaveAndGet_PersistsTwilioFromPhoneNumber()
     {
         var token = await GetAdminToken();

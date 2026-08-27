@@ -58,8 +58,8 @@ function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
+    <div className="min-h-screen bg-gray-100 p-3 sm:p-6">
+      <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6">
         <Header color="bg-red-800" title={t("admin.dashboardTitle")} />
         <div className="flex justify-end">
           <Button color="gray" onClick={handleLogout}>
@@ -69,13 +69,13 @@ function AdminPage() {
         <StaffDevicePrompt />
 
         <div
-          className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden"
+          className="bg-white rounded-lg shadow border border-gray-200"
           data-testid="admin-console"
         >
           <div
             role="tablist"
             aria-label={t("admin.tablistAriaLabel")}
-            className="flex flex-wrap gap-0 border-b border-gray-200 bg-gray-50 px-2 pt-2"
+            className="flex flex-wrap gap-0 rounded-t-lg border-b border-gray-200 bg-gray-50 px-2 pt-2"
           >
             {adminTabs.map(({ id, label }) => {
               const selected = activeTab === id;
@@ -100,7 +100,7 @@ function AdminPage() {
             })}
           </div>
 
-          <div className="p-6">
+          <div className="p-3 sm:p-6">
             {activeTab === ADMIN_TAB_IDS.ORDERS ? (
               <div
                 id={`admin-panel-${ADMIN_TAB_IDS.ORDERS}`}
