@@ -40,7 +40,6 @@ export const esMx: Messages = {
   },
   footer: {
     rightsReserved: "Todos los derechos reservados.",
-    motto: "Raíces locales. Caminos abiertos.",
     navigationLabel: "Navegación del pie de página",
     instagramTitle: "Síguenos en Instagram",
     instagram: "Instagram",

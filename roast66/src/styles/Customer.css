@@ -910,16 +910,6 @@
   text-transform: uppercase;
   white-space: nowrap;
 }
-.r66-footer-divider { color: #d9a574; }
-.r66-footer-motto {
-  margin: 0;
-  color: var(--r66-copper-on-dark);
-  font-size: 0.875rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
 .r66-footer-links { display: flex; align-items: center; justify-content: center; gap: 1.75rem; }
 .r66-footer-links a {
   color: #f7e9dd;
@@ -959,7 +949,6 @@
   .r66-footer-brand-block { flex-wrap: wrap; }
   .r66-footer-brand,
   .r66-footer-brand span,
-  .r66-footer-motto,
   .r66-footer-links,
   .r66-footer-links a { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
   .r66-footer-links { grid-column: auto; grid-row: auto; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
