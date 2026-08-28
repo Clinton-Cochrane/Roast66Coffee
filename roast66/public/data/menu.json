@@ -73,17 +73,17 @@
   },
   {
     "id": 10,
-    "name": "Mr. Brownie Shaken Espresso",
-    "price": 4.15,
-    "description": "Shaken espresso with brown sugar, cinnamon powder, and vanilla cold foam",
+    "name": "MR.BROWNIE",
+    "price": 4.25,
+    "description": "Banana, chocolate drizzle",
     "categoryType": 1,
     "isFeaturedOnHome": false
   },
   {
     "id": 13,
-    "name": "Blue Flame Nitro",
-    "price": 5.25,
-    "description": "Nitro cold brew with sweet cream and blueberry syrup",
+    "name": "BLUE FLAME NITRO",
+    "price": 4.25,
+    "description": "Blue raspberry, coconut",
     "categoryType": 1,
     "isFeaturedOnHome": false
   },
@@ -129,17 +129,17 @@
   },
   {
     "id": 15,
-    "name": "Black SS Lemonade",
-    "price": 2.5,
-    "description": "Red raspberry, pomegranate, and bubbly lemonade",
+    "name": "BLACK CHEVY SS",
+    "price": 4.25,
+    "description": "Red raspberry, blue raspberry",
     "categoryType": 1,
     "isFeaturedOnHome": true
   },
   {
     "id": 11,
-    "name": "Mrs. Brownie Latte",
-    "price": 7.23,
-    "description": "Iced coconut and caramel latte",
+    "name": "MRS.BROWNIE",
+    "price": 4.25,
+    "description": "Coconut, caramel, and chocolate drizzle",
     "categoryType": 1,
     "isFeaturedOnHome": true
   },
@@ -148,6 +148,102 @@
     "name": "Shitbox LUV Fuel",
     "price": 5.0,
     "description": "Triple espresso with caramel drizzle and guarana syrup",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 38,
+    "name": "RUSTEZ",
+    "price": 4.25,
+    "description": "Toasted hazelnut, white mocha",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 39,
+    "name": "PHILTHY305",
+    "price": 4.25,
+    "description": "Vanilla, caramel drizzle",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 40,
+    "name": "MIDNIGHT MCQUEEN",
+    "price": 4.25,
+    "description": "English toffee, red raspberry, white mocha",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 41,
+    "name": "OFF-ROAD",
+    "price": 4.25,
+    "description": "Chocolate, cinnamon powder",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 42,
+    "name": "RUSTY MATER",
+    "price": 4.25,
+    "description": "White mocha",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 43,
+    "name": "BURNOUT",
+    "price": 4.25,
+    "description": "Toasted marshmallows, chocolate drizzle, and cinnamon powder",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 44,
+    "name": "DIESEL",
+    "price": 4.25,
+    "description": "Pomegranate, strawberry, vanilla",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 45,
+    "name": "CLUTCH STOP",
+    "price": 4.25,
+    "description": "Strawberry, white chocolate",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 46,
+    "name": "SIDEWAYS RX",
+    "price": 4.25,
+    "description": "Vanilla, mango puree",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 47,
+    "name": "SUKI 2 FAST",
+    "price": 4.25,
+    "description": "Strawberry puree",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 48,
+    "name": "BLOWN HEAD GASKET",
+    "price": 5.5,
+    "description": "4 shots espresso; pick your flavor",
+    "categoryType": 1,
+    "isFeaturedOnHome": false
+  },
+  {
+    "id": 49,
+    "name": "CHECK ENGINE LIGHT",
+    "price": 7.5,
+    "description": "6 shots espresso; pick your flavor",
     "categoryType": 1,
     "isFeaturedOnHome": false
   },

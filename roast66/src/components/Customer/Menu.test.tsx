@@ -131,6 +131,34 @@ describe("Menu", () => {
     );
   });
 
+  it("stacks full-width orderable sections with responsive card grids", async () => {
+    mockGet.mockResolvedValue({ data: [mockMenuItem, specialItem] });
+    renderMenu();
+
+    const specialsSection = (await screen.findByRole("heading", { name: "Specials" })).closest(
+      "section"
+    );
+    const drinksSection = screen.getByRole("heading", { name: "Drinks" }).closest("section");
+    const sectionContainer = specialsSection?.parentElement;
+    const specialsGrid = specialsSection?.querySelector("div.grid");
+    const drinksGrid = drinksSection?.querySelector("div.grid");
+
+    expect(sectionContainer).toHaveClass("flex", "flex-col", "gap-10");
+    expect(sectionContainer).not.toHaveClass("xl:grid-cols-2");
+    expect(specialsSection).toHaveClass("w-full");
+    expect(drinksSection).toHaveClass("w-full");
+
+    for (const grid of [specialsGrid, drinksGrid]) {
+      expect(grid).toHaveClass(
+        "grid-cols-1",
+        "sm:grid-cols-2",
+        "lg:grid-cols-3",
+        "xl:grid-cols-4",
+        "2xl:grid-cols-5"
+      );
+    }
+  });
+
   it("shows homepage specials in Specials without duplicating them in Drinks", async () => {
     const featuredDrink = {
       ...mockMenuItem,

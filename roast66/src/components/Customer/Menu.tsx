@@ -85,7 +85,7 @@ function Menu() {
 
   return (
     <div className="min-h-screen p-4">
-      <div className="w-full max-w-[1400px] mx-auto">
+      <div className="mx-auto w-full max-w-[1600px]">
         <header className="rounded-2xl border border-[#d8c5b3] bg-[#fff9f2]/85 px-5 pb-12 pt-9 shadow-[0_12px_28px_rgba(74,51,38,0.1)] md:px-8 md:pt-11">
           <h2 className="text-3xl md:text-4xl font-bold mb-2 text-center text-[#4a3326] tracking-[0.01em]">
             {t("menu.pageTitle")}
@@ -137,13 +137,13 @@ function Menu() {
               </div>
             </nav>
 
-            <div className="grid items-start gap-10 md:mx-4 xl:mx-0 xl:grid-cols-2 xl:gap-6">
+            <div className="flex flex-col gap-10 md:mx-4 xl:mx-0">
               {orderableSections.map(({ id, titleKey, items }) => (
                 <section
                   id={id}
                   key={id}
                   aria-labelledby={`${id}-heading`}
-                  className={`scroll-mt-20 rounded-2xl border p-4 md:p-5 ${
+                  className={`w-full scroll-mt-20 rounded-2xl border p-4 md:p-5 ${
                     id === "specials"
                       ? "border-[#c77e42] bg-gradient-to-br from-[#fff8ee] via-[#fff1df] to-[#f8e2cc] shadow-[0_12px_30px_rgba(166,75,42,0.12)]"
                       : "border-[#4a3326] bg-[#fffaf4] shadow-[0_10px_24px_rgba(74,51,38,0.1)]"
@@ -163,7 +163,7 @@ function Menu() {
                     </span>
                   </h3>
 
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {items.map((item) => (
                       <Card
                         key={item.id}

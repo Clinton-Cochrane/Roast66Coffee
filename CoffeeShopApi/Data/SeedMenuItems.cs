@@ -38,13 +38,27 @@ namespace CoffeeShopApi.Data
                 new MenuItem { Name = "Refresher", Price = 4.00M, Description = "It's like water but different", CategoryType = CategoryType.DRINKS },
                 new MenuItem { Name = "Tesla", Price = 85.00M, Description = "Room Temp Tap Water", CategoryType = CategoryType.DRINKS },
 
-                // Specials
-                new MenuItem { Name = "Mr. Brownie Shaken Espresso", Price = 4.15M, Description = "Shaken espresso with brown sugar, cinnamon powder, and vanilla cold foam", CategoryType = CategoryType.SPECIALS },
-                new MenuItem { Name = "Mrs. Brownie Latte", Price = 7.23M, Description = "Iced coconut and caramel latte", CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true },
+                // Current signature drinks. Prices are provisional until the client confirms them.
+                new MenuItem { Name = "RUSTEZ", Price = 4.25M, Description = "Toasted hazelnut, white mocha", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "MRS.BROWNIE", Price = 4.25M, Description = "Coconut, caramel, and chocolate drizzle", CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true },
+                new MenuItem { Name = "PHILTHY305", Price = 4.25M, Description = "Vanilla, caramel drizzle", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "MIDNIGHT MCQUEEN", Price = 4.25M, Description = "English toffee, red raspberry, white mocha", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "OFF-ROAD", Price = 4.25M, Description = "Chocolate, cinnamon powder", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "RUSTY MATER", Price = 4.25M, Description = "White mocha", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "MR.BROWNIE", Price = 4.25M, Description = "Banana, chocolate drizzle", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "BURNOUT", Price = 4.25M, Description = "Toasted marshmallows, chocolate drizzle, and cinnamon powder", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "BLACK CHEVY SS", Price = 4.25M, Description = "Red raspberry, blue raspberry", CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true },
+                new MenuItem { Name = "DIESEL", Price = 4.25M, Description = "Pomegranate, strawberry, vanilla", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "BLUE FLAME NITRO", Price = 4.25M, Description = "Blue raspberry, coconut", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "CLUTCH STOP", Price = 4.25M, Description = "Strawberry, white chocolate", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "SIDEWAYS RX", Price = 4.25M, Description = "Vanilla, mango puree", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "SUKI 2 FAST", Price = 4.25M, Description = "Strawberry puree", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "BLOWN HEAD GASKET", Price = 5.50M, Description = "4 shots espresso; pick your flavor", CategoryType = CategoryType.SPECIALS },
+                new MenuItem { Name = "CHECK ENGINE LIGHT", Price = 7.50M, Description = "6 shots espresso; pick your flavor", CategoryType = CategoryType.SPECIALS },
+
+                // Existing non-conflicting specials
                 new MenuItem { Name = "Shitbox LUV Fuel", Price = 5.00M, Description = "Triple espresso with caramel drizzle and guarana syrup", CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true },
-                new MenuItem { Name = "Blue Flame Nitro", Price = 5.25M, Description = "Nitro cold brew with sweet cream and blueberry syrup", CategoryType = CategoryType.SPECIALS },
                 new MenuItem { Name = "GTO Grape Energy Boost", Price = 4.50M, Description = "Grape energy drink with lemon and passion fruit", CategoryType = CategoryType.SPECIALS },
-                new MenuItem { Name = "Black SS Lemonade", Price = 2.50M, Description = "Red raspberry, pomegranate, and bubbly lemonade", CategoryType = CategoryType.SPECIALS, IsFeaturedOnHome = true },
                 new MenuItem { Name = "Red SnotRod Energy Bump", Price = 2.50M, Description = "Cherry, passion fruit, and white peach flavored energy drink", CategoryType = CategoryType.SPECIALS },
                 new MenuItem { Name = "Green Nova Refresher", Price = 3.75M, Description = "Iced sparkling lime drink with cucumber and mint", CategoryType = CategoryType.SPECIALS },
                 new MenuItem { Name = "Pink Slip Punch", Price = 3.50M, Description = "Strawberry, watermelon, and lemon punch", CategoryType = CategoryType.SPECIALS },
