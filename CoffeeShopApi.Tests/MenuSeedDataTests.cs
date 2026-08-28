@@ -4,11 +4,33 @@ using CoffeeShopApi.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
+using System.Text.Json;
 
 namespace CoffeeShopApi.Tests;
 
 public class MenuSeedDataTests
 {
+    private static readonly IReadOnlyDictionary<string, (string Description, decimal Price)> CurrentSignatureDrinks =
+        new Dictionary<string, (string Description, decimal Price)>
+        {
+            ["RUSTEZ"] = ("Toasted hazelnut, white mocha", 4.25m),
+            ["MRS.BROWNIE"] = ("Coconut, caramel, and chocolate drizzle", 4.25m),
+            ["PHILTHY305"] = ("Vanilla, caramel drizzle", 4.25m),
+            ["MIDNIGHT MCQUEEN"] = ("English toffee, red raspberry, white mocha", 4.25m),
+            ["OFF-ROAD"] = ("Chocolate, cinnamon powder", 4.25m),
+            ["RUSTY MATER"] = ("White mocha", 4.25m),
+            ["MR.BROWNIE"] = ("Banana, chocolate drizzle", 4.25m),
+            ["BURNOUT"] = ("Toasted marshmallows, chocolate drizzle, and cinnamon powder", 4.25m),
+            ["BLACK CHEVY SS"] = ("Red raspberry, blue raspberry", 4.25m),
+            ["DIESEL"] = ("Pomegranate, strawberry, vanilla", 4.25m),
+            ["BLUE FLAME NITRO"] = ("Blue raspberry, coconut", 4.25m),
+            ["CLUTCH STOP"] = ("Strawberry, white chocolate", 4.25m),
+            ["SIDEWAYS RX"] = ("Vanilla, mango puree", 4.25m),
+            ["SUKI 2 FAST"] = ("Strawberry puree", 4.25m),
+            ["BLOWN HEAD GASKET"] = ("4 shots espresso; pick your flavor", 5.50m),
+            ["CHECK ENGINE LIGHT"] = ("6 shots espresso; pick your flavor", 7.50m),
+        };
+
     [Fact]
     public void DbInitializer_AddsOneWatermelonShot()
     {
@@ -45,6 +67,40 @@ public class MenuSeedDataTests
     }
 
     [Fact]
+    public void DbInitializer_IncludesCurrentSignatureDrinks()
+    {
+        using var context = CreateContext();
+
+        DbInitializer.Initialize(context);
+
+        AssertCurrentSignatureDrinks(context.MenuItems.ToList());
+    }
+
+    [Fact]
+    public async Task AdminSeed_IncludesCurrentSignatureDrinks()
+    {
+        await using var context = CreateContext();
+
+        await SeedMenuItems.SeedAsync(context);
+
+        AssertCurrentSignatureDrinks(context.MenuItems.ToList());
+    }
+
+    [Theory]
+    [InlineData("roast66/public/data/menu.json")]
+    [InlineData("roast66-menu-2026-08-28.json")]
+    public void JsonMenu_IncludesCurrentSignatureDrinks(string relativePath)
+    {
+        var path = FindRepositoryFile(relativePath.Split('/'));
+        var menuItems = JsonSerializer.Deserialize<List<MenuItem>>(
+            File.ReadAllText(path),
+            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        Assert.NotNull(menuItems);
+        AssertCurrentSignatureDrinks(menuItems);
+    }
+
+    [Fact]
     public void DuplicateCleanupMigration_ReassignsReferencesBeforeDeletingDuplicates()
     {
         var operations = new TestableRemoveDuplicateWatermelonShot().BuildOperations();
@@ -78,6 +134,38 @@ public class MenuSeedDataTests
                 "shot",
                 flavor.Description,
                 StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static void AssertCurrentSignatureDrinks(IEnumerable<MenuItem> menuItems)
+    {
+        var items = menuItems.ToList();
+
+        foreach (var (name, expected) in CurrentSignatureDrinks)
+        {
+            var item = Assert.Single(items, item => item.Name == name);
+            Assert.Equal(expected.Description, item.Description);
+            Assert.Equal(expected.Price, item.Price);
+            Assert.Equal(CategoryType.SPECIALS, item.CategoryType);
+        }
+
+        Assert.DoesNotContain(items, item => item.Name == "Mr. Brownie Shaken Espresso");
+        Assert.DoesNotContain(items, item => item.Name == "Mrs. Brownie Latte");
+        Assert.DoesNotContain(items, item => item.Name == "Blue Flame Nitro");
+        Assert.DoesNotContain(items, item => item.Name == "Black SS Lemonade");
+    }
+
+    private static string FindRepositoryFile(params string[] relativePath)
+    {
+        for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory != null; directory = directory.Parent)
+        {
+            var candidate = Path.Combine([directory.FullName, .. relativePath]);
+            if (File.Exists(candidate))
+            {
+                return candidate;
+            }
+        }
+
+        throw new FileNotFoundException($"Could not find repository file: {Path.Combine(relativePath)}");
     }
 
     private sealed class TestableRemoveDuplicateWatermelonShot : RemoveDuplicateWatermelonShot
