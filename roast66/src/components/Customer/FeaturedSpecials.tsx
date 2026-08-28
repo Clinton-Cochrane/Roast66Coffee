@@ -1,17 +1,43 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import axios from "../../axiosConfig";
+import CategoryType from "../../constants/categories";
 import type { MenuItemDto } from "../../types/api";
 import { useI18n } from "../../i18n/LanguageContext";
 import logo from "../../logo-sign.svg";
 import PromotionPrice from "../common/PromotionPrice";
 
 const MAX_SPECIALS = 3;
+const FALLBACK_SPECIALS: MenuItemDto[] = [
+  {
+    id: -1,
+    name: "Coffee",
+    price: 2,
+    description: "Freshly brewed classic coffee",
+    categoryType: CategoryType.COFFEE,
+    isFeaturedOnHome: true,
+  },
+  {
+    id: -2,
+    name: "Espresso Shot",
+    price: 2.5,
+    description: "Strong and bold espresso shot",
+    categoryType: CategoryType.COFFEE,
+    isFeaturedOnHome: true,
+  },
+  {
+    id: -3,
+    name: "Latte",
+    price: 3.5,
+    description: "Creamy latte with milk foam",
+    categoryType: CategoryType.COFFEE,
+    isFeaturedOnHome: true,
+  },
+];
 
 function FeaturedSpecials() {
   const { t } = useI18n();
-  const [specials, setSpecials] = useState<MenuItemDto[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [specials, setSpecials] = useState<MenuItemDto[]>(FALLBACK_SPECIALS);
 
   useEffect(() => {
     let active = true;
@@ -26,10 +52,7 @@ function FeaturedSpecials() {
         }
       })
       .catch(() => {
-        if (active) setSpecials([]);
-      })
-      .finally(() => {
-        if (active) setIsLoading(false);
+        // Keep the useful fallback visible when live menu data is unavailable.
       });
 
     return () => {
@@ -49,13 +72,7 @@ function FeaturedSpecials() {
           <p>{t("home.specialsTagline")}</p>
         </header>
 
-        {isLoading ? (
-          <div className="r66-specials-grid" aria-label={t("home.specialsLoading")}>
-            {Array.from({ length: MAX_SPECIALS }, (_, index) => (
-              <div className="r66-special-card r66-special-card-loading" key={index} aria-hidden="true" />
-            ))}
-          </div>
-        ) : specials.length > 0 ? (
+        {specials.length > 0 ? (
           <div className="r66-specials-grid">
             {specials.map((special, index) => (
               <article className="r66-special-card" key={special.id}>

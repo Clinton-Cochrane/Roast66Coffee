@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import FeaturedSpecials from "./FeaturedSpecials";
@@ -12,7 +12,26 @@ vi.mock("../../axiosConfig", () => ({
 }));
 
 describe("FeaturedSpecials", () => {
-  beforeEach(() => mockGet.mockReset());
+  beforeEach(() => {
+    mockGet.mockReset();
+  });
+
+  it("shows useful fallback specials while the menu request is pending", async () => {
+    mockGet.mockResolvedValue({ data: [] });
+
+    render(
+      <LanguageProvider>
+        <MemoryRouter>
+          <FeaturedSpecials />
+        </MemoryRouter>
+      </LanguageProvider>
+    );
+
+    expect(screen.getByText("Coffee")).toBeInTheDocument();
+    expect(screen.getByText("Espresso Shot")).toBeInTheDocument();
+    expect(screen.getByText("Latte")).toBeInTheDocument();
+    expect(await screen.findByText(/specials are being prepared/i)).toBeInTheDocument();
+  });
 
   it("shows the first three items from the existing specials category", async () => {
     mockGet.mockResolvedValue({
@@ -36,8 +55,37 @@ describe("FeaturedSpecials", () => {
     expect(await screen.findByText("Mrs. Brownie Latte")).toBeInTheDocument();
     expect(screen.getByText("Shitbox LUV Fuel")).toBeInTheDocument();
     expect(screen.getByText("Black SS Lemonade")).toBeInTheDocument();
+    expect(screen.queryByText("Coffee")).not.toBeInTheDocument();
+    expect(screen.queryByText("Espresso Shot")).not.toBeInTheDocument();
+    expect(screen.queryByText("Latte")).not.toBeInTheDocument();
     expect(screen.queryByText("Regular coffee")).not.toBeInTheDocument();
     expect(screen.queryByText("Fourth special")).not.toBeInTheDocument();
     expect(mockGet).toHaveBeenCalledWith("/menu");
+  });
+
+  it("keeps the fallback specials when the menu request fails", async () => {
+    let rejectRequest: (reason?: unknown) => void = () => {};
+    mockGet.mockImplementation(
+      () =>
+        new Promise((_, reject) => {
+          rejectRequest = reject;
+        })
+    );
+
+    render(
+      <LanguageProvider>
+        <MemoryRouter>
+          <FeaturedSpecials />
+        </MemoryRouter>
+      </LanguageProvider>
+    );
+
+    await act(async () => {
+      rejectRequest(new Error("Menu unavailable"));
+    });
+
+    expect(screen.getByText("Coffee")).toBeInTheDocument();
+    expect(screen.getByText("Espresso Shot")).toBeInTheDocument();
+    expect(screen.getByText("Latte")).toBeInTheDocument();
   });
 });
