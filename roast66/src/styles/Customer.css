@@ -54,12 +54,16 @@
   font-weight: 900;
   letter-spacing: 0.015em;
   line-height: 0.88;
-  overflow-wrap: anywhere;
+  overflow-wrap: normal;
   text-transform: uppercase;
 }
 
 .r66-hero-title span { display: block; }
-.r66-hero-title-accent { color: #a94727; }
+.r66-hero-title-accent {
+  color: #a94727;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
 
 .r66-hero-rule {
   width: min(100%, 32rem);
