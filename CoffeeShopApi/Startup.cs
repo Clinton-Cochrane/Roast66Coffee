@@ -14,6 +14,7 @@ using System.Threading.RateLimiting;
 using Serilog;
 using System.Security.Claims;
 using CoffeeShopApi.Services.Payments;
+using CoffeeShopApi.Services.Sms;
 
 namespace CoffeeShopApi
 {
@@ -47,7 +48,7 @@ namespace CoffeeShopApi
             services.AddScoped<OrderService>();
             services.AddScoped<NotificationService>();
             services.AddScoped<NotificationSettingsService>();
-            services.AddScoped<TwilioService>();
+            services.AddScoped<ISmsSender, DisabledSmsSender>();
             services.AddScoped<OrderEmailNotificationService>();
             services.AddScoped<NotificationRetentionService>();
             services.AddScoped<StaffPushNotificationService>();

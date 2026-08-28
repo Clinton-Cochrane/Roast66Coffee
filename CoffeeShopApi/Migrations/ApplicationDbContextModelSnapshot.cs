@@ -152,6 +152,11 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("providermessageid");
 
+                    b.Property<string>("Provider")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("provider");
+
                     b.Property<string>("RecipientEmail")
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)")
@@ -235,10 +240,10 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("trailerphonenumber");
 
-                    b.Property<string>("TwilioFromPhoneNumber")
+                    b.Property<string>("SmsFromAddress")
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)")
-                        .HasColumnName("twiliofromphonenumber");
+                        .HasColumnName("smsfromaddress");
 
                     b.HasKey("Id");
 

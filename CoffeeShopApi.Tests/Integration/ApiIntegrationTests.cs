@@ -229,7 +229,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task NotificationSettings_SaveAndGet_PersistsTwilioFromPhoneNumber()
+    public async Task NotificationSettings_SaveAndGet_PersistsSmsFromAddress()
     {
         var token = await GetAdminToken();
         _client.DefaultRequestHeaders.Authorization =
@@ -240,7 +240,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
             adminPhoneNumber = "+15551230001",
             baristaPhoneNumber = "+15551230002",
             trailerPhoneNumber = "+15551230003",
-            twilioFromPhoneNumber = "+15551239999"
+            smsFromAddress = "+15551239999"
         };
 
         var saveResponse = await _client.PutAsJsonAsync("/api/admin/notificationSettings", settingsPayload, JsonOptions);
@@ -251,7 +251,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         var saved = await getResponse.Content.ReadFromJsonAsync<NotificationSettingsResponse>(JsonOptions);
         Assert.NotNull(saved);
         Assert.Equal(settingsPayload.adminPhoneNumber, saved!.AdminPhoneNumber);
-        Assert.Equal(settingsPayload.twilioFromPhoneNumber, saved.TwilioFromPhoneNumber);
+        Assert.Equal(settingsPayload.smsFromAddress, saved.SmsFromAddress);
     }
 
     [Fact]
@@ -509,7 +509,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     private class NotificationSettingsResponse
     {
         public string? AdminPhoneNumber { get; set; }
-        public string? TwilioFromPhoneNumber { get; set; }
+        public string? SmsFromAddress { get; set; }
     }
 
     private class CredentialSettingsResponse
