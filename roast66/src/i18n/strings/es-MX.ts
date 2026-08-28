@@ -28,7 +28,6 @@ export const esMx: Messages = {
     openMenu: "Abrir menú de navegación",
     closeMenu: "Cerrar menú de navegación",
     home: "Inicio",
-    shop: "Tienda",
     contactAbout: "Contacto / Nosotros",
     menu: "Menú",
     order: "Ordenar",

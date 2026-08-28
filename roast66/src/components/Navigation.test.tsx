@@ -54,7 +54,7 @@ describe("Navigation", () => {
     expect(screen.getByRole("link", { name: /ordenar ahora/i })).toBeInTheDocument();
   });
 
-  it.each(["Menu", "Merch"])("closes the Shop dropdown after selecting %s", (linkName) => {
+  it("shows Menu and Merch as direct navigation links without a Shop dropdown", () => {
     render(
       <LanguageProvider>
         <MemoryRouter>
@@ -63,14 +63,12 @@ describe("Navigation", () => {
       </LanguageProvider>
     );
 
-    const shopMenu = screen.getByText("Shop").closest("details");
-    expect(shopMenu).not.toBeNull();
-
-    fireEvent.click(screen.getByText("Shop"));
-    expect(shopMenu).toHaveAttribute("open");
-
-    fireEvent.click(screen.getByRole("link", { name: linkName }));
-    expect(shopMenu).not.toHaveAttribute("open");
+    expect(screen.queryByText("Shop")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Menu" })).toHaveAttribute("href", "/menu");
+    expect(screen.getByRole("link", { name: "Merch" })).toHaveAttribute(
+      "href",
+      "https://roast-66-coffee.printify.me/products"
+    );
   });
 
   it("shows a link to order-status when lookup session exists", async () => {

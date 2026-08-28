@@ -28,7 +28,6 @@ export const en = {
     openMenu: "Open navigation menu",
     closeMenu: "Close navigation menu",
     home: "Home",
-    shop: "Shop",
     contactAbout: "Contact / About",
     menu: "Menu",
     order: "Order",
