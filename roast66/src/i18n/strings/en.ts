@@ -40,7 +40,6 @@ export const en = {
   },
   footer: {
     rightsReserved: "All rights reserved.",
-    motto: "Local roots. Open roads.",
     navigationLabel: "Footer navigation",
     instagramTitle: "Follow us on Instagram",
     instagram: "Instagram",

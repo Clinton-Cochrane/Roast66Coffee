@@ -19,8 +19,6 @@ const Footer = ({ year = new Date().getFullYear() }: FooterProps) => {
             <img src={logo} alt="" aria-hidden="true" />
             <span>{t("nav.brandName")}</span>
           </Link>
-          <span className="r66-footer-divider" aria-hidden="true">•</span>
-          <p className="r66-footer-motto">{t("footer.motto")}</p>
         </div>
 
         <nav className="r66-footer-links" aria-label={t("footer.navigationLabel")}>
