@@ -48,6 +48,7 @@ TODO.md
 roast66/node_modules/.bin/acorn
 roast66/PRODUCTION_READINESS.md
 features.md
+/bugs and feature plans/
 
 # Ignore markdown files except README
 *.md
