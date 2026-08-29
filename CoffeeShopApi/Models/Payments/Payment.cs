@@ -73,6 +73,10 @@ public class Payment
     [Column("orderid")]
     public int? OrderId { get; set; }
 
+    [ConcurrencyCheck]
+    [Column("concurrencytoken")]
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
+
     public Order? Order { get; set; }
 }
 

@@ -29,13 +29,10 @@ public class PaymentsController : ControllerBase
     {
         if (request.ExistingOrderId is null or <= 0)
         {
-            if (request.OrderItems == null || request.OrderItems.Count == 0)
+            return BadRequest(new
             {
-                return BadRequest(new
-                {
-                    message = "Order items are required unless you are prepaying an existing order."
-                });
-            }
+                message = "Create the order before starting online payment."
+            });
         }
 
         if (!_paymentService.IsConfigured())

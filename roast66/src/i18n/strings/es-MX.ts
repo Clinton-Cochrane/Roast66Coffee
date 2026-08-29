@@ -202,7 +202,6 @@ export const esMx: Messages = {
     itemRemoved: "{{itemName}} fue eliminado del pedido.",
     orderRequiredError: "Agrega al menos un artículo a tu pedido.",
     checkoutMissingUrl: "Falta URL de pago",
-    checkoutFailed: "No se pudo iniciar el pago. Intenta de nuevo.",
     submitFailed:
       "No se pudo enviar el pedido. Intenta de nuevo o revisa la consola.",
     pageSubtitle:
@@ -225,7 +224,7 @@ export const esMx: Messages = {
     restoreNotFound:
       "No pudimos recargar tu pedido. Verifica el código y toca Ver estado.",
     lookupFailed: "No se pudo consultar el pedido.",
-    paymentReceived: "Pago recibido. Gracias.",
+    paymentSubmitted: "Pago enviado. Lo estamos confirmando.",
     paymentCancelled: "El pago fue cancelado.",
     paidOnline: "Pagado en línea — gracias.",
     statusHeader: "Estado",
@@ -267,6 +266,9 @@ export const esMx: Messages = {
     addOnListSeparator: ", ",
     notesSuffix: " ({{notes}})",
     total: "Total",
+    paymentOptional:
+      "Tu pedido está confirmado. Paga ahora con tarjeta o cartera digital, o elige otro método al recoger.",
+    viewPaymentOptions: "Ver opciones de pago",
     emailUpdates: "Enviaremos actualizaciones del pedido a",
     emailOptional:
       "Las actualizaciones por correo son opcionales. Descarga el resumen de tu pedido para tus registros.",
@@ -345,6 +347,7 @@ export const esMx: Messages = {
     advanceMarkComplete: "Marcar completado",
     advanceStatus: "Avanzar estado",
     completedNoAction: "Completado — sin acción adicional",
+    paidWithProvider: "Pagado · {{provider}}",
     refreshNotifications: "Actualizar notificaciones",
     loading: "Cargando...",
     customerLabel: "Cliente:",

@@ -198,7 +198,6 @@ export const en = {
     itemRemoved: "{{itemName}} removed from order.",
     orderRequiredError: "Please add at least one item to your order.",
     checkoutMissingUrl: "Missing checkout URL",
-    checkoutFailed: "Unable to start payment. Please try again.",
     submitFailed:
       "Failed to place the order. Please try again or check the console for details.",
     pageSubtitle: "Build your homemade drink for the road in just a few taps.",
@@ -220,7 +219,7 @@ export const en = {
     restoreNotFound:
       "We could not reload your order. Check the tracking code, then tap Check Status.",
     lookupFailed: "Failed to look up order.",
-    paymentReceived: "Payment received. Thank you!",
+    paymentSubmitted: "Payment submitted. We are confirming it now.",
     paymentCancelled: "Payment was cancelled.",
     paidOnline: "Paid online - thank you!",
     statusHeader: "Status",
@@ -260,6 +259,9 @@ export const en = {
     addOnListSeparator: ", ",
     notesSuffix: " ({{notes}})",
     total: "Total",
+    paymentOptional:
+      "Your order is confirmed. Pay by card or wallet now, or choose another payment method at pickup.",
+    viewPaymentOptions: "View payment options",
     emailUpdates: "We will send order status updates to",
     emailOptional: "Email updates are optional. Download your order summary for your records.",
     downloadSummary: "Download Order Summary",
@@ -332,6 +334,7 @@ export const en = {
     advanceMarkComplete: "Mark complete",
     advanceStatus: "Advance status",
     completedNoAction: "Completed — no further action",
+    paidWithProvider: "Paid · {{provider}}",
     refreshNotifications: "Refresh notifications",
     loading: "Loading...",
     customerLabel: "Customer:",

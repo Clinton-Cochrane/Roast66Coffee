@@ -33,7 +33,7 @@ services:
       - key: Jwt__TokenExpiryInHours
         value: "8"
       - key: AllowedOrigins
-        value: "https://roast66-web.onrender.com"
+        value: "https://roast66coffee-frontend.onrender.com"
         sync: false
       - key: Order__DuplicateDetectionWindowMinutes
         value: "2"
@@ -50,7 +50,7 @@ services:
       - key: Payments__DefaultProvider
         value: "stripe"
       - key: Payments__FrontendBaseUrl
-        value: "https://roast66-web.onrender.com"
+        value: "https://roast66coffee-frontend.onrender.com"
       - key: Stripe__SecretKey
         sync: false
       - key: Stripe__WebhookSecret

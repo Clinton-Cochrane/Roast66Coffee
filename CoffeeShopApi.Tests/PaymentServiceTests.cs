@@ -33,7 +33,24 @@ public class PaymentServiceTests
     }
 
     [Fact]
-    public async Task CheckoutAndPaidWebhook_AreProviderNeutralAndIdempotent()
+    public void PaymentConcurrencyMigration_AddsTokenWithoutRewritingPaymentData()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql("Host=localhost;Database=migration-script-only;Username=test;Password=test")
+            .Options;
+        using var context = new ApplicationDbContext(options);
+        var migrator = context.GetService<IMigrator>();
+
+        var script = migrator.GenerateScript(
+            "20260827010000_GeneralizeSmsProvider",
+            "20260828000000_AddPaymentConcurrencyToken");
+
+        Assert.Contains("ADD concurrencytoken uuid NOT NULL", script);
+        Assert.DoesNotContain("DROP TABLE payments", script);
+    }
+
+    [Fact]
+    public async Task ExistingOrderCheckoutAndPaidWebhook_AreProviderNeutralAndIdempotent()
     {
         var gateway = new FakePaymentGateway();
         await using var services = BuildServices(gateway);
@@ -47,22 +64,31 @@ public class PaymentServiceTests
             Price = 4.50m,
             CategoryType = CategoryType.COFFEE
         });
+        var order = new Order
+        {
+            CustomerName = "Gateway Customer",
+            CustomerPhone = "5551234567",
+            TrackingToken = "test-tracking-token-12345678901234567890123",
+            OrderItems =
+            [
+                new OrderItem
+                {
+                    MenuItemId = 42,
+                    Quantity = 2,
+                    UnitPrice = 4.50m
+                }
+            ]
+        };
+        context.Orders.Add(order);
         await context.SaveChangesAsync();
 
         var paymentService = scope.ServiceProvider.GetRequiredService<PaymentService>();
         var checkout = await paymentService.CreateCheckoutAsync(
             new CheckoutSessionRequest
             {
+                ExistingOrderId = order.Id,
                 CustomerName = "Gateway Customer",
-                CustomerPhone = "5551234567",
-                OrderItems =
-                [
-                    new CheckoutOrderItemRequest
-                    {
-                        MenuItemId = 42,
-                        Quantity = 2
-                    }
-                ]
+                CustomerPhone = "5551234567"
             },
             "provider-neutral-key");
 
@@ -93,14 +119,54 @@ public class PaymentServiceTests
             "{}",
             new Dictionary<string, string>());
 
-        var order = await context.Orders.SingleAsync();
+        var savedOrder = await context.Orders.SingleAsync();
         await context.Entry(payment).ReloadAsync();
-        Assert.NotNull(order.PaidUtc);
-        Assert.Equal(FakePaymentGateway.Name, order.PaymentProvider);
-        Assert.Equal("fake-payment-123", order.PaymentReference);
-        Assert.Equal(order.Id, payment.OrderId);
+        Assert.NotNull(savedOrder.PaidUtc);
+        Assert.Equal(FakePaymentGateway.Name, savedOrder.PaymentProvider);
+        Assert.Equal("fake-payment-123", savedOrder.PaymentReference);
+        Assert.Equal(savedOrder.Id, payment.OrderId);
         Assert.Equal(PaymentStatuses.Paid, payment.Status);
         Assert.Equal("wallet", payment.Method);
+    }
+
+    [Fact]
+    public async Task PaymentConcurrencyToken_RejectsStaleWebhookUpdate()
+    {
+        var gateway = new FakePaymentGateway();
+        await using var services = BuildServices(gateway);
+
+        await using (var setupScope = services.CreateAsyncScope())
+        {
+            var setupContext = setupScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            setupContext.Payments.Add(new Payment
+            {
+                Provider = FakePaymentGateway.Name,
+                Status = PaymentStatuses.Pending,
+                Amount = 4.50m,
+                ProviderCheckoutId = "concurrent-checkout",
+                IdempotencyKey = "concurrent-key",
+                CustomerName = "Concurrent Customer",
+                CustomerPhone = string.Empty,
+                PayloadJson = "{}"
+            });
+            await setupContext.SaveChangesAsync();
+        }
+
+        await using var firstScope = services.CreateAsyncScope();
+        await using var secondScope = services.CreateAsyncScope();
+        var firstContext = firstScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var secondContext = secondScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var firstPayment = await firstContext.Payments.SingleAsync();
+        var secondPayment = await secondContext.Payments.SingleAsync();
+
+        firstPayment.Status = PaymentStatuses.Paid;
+        firstPayment.ConcurrencyToken = Guid.NewGuid();
+        secondPayment.Status = PaymentStatuses.Failed;
+        secondPayment.ConcurrencyToken = Guid.NewGuid();
+
+        await firstContext.SaveChangesAsync();
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => secondContext.SaveChangesAsync());
     }
 
     private static ServiceProvider BuildServices(IPaymentGateway gateway)
@@ -117,8 +183,9 @@ public class PaymentServiceTests
         services.AddSingleton<IConfiguration>(configuration);
         services.AddLogging();
         services.AddHttpClient();
+        var databaseName = $"payment-tests-{Guid.NewGuid():N}";
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseInMemoryDatabase($"payment-tests-{Guid.NewGuid():N}"));
+            options.UseInMemoryDatabase(databaseName));
         services.AddScoped<OrderService>();
         services.AddScoped<NotificationSettingsService>();
         services.AddScoped<ISmsSender, DisabledSmsSender>();

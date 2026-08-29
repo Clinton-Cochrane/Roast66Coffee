@@ -27,6 +27,11 @@ function orderDateMs(order: OrderDto): number {
   return Number.isFinite(t) ? t : 0;
 }
 
+function paymentProviderLabel(order: OrderDto): string {
+  const provider = (order.paymentProvider ?? order.PaymentProvider ?? "online").trim();
+  return provider.charAt(0).toUpperCase() + provider.slice(1);
+}
+
 function ViewOrders() {
   const { t } = useI18n();
   const [orders, setOrders] = useState<OrderDto[]>([]);
@@ -215,6 +220,7 @@ function ViewOrders() {
             const notifications = orderNotifications[id] ?? [];
             const loadingNotifications = Boolean(loadingNotificationsByOrderId[id]);
             const lineItems: OrderLineItemDto[] = order.orderItems || order.OrderItems || [];
+            const isPaid = Boolean(order.paidUtc ?? order.PaidUtc);
 
             return (
               <Card
@@ -230,6 +236,13 @@ function ViewOrders() {
                   >
                     {getStatusLabel(status)}
                   </span>
+                  {isPaid ? (
+                    <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800 text-sm font-semibold">
+                      {t("adminOrders.paidWithProvider", {
+                        provider: paymentProviderLabel(order),
+                      })}
+                    </span>
+                  ) : null}
                   {isComplete ? (
                     <span className="text-sm font-medium text-green-800">
                       {t("adminOrders.completedNoAction")}

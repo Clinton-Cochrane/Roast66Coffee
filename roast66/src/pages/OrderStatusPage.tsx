@@ -58,7 +58,7 @@ function OrderStatusPage() {
     }
 
     if (checkout === "success") {
-      toast.success(t("orderStatus.paymentReceived"));
+      toast.success(t("orderStatus.paymentSubmitted"));
     } else {
       toast.info(t("orderStatus.paymentCancelled"));
     }
@@ -161,7 +161,6 @@ function OrderStatusPage() {
           existingOrderId: order.id,
           customerName: order.customerName,
           customerPhone: order.customerPhone ?? "",
-          orderItems: [],
         },
         { headers: { "X-Idempotency-Key": idempotencyKey } }
       );
