@@ -128,4 +128,16 @@ describe("ViewOrders", () => {
 
     expect(await screen.findByText("Paid · Stripe")).toBeInTheDocument();
   });
+
+  it("does not expose a manual order deletion control", async () => {
+    render(
+      <LanguageProvider>
+        <ViewOrders />
+      </LanguageProvider>
+    );
+
+    await screen.findByRole("heading", { name: "Order #66" });
+
+    expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
+  });
 });
