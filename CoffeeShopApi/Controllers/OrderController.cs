@@ -13,11 +13,16 @@ public class OrderController : ControllerBase
 {
     private readonly OrderService _orderService;
     private readonly NotificationService _notificationService;
+    private readonly IStaffPushNotificationQueue _staffPushQueue;
 
-    public OrderController(OrderService orderService, NotificationService notificationService)
+    public OrderController(
+        OrderService orderService,
+        NotificationService notificationService,
+        IStaffPushNotificationQueue staffPushQueue)
     {
         _orderService = orderService;
         _notificationService = notificationService;
+        _staffPushQueue = staffPushQueue;
     }
 
     [Authorize(Roles = "Admin")]
@@ -80,7 +85,7 @@ public class OrderController : ControllerBase
         }
 
         var createdOrder = await _orderService.CreateOrderAsync(order);
-        await _notificationService.SendOrderNotificationAsync(createdOrder, cancellationToken);
+        _staffPushQueue.TryEnqueue(createdOrder.Id);
         return CreatedAtAction(
             nameof(TrackOrder),
             new { trackingToken = createdOrder.TrackingToken },

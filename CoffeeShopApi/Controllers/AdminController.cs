@@ -28,6 +28,7 @@ namespace CoffeeShopApi.Controllers
         private readonly NotificationSettingsService _notificationSettingsService;
         private readonly SupportEmailService _supportEmailService;
         private readonly NotificationRetentionService _notificationRetentionService;
+        private readonly IStaffPushNotificationQueue _staffPushQueue;
 
 
         public AdminController(
@@ -38,7 +39,8 @@ namespace CoffeeShopApi.Controllers
             IConfiguration configuration,
             NotificationSettingsService notificationSettingsService,
             SupportEmailService supportEmailService,
-            NotificationRetentionService notificationRetentionService)
+            NotificationRetentionService notificationRetentionService,
+            IStaffPushNotificationQueue staffPushQueue)
         {
             _context = context;
             _orderService = orderService;
@@ -48,6 +50,7 @@ namespace CoffeeShopApi.Controllers
             _notificationSettingsService = notificationSettingsService;
             _supportEmailService = supportEmailService;
             _notificationRetentionService = notificationRetentionService;
+            _staffPushQueue = staffPushQueue;
         }
 
         [HttpPost("login")]
@@ -278,7 +281,7 @@ namespace CoffeeShopApi.Controllers
                 });
             }
             var newOrder = await _orderService.CreateOrderAsync(order);
-            await _notificationService.SendOrderNotificationAsync(newOrder, cancellationToken);
+            _staffPushQueue.TryEnqueue(newOrder.Id);
             return CreatedAtAction(
                 nameof(GetOrders),
                 new { id = newOrder.Id },

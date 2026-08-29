@@ -1,6 +1,7 @@
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using WebPush;
 
 namespace CoffeeShopApi.Services;
@@ -9,15 +10,21 @@ public class StaffPushNotificationService
 {
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;
+    private readonly IStaffPushSender _sender;
+    private readonly StaffPushOptions _options;
     private readonly ILogger<StaffPushNotificationService> _logger;
 
     public StaffPushNotificationService(
         ApplicationDbContext context,
         IConfiguration configuration,
+        IStaffPushSender sender,
+        IOptions<StaffPushOptions> options,
         ILogger<StaffPushNotificationService> logger)
     {
         _context = context;
         _configuration = configuration;
+        _sender = sender;
+        _options = options.Value;
         _logger = logger;
     }
 
@@ -77,7 +84,7 @@ public class StaffPushNotificationService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task SendNewOrderAlertAsync(Order order, CancellationToken cancellationToken = default)
+    public async Task SendNewOrderAlertAsync(int orderId, CancellationToken cancellationToken = default)
     {
         if (!IsConfigured())
         {
@@ -95,49 +102,74 @@ public class StaffPushNotificationService
         var payload = System.Text.Json.JsonSerializer.Serialize(new
         {
             title = "New Roast66 order",
-            body = $"Order #{order.Id} from {order.CustomerName}",
-            tag = "new-order",
-            orderId = order.Id,
+            body = $"Order #{orderId} is ready to review",
+            tag = $"new-order-{orderId}",
+            orderId,
             url = "/admin"
         });
 
-        var vapidDetails = new VapidDetails(
-            _configuration["Push:Subject"]!,
-            _configuration["Push:VapidPublicKey"]!,
-            _configuration["Push:VapidPrivateKey"]!);
-        var client = new WebPushClient();
-        var deadEndpoints = new List<string>();
+        var deadSubscriptionIds = new List<Guid>();
+        var failedSubscriptionCount = 0;
 
         foreach (var sub in subscriptions)
         {
-            try
+            var delivered = false;
+            for (var attempt = 1; attempt <= _options.MaxAttempts; attempt++)
             {
-                var webPushSubscription = new PushSubscription(sub.Endpoint, sub.P256Dh, sub.Auth);
-                await client.SendNotificationAsync(webPushSubscription, payload, vapidDetails, cancellationToken: cancellationToken);
-            }
-            catch (WebPushException ex)
-            {
-                // 404/410 means the browser subscription is gone and safe to cleanup.
-                if (ex.StatusCode == System.Net.HttpStatusCode.NotFound ||
+                using var requestTimeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                requestTimeout.CancelAfter(_options.RequestTimeout);
+
+                try
+                {
+                    await _sender.SendAsync(sub, payload, requestTimeout.Token);
+                    delivered = true;
+                    if (attempt > 1)
+                    {
+                        _logger.LogInformation(
+                            "Staff push recovered for order {OrderId}, subscription {SubscriptionId}, on attempt {Attempt}.",
+                            orderId,
+                            sub.Id,
+                            attempt);
+                    }
+                    break;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (WebPushException ex) when (
+                    ex.StatusCode == System.Net.HttpStatusCode.NotFound ||
                     ex.StatusCode == System.Net.HttpStatusCode.Gone)
                 {
-                    deadEndpoints.Add(sub.Endpoint);
+                    deadSubscriptionIds.Add(sub.Id);
+                    delivered = true;
+                    break;
                 }
-                else
+                catch (OperationCanceledException)
                 {
-                    _logger.LogWarning(ex, "Push send failed for endpoint {Endpoint}", sub.Endpoint);
+                    LogAttemptFailure(orderId, sub.Id, attempt, "timeout");
+                }
+                catch (Exception ex)
+                {
+                    LogAttemptFailure(orderId, sub.Id, attempt, ex.GetType().Name);
+                }
+
+                if (attempt < _options.MaxAttempts)
+                {
+                    await Task.Delay(_options.RetryDelay, cancellationToken);
                 }
             }
-            catch (Exception ex)
+
+            if (!delivered)
             {
-                _logger.LogWarning(ex, "Unexpected push send failure for endpoint {Endpoint}", sub.Endpoint);
+                failedSubscriptionCount++;
             }
         }
 
-        if (deadEndpoints.Count > 0)
+        if (deadSubscriptionIds.Count > 0)
         {
             var stale = await _context.StaffPushSubscriptions
-                .Where(x => deadEndpoints.Contains(x.Endpoint))
+                .Where(x => deadSubscriptionIds.Contains(x.Id))
                 .ToListAsync(cancellationToken);
             if (stale.Count > 0)
             {
@@ -145,5 +177,25 @@ public class StaffPushNotificationService
                 await _context.SaveChangesAsync(cancellationToken);
             }
         }
+
+        if (failedSubscriptionCount > 0)
+        {
+            _logger.LogWarning(
+                "Staff push delivery failed for {FailedSubscriptionCount} of {SubscriptionCount} subscriptions for order {OrderId}.",
+                failedSubscriptionCount,
+                subscriptions.Count,
+                orderId);
+        }
+    }
+
+    private void LogAttemptFailure(int orderId, Guid subscriptionId, int attempt, string failureType)
+    {
+        _logger.LogWarning(
+            "Staff push attempt {Attempt} of {MaxAttempts} failed for order {OrderId}, subscription {SubscriptionId}. Failure type: {FailureType}.",
+            attempt,
+            _options.MaxAttempts,
+            orderId,
+            subscriptionId,
+            failureType);
     }
 }

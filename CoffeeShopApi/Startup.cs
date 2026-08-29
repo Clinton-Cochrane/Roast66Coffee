@@ -52,6 +52,33 @@ namespace CoffeeShopApi
             services.AddScoped<OrderEmailNotificationService>();
             services.AddScoped<NotificationRetentionService>();
             services.AddScoped<StaffPushNotificationService>();
+            services.AddOptions<StaffPushOptions>()
+                .Bind(Configuration.GetSection(StaffPushOptions.SectionName))
+                .ValidateDataAnnotations()
+                .Validate(
+                    options => options.DeduplicationCapacity >= options.QueueCapacity,
+                    "Push:DeduplicationCapacity must be at least Push:QueueCapacity.")
+                .Validate(
+                    options => options.DeduplicationWindow > TimeSpan.Zero,
+                    "Push:DeduplicationWindow must be positive.")
+                .Validate(
+                    options => options.RequestTimeout > TimeSpan.Zero &&
+                               options.RequestTimeout <= TimeSpan.FromSeconds(30),
+                    "Push:RequestTimeout must be between zero and 30 seconds.")
+                .Validate(
+                    options => options.RetryDelay >= TimeSpan.Zero &&
+                               options.RetryDelay <= TimeSpan.FromSeconds(5),
+                    "Push:RetryDelay must be between zero and 5 seconds.")
+                .ValidateOnStart();
+            services.AddSingleton<StaffPushNotificationQueue>();
+            services.AddSingleton<IStaffPushNotificationQueue>(provider =>
+                provider.GetRequiredService<StaffPushNotificationQueue>());
+            services.AddHostedService<StaffPushNotificationWorker>();
+            services.AddHttpClient<IStaffPushSender, WebPushStaffPushSender>((provider, client) =>
+            {
+                var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<StaffPushOptions>>().Value;
+                client.Timeout = options.RequestTimeout;
+            });
             services.AddScoped<PaymentService>();
             services.AddScoped<IPaymentGateway, StripePaymentGateway>();
             services.AddScoped<SupportEmailService>();
