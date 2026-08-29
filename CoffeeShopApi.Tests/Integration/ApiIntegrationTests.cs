@@ -82,11 +82,13 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task PostOrder_CreatesNotificationLogEntries()
+    public async Task PostOrder_DoesNotCreateCustomerEmailOrSmsNotifications()
     {
         var order = CreateValidOrder(
             $"Notify-{Guid.NewGuid():N}",
             $"555{Random.Shared.Next(1000000, 9999999)}");
+        order.CustomerEmail = "customer@example.com";
+        order.CustomerNotificationOptIn = true;
         var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
         post.EnsureSuccessStatusCode();
         var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
@@ -104,8 +106,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         var notifications = await notificationsResponse.Content.ReadFromJsonAsync<List<NotificationLogResponse>>(JsonOptions);
 
         Assert.NotNull(notifications);
-        Assert.NotEmpty(notifications!);
-        Assert.Contains(notifications!, n => n.EventType == "order.created");
+        Assert.Empty(notifications!);
     }
 
     [Fact]
@@ -339,18 +340,28 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         order.CustomerNotificationOptIn = true;
         var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
         post.EnsureSuccessStatusCode();
+        var created = await post.Content.ReadFromJsonAsync<PublicOrderDto>(JsonOptions);
+        Assert.NotNull(created);
+
+        var emailNotificationId = Guid.NewGuid();
 
         using (var scope = _factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            var emailRows = await db.NotificationMessages
-                .Where(n => n.Channel == "email")
-                .ToListAsync();
-            Assert.NotEmpty(emailRows);
-            foreach (var row in emailRows)
+            db.NotificationMessages.Add(new NotificationMessage
             {
-                row.CreatedUtc = DateTime.UtcNow.AddDays(-40);
-            }
+                Id = emailNotificationId,
+                EventType = "retention.test",
+                RecipientRole = "customer",
+                RecipientEmail = "customer@example.com",
+                Channel = "email",
+                TemplateKey = "retention_test",
+                OrderId = created!.Id,
+                DedupKey = $"retention-{emailNotificationId:N}",
+                Status = "sent",
+                CreatedUtc = DateTime.UtcNow.AddDays(-40),
+                UpdatedUtc = DateTime.UtcNow.AddDays(-40)
+            });
             await db.SaveChangesAsync();
         }
 
@@ -361,6 +372,10 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
 
         var response = await _client.SendAsync(request);
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        using var verificationScope = _factory.Services.CreateScope();
+        var verificationDb = verificationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        Assert.Null(await verificationDb.NotificationMessages.FindAsync(emailNotificationId));
     }
 
     [Fact]

@@ -10,7 +10,6 @@ namespace CoffeeShopApi.Services;
 
 public class NotificationService
 {
-    private const string EventOrderCreated = "order.created";
     private const string EventOrderReady = "order.ready_for_pickup";
 
     private readonly IConfiguration _configuration;
@@ -18,83 +17,19 @@ public class NotificationService
     private readonly NotificationSettingsService _settingsService;
     private readonly ISmsSender _smsSender;
     private readonly OrderEmailNotificationService _orderEmailNotificationService;
-    private readonly StaffPushNotificationService _staffPushNotificationService;
 
     public NotificationService(
         IConfiguration configuration,
         ApplicationDbContext context,
         NotificationSettingsService settingsService,
         ISmsSender smsSender,
-        OrderEmailNotificationService orderEmailNotificationService,
-        StaffPushNotificationService staffPushNotificationService)
+        OrderEmailNotificationService orderEmailNotificationService)
     {
         _configuration = configuration;
         _context = context;
         _settingsService = settingsService;
         _smsSender = smsSender;
         _orderEmailNotificationService = orderEmailNotificationService;
-        _staffPushNotificationService = staffPushNotificationService;
-    }
-
-    public async Task SendOrderNotificationAsync(Order order, CancellationToken cancellationToken = default)
-    {
-        var itemCount = order.OrderItems?.Sum(oi => oi.Quantity) ?? 0;
-        var staffBody = $"Roast 66: New order #{order.Id} from {order.CustomerName} ({order.CustomerPhone}), {itemCount} item(s).";
-        var customerBody = $"Roast 66: We received your order #{order.Id}. Track status at /order-status?token={order.TrackingToken}.";
-        var settings = await _settingsService.GetNotificationSettingsAsync(cancellationToken);
-        var smsFromAddress = NormalizeSenderAddress(settings?.SmsFromAddress);
-
-        var recipients = await GetStaffRecipientsAsync(cancellationToken);
-        foreach (var recipient in recipients)
-        {
-            await SendWithLoggingAsync(
-                channel: "sms",
-                eventType: EventOrderCreated,
-                recipientRole: recipient.Role,
-                recipientPhone: recipient.Phone,
-                recipientEmail: null,
-                templateKey: "staff_new_order",
-                body: staffBody,
-                orderId: order.Id,
-                payload: new { orderId = order.Id, order.CustomerName, order.CustomerPhone, itemCount },
-                smsFromAddress: smsFromAddress,
-                cancellationToken: cancellationToken);
-        }
-
-        var customerPhone = NormalizePhone(order.CustomerPhone ?? string.Empty);
-        if (!string.IsNullOrWhiteSpace(customerPhone))
-        {
-            await SendWithLoggingAsync(
-                channel: "sms",
-                eventType: EventOrderCreated,
-                recipientRole: "customer",
-                recipientPhone: customerPhone,
-                recipientEmail: null,
-                templateKey: "customer_order_received",
-                body: customerBody,
-                orderId: order.Id,
-                payload: new { orderId = order.Id, order.CustomerName, order.CustomerPhone, itemCount },
-                smsFromAddress: smsFromAddress,
-                cancellationToken: cancellationToken);
-        }
-
-        if (order.CustomerNotificationOptIn && !string.IsNullOrWhiteSpace(order.CustomerEmail))
-        {
-            await SendWithLoggingAsync(
-                channel: "email",
-                eventType: EventOrderCreated,
-                recipientRole: "customer",
-                recipientPhone: string.Empty,
-                recipientEmail: order.CustomerEmail,
-                templateKey: "customer_order_received_email",
-                body: string.Empty,
-                orderId: order.Id,
-                payload: new { orderId = order.Id, order.CustomerName, order.CustomerEmail, itemCount },
-                smsFromAddress: null,
-                cancellationToken: cancellationToken);
-        }
-
-        await _staffPushNotificationService.SendNewOrderAlertAsync(order, cancellationToken);
     }
 
     public async Task SendReadyForPickupNotificationAsync(Order order, CancellationToken cancellationToken = default)
@@ -349,26 +284,6 @@ public class NotificationService
                     await Task.Delay(TimeSpan.FromMilliseconds(250 * attempt), cancellationToken);
                 }
             }
-        }
-    }
-
-    private async Task<IReadOnlyList<(string Role, string Phone)>> GetStaffRecipientsAsync(CancellationToken cancellationToken)
-    {
-        var recipients = new List<(string Role, string Phone)>();
-        var settings = await _settingsService.GetNotificationSettingsAsync(cancellationToken);
-
-        AddIfPresent(recipients, "admin", settings?.AdminPhoneNumber);
-        AddIfPresent(recipients, "barista", settings?.BaristaPhoneNumber);
-        AddIfPresent(recipients, "trailer", settings?.TrailerPhoneNumber);
-        return recipients;
-    }
-
-    private static void AddIfPresent(List<(string Role, string Phone)> recipients, string role, string? rawPhone)
-    {
-        var phone = NormalizePhone(rawPhone ?? string.Empty);
-        if (!string.IsNullOrWhiteSpace(phone))
-        {
-            recipients.Add((role, phone));
         }
     }
 
