@@ -5,7 +5,7 @@
 - Read-only inspection and research may be performed on any branch.
 - Before making any repository change, including code, tests, configuration, migrations, documentation, or generated artifacts, check the current branch and working-tree status.
 - Every distinct work topic must use a fresh, non-default topic branch. Create and switch to that branch before the first edit.
-- Use the `{feature#||bug#}<short-topic-name>` naming convention unless the user explicitly requests another non-default branch name.
+- Use `feature<number>/<short-topic-name>` for feature work and `bug<number>/<short-topic-name>` for bug fixes unless the user explicitly requests another non-default branch name. For example: `feature148/update-topic-branch-naming-policy` or `bug107/close-shop-menu`.
 - Do not make changes, commits, merges, rebases, or other history-changing operations directly on `main`, `master`, or any other protected default branch.
 - Do not reuse a branch whose purpose is unrelated to the current topic.
 - If the default branch already contains uncommitted work, preserve it exactly: create the topic branch with the working tree intact, do not discard or rewrite the changes, and tell the user that the existing work moved with the branch.
