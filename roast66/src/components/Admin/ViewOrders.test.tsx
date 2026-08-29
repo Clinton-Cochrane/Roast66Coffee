@@ -108,4 +108,24 @@ describe("ViewOrders", () => {
       "Order #3",
     ]);
   });
+
+  it("labels a Stripe-settled order as paid", async () => {
+    mockGet.mockResolvedValue({
+      data: [
+        {
+          ...completedOrder,
+          paidUtc: "2026-08-26T10:05:00Z",
+          paymentProvider: "stripe",
+        },
+      ],
+    });
+
+    render(
+      <LanguageProvider>
+        <ViewOrders />
+      </LanguageProvider>
+    );
+
+    expect(await screen.findByText("Paid · Stripe")).toBeInTheDocument();
+  });
 });

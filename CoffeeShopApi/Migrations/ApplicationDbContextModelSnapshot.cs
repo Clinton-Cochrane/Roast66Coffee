@@ -371,6 +371,11 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("confirmedbystaffutc");
 
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("concurrencytoken");
+
                     b.Property<DateTime>("CreatedUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("createdutc");

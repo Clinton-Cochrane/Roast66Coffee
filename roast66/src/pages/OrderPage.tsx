@@ -21,9 +21,6 @@ import type { MenuItemDto, OrderDto } from "../types/api";
 import PromotionPrice, { effectivePrice } from "../components/common/PromotionPrice";
 import "../styles/OrderPage.css";
 
-const ENABLE_ONLINE_PAYMENTS =
-  import.meta.env.VITE_ENABLE_ONLINE_PAYMENTS === "true" ||
-  import.meta.env.VITE_ENABLE_STRIPE_CHECKOUT === "true";
 const MOBILE_ORDER_MEDIA_QUERY = "(max-width: 960px)";
 const MAX_LINE_QUANTITY = 12;
 
@@ -405,26 +402,6 @@ function OrderPage() {
       submissionInFlightRef.current = false;
       setIsSubmitting(false);
     };
-
-    if (ENABLE_ONLINE_PAYMENTS) {
-      const idempotencyKey =
-        window.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-      try {
-        const response = await axiosInstance.post("/payments/checkout-session", orderData, {
-          headers: { "X-Idempotency-Key": idempotencyKey },
-        });
-        const checkoutUrl = response?.data?.checkoutUrl as string | undefined;
-        if (!checkoutUrl) {
-          throw new Error(t("order.checkoutMissingUrl"));
-        }
-        window.location.assign(checkoutUrl);
-      } catch (error: unknown) {
-        console.error("Checkout session creation failed:", error);
-        toast.error(t("order.checkoutFailed"));
-        resetSubmissionState();
-      }
-      return;
-    }
 
     try {
       const response = await axiosInstance.post<OrderDto>("/admin/orders", orderData);

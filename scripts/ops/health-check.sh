@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-API_HEALTH_URL="${API_HEALTH_URL:-https://roast66-api.onrender.com/api/health}"
+API_HEALTH_URL="${API_HEALTH_URL:-https://roast66coffee.onrender.com/api/health}"
 
 echo "Checking ${API_HEALTH_URL}"
 response="$(curl -sS -w '\n%{http_code}' "${API_HEALTH_URL}")"

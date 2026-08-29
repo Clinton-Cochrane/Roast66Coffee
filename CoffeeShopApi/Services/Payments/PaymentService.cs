@@ -11,7 +11,6 @@ public sealed class PaymentService
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly OrderService _orderService;
-    private readonly NotificationService _notificationService;
     private readonly IReadOnlyDictionary<string, IPaymentGateway> _gateways;
     private readonly ILogger<PaymentService> _logger;
 
@@ -19,14 +18,12 @@ public sealed class PaymentService
         ApplicationDbContext context,
         IConfiguration configuration,
         OrderService orderService,
-        NotificationService notificationService,
         IEnumerable<IPaymentGateway> gateways,
         ILogger<PaymentService> logger)
     {
         _context = context;
         _configuration = configuration;
         _orderService = orderService;
-        _notificationService = notificationService;
         _gateways = gateways.ToDictionary(
             gateway => gateway.ProviderName,
             StringComparer.OrdinalIgnoreCase);
@@ -70,6 +67,26 @@ public sealed class PaymentService
         }
 
         var prepared = await PrepareCheckoutAsync(request, cancellationToken);
+
+        var pendingPayment = await _context.Payments
+            .AsNoTracking()
+            .Where(payment =>
+                payment.Provider == gateway.ProviderName &&
+                payment.OrderId == request.ExistingOrderId &&
+                payment.Status == PaymentStatuses.Pending)
+            .OrderByDescending(payment => payment.CreatedUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (pendingPayment != null)
+        {
+            var pendingCheckout = await gateway.GetCheckoutAsync(
+                pendingPayment.ProviderCheckoutId,
+                cancellationToken);
+            return new PaymentCheckoutResult(
+                pendingCheckout.CheckoutUrl,
+                pendingCheckout.ProviderCheckoutId,
+                gateway.ProviderName);
+        }
+
         var payment = new Payment
         {
             Provider = gateway.ProviderName,
@@ -80,7 +97,8 @@ public sealed class PaymentService
             IdempotencyKey = idempotencyKey,
             CustomerName = prepared.Payload.CustomerName,
             CustomerPhone = prepared.Payload.CustomerPhone ?? string.Empty,
-            PayloadJson = JsonSerializer.Serialize(prepared.Payload)
+            PayloadJson = JsonSerializer.Serialize(prepared.Payload),
+            OrderId = prepared.Payload.ExistingOrderId
         };
 
         var metadata = new Dictionary<string, string>
@@ -171,7 +189,11 @@ public sealed class PaymentService
             case GatewayPaymentStatus.Failed when payment.Status != PaymentStatuses.Paid:
                 payment.Status = PaymentStatuses.Failed;
                 payment.FailedUtc = DateTime.UtcNow;
-                await _context.SaveChangesAsync(cancellationToken);
+                payment.ConcurrencyToken = Guid.NewGuid();
+                await SaveWebhookChangesAsync(
+                    payment,
+                    PaymentStatuses.Failed,
+                    cancellationToken);
                 break;
             case GatewayPaymentStatus.Pending:
                 break;
@@ -187,48 +209,37 @@ public sealed class PaymentService
             _configuration["Stripe:FrontendBaseUrl"] ??
             "http://localhost:3000").TrimEnd('/');
 
-        if (request.ExistingOrderId is int existingOrderId && existingOrderId > 0)
+        if (request.ExistingOrderId is not int existingOrderId || existingOrderId <= 0)
         {
-            var order = await _orderService.GetOrderByIdAsync(existingOrderId, cancellationToken)
-                ?? throw new InvalidOperationException("Order not found.");
-            if (order.PaidUtc != null)
-            {
-                throw new InvalidOperationException("This order is already paid.");
-            }
-
-            ValidateCustomerIdentity(request, order);
-            var lineItems = BuildLineItemsFromOrder(order);
-            if (lineItems.Count == 0)
-            {
-                throw new InvalidOperationException("This order has no billable items.");
-            }
-
-            return new PreparedCheckout(
-                new CheckoutSessionRequest
-                {
-                    ExistingOrderId = existingOrderId,
-                    CustomerName = order.CustomerName,
-                    CustomerPhone = order.CustomerPhone ?? request.CustomerPhone ?? string.Empty,
-                    CustomerEmail = order.CustomerEmail ?? request.CustomerEmail,
-                    CustomerNotificationOptIn = order.CustomerNotificationOptIn || request.CustomerNotificationOptIn,
-                    OrderItems = []
-                },
-                lineItems,
-                $"{frontendBaseUrl}/order-status?checkout=success&token={order.TrackingToken}",
-                $"{frontendBaseUrl}/order-status?checkout=cancelled&token={order.TrackingToken}");
+            throw new InvalidOperationException("Create the order before starting online payment.");
         }
 
-        if (request.OrderItems.Count == 0)
+        var order = await _orderService.GetOrderByIdAsync(existingOrderId, cancellationToken)
+            ?? throw new InvalidOperationException("Order not found.");
+        if (order.PaidUtc != null)
         {
-            throw new InvalidOperationException("Order items are required for a new checkout.");
+            throw new InvalidOperationException("This order is already paid.");
         }
 
-        var requestedLineItems = await BuildLineItemsFromRequestAsync(request, cancellationToken);
+        ValidateCustomerIdentity(request, order);
+        var lineItems = BuildLineItemsFromOrder(order);
+        if (lineItems.Count == 0)
+        {
+            throw new InvalidOperationException("This order has no billable items.");
+        }
+
         return new PreparedCheckout(
-            request,
-            requestedLineItems,
-            $"{frontendBaseUrl}/order/confirmation?checkout=success",
-            $"{frontendBaseUrl}/order?checkout=cancelled");
+            new CheckoutSessionRequest
+            {
+                ExistingOrderId = existingOrderId,
+                CustomerName = order.CustomerName,
+                CustomerPhone = order.CustomerPhone ?? request.CustomerPhone ?? string.Empty,
+                CustomerEmail = order.CustomerEmail ?? request.CustomerEmail,
+                CustomerNotificationOptIn = order.CustomerNotificationOptIn || request.CustomerNotificationOptIn
+            },
+            lineItems,
+            $"{frontendBaseUrl}/order-status?checkout=success&token={order.TrackingToken}",
+            $"{frontendBaseUrl}/order-status?checkout=cancelled&token={order.TrackingToken}");
     }
 
     private async Task CompletePaymentAsync(Payment payment, CancellationToken cancellationToken)
@@ -240,70 +251,54 @@ public sealed class PaymentService
 
         var payload = JsonSerializer.Deserialize<CheckoutSessionRequest>(payment.PayloadJson)
             ?? throw new InvalidOperationException("Unable to deserialize payment checkout payload.");
+        if (payload.ExistingOrderId is not int existingOrderId || existingOrderId <= 0)
+        {
+            throw new InvalidOperationException("Payment is not linked to an existing order.");
+        }
+
         var paidUtc = DateTime.UtcNow;
-        Order? createdOrderToNotify = null;
+        var order = await _orderService.GetOrderByIdAsync(existingOrderId, cancellationToken)
+            ?? throw new InvalidOperationException("Payment order no longer exists.");
 
-        if (payload.ExistingOrderId is int existingOrderId && existingOrderId > 0)
-        {
-            var order = await _orderService.GetOrderByIdAsync(existingOrderId, cancellationToken)
-                ?? throw new InvalidOperationException("Prepay order no longer exists.");
-
-            order.PaidUtc ??= paidUtc;
-            order.PaymentProvider ??= payment.Provider;
-            order.PaymentReference ??= payment.ProviderPaymentId ?? payment.ProviderCheckoutId;
-            payment.OrderId = order.Id;
-            _context.Orders.Update(order);
-        }
-        else
-        {
-            var order = new Order
-            {
-                CustomerName = payload.CustomerName,
-                CustomerPhone = payload.CustomerPhone,
-                CustomerEmail = payload.CustomerEmail,
-                CustomerNotificationOptIn = payload.CustomerNotificationOptIn,
-                PaidUtc = paidUtc,
-                PaymentProvider = payment.Provider,
-                PaymentReference = payment.ProviderPaymentId ?? payment.ProviderCheckoutId,
-                OrderItems = payload.OrderItems.Select(item => new OrderItem
-                {
-                    MenuItemId = item.MenuItemId,
-                    Quantity = item.Quantity,
-                    Notes = item.Notes,
-                    UnitPrice = item.UnitPrice ?? 0,
-                    AddOns = item.AddOns.Select(addOn => new AddOn
-                    {
-                        MenuItemId = addOn.MenuItemId,
-                        Quantity = addOn.Quantity,
-                        UnitPrice = addOn.UnitPrice ?? 0
-                    }).ToList()
-                }).ToList()
-            };
-
-            var createdOrder = await _orderService.CreateOrderAsync(order, preserveSnapshotPrices: true);
-            payment.OrderId = createdOrder.Id;
-            createdOrderToNotify = createdOrder;
-        }
-
+        order.PaidUtc ??= paidUtc;
+        order.PaymentProvider ??= payment.Provider;
+        order.PaymentReference ??= payment.ProviderPaymentId ?? payment.ProviderCheckoutId;
+        payment.OrderId = order.Id;
         payment.Status = PaymentStatuses.Paid;
         payment.CompletedUtc = paidUtc;
         payment.FailedUtc = null;
-        await _context.SaveChangesAsync(cancellationToken);
+        payment.ConcurrencyToken = Guid.NewGuid();
+        await SaveWebhookChangesAsync(
+            payment,
+            PaymentStatuses.Paid,
+            cancellationToken);
+    }
 
-        if (createdOrderToNotify != null)
+    private async Task SaveWebhookChangesAsync(
+        Payment payment,
+        string completedStatus,
+        CancellationToken cancellationToken)
+    {
+        try
         {
-            try
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _context.ChangeTracker.Clear();
+            var currentStatus = await _context.Payments
+                .AsNoTracking()
+                .Where(current => current.Id == payment.Id)
+                .Select(current => current.Status)
+                .SingleOrDefaultAsync(cancellationToken);
+
+            if (currentStatus == PaymentStatuses.Paid || currentStatus == completedStatus)
             {
-                await _notificationService.SendOrderNotificationAsync(createdOrderToNotify, cancellationToken);
+                return;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(
-                    ex,
-                    "Payment {PaymentId} completed, but notifications for order {OrderId} failed.",
-                    payment.Id,
-                    createdOrderToNotify.Id);
-            }
+
+            throw new PaymentWebhookRetryException(
+                "Another webhook changed the payment while it was being finalized.");
         }
     }
 
@@ -344,53 +339,6 @@ public sealed class PaymentService
         }
 
         return null;
-    }
-
-    private async Task<List<GatewayLineItem>> BuildLineItemsFromRequestAsync(
-        CheckoutSessionRequest request,
-        CancellationToken cancellationToken)
-    {
-        var menuIds = request.OrderItems
-            .Select(item => item.MenuItemId)
-            .Concat(request.OrderItems.SelectMany(item => item.AddOns.Select(addOn => addOn.MenuItemId)))
-            .Distinct()
-            .ToList();
-        var menuLookup = await _context.MenuItems
-            .Where(item => menuIds.Contains(item.Id))
-            .ToDictionaryAsync(item => item.Id, cancellationToken);
-
-        var lineItems = new List<GatewayLineItem>();
-        foreach (var item in request.OrderItems)
-        {
-            if (!menuLookup.TryGetValue(item.MenuItemId, out var menuItem))
-            {
-                throw new InvalidOperationException($"Menu item {item.MenuItemId} not found.");
-            }
-
-            item.UnitPrice = menuItem.EffectivePrice;
-            lineItems.Add(new GatewayLineItem(
-                menuItem.Name,
-                menuItem.Description,
-                item.UnitPrice.Value,
-                item.Quantity));
-
-            foreach (var addOn in item.AddOns)
-            {
-                if (!menuLookup.TryGetValue(addOn.MenuItemId, out var addOnItem))
-                {
-                    throw new InvalidOperationException($"Add-on item {addOn.MenuItemId} not found.");
-                }
-
-                addOn.UnitPrice = addOnItem.EffectivePrice;
-                lineItems.Add(new GatewayLineItem(
-                    $"{menuItem.Name} add-on: {addOnItem.Name}",
-                    addOnItem.Description,
-                    addOn.UnitPrice.Value,
-                    addOn.Quantity));
-            }
-        }
-
-        return lineItems;
     }
 
     private static List<GatewayLineItem> BuildLineItemsFromOrder(Order order)

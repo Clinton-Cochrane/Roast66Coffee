@@ -195,6 +195,10 @@ such as `Stripe__SecretKey` and `Stripe__WebhookSecret`. The legacy
 `POST /api/payments/webhook` route targets the default provider; provider-specific webhook
 routes use `POST /api/payments/{provider}/webhook`.
 
+Orders are created before online checkout, so payment availability never blocks order placement.
+The rollout, webhook, refund, reconciliation, and outage procedure is maintained in
+[`docs/operations/payment-rollout-runbook.md`](docs/operations/payment-rollout-runbook.md).
+
 SMS delivery is isolated behind `ISmsSender`. To add a provider, implement that contract,
 register the adapter in dependency injection, and expose a provider-specific authenticated
 delivery-status webhook that normalizes updates through `NotificationService`.

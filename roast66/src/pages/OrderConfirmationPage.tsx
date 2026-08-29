@@ -7,6 +7,10 @@ import { getOrderStatusFromDto } from "../constants/orderStatusParse";
 import type { OrderDto, OrderLineItemDto } from "../types/api";
 import { writeOrderStatusSession } from "../constants/orderStatusSession";
 
+const ENABLE_ONLINE_PAYMENTS =
+  import.meta.env.VITE_ENABLE_ONLINE_PAYMENTS === "true" ||
+  import.meta.env.VITE_ENABLE_STRIPE_CHECKOUT === "true";
+
 function OrderConfirmationPage() {
   const { locale, t } = useI18n();
   const location = useLocation();
@@ -18,6 +22,7 @@ function OrderConfirmationPage() {
   );
   const hasEmailUpdates = notificationOptIn && customerEmail.trim().length > 0;
   const trackingToken = order?.trackingToken ?? order?.TrackingToken ?? "";
+  const isPaid = Boolean(order?.paidUtc ?? order?.PaidUtc);
   const statusVal = order ? getOrderStatusFromDto(order) : 0;
 
   React.useEffect(() => {
@@ -122,6 +127,16 @@ function OrderConfirmationPage() {
         <p className="font-bold">
           {t("orderConfirmation.total")}: {currencyFormatter.format(total)}
         </p>
+        {ENABLE_ONLINE_PAYMENTS && !isPaid ? (
+          <div className="mt-4 border-t border-[#ddcdbf] pt-4">
+            <p className="text-sm text-[#5b4940] mb-3">
+              {t("orderConfirmation.paymentOptional")}
+            </p>
+            <Link to={`/order-status?token=${encodeURIComponent(trackingToken)}`}>
+              <Button color="green">{t("orderConfirmation.viewPaymentOptions")}</Button>
+            </Link>
+          </div>
+        ) : null}
         {hasEmailUpdates ? (
           <p className="text-sm text-[#5b4940] mt-2">
             {t("orderConfirmation.emailUpdates")} <strong>{customerEmail}</strong>.

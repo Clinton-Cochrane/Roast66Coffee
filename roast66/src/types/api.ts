@@ -51,6 +51,8 @@ export type OrderDto = {
   OrderItems?: OrderLineItemDto[];
   paidUtc?: string | null;
   PaidUtc?: string | null;
+  paymentProvider?: string | null;
+  PaymentProvider?: string | null;
 };
 
 export type NotificationLogEntry = {

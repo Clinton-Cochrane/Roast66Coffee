@@ -434,18 +434,9 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     {
         var payload = new
         {
+            existingOrderId = 1,
             customerName = "Payment Test",
-            customerPhone = "5550001234",
-            orderItems = new[]
-            {
-                new
-                {
-                    menuItemId = 1,
-                    quantity = 1,
-                    notes = "No sugar",
-                    addOns = Array.Empty<object>()
-                }
-            }
+            customerPhone = "5550001234"
         };
 
         var response = await _client.PostAsJsonAsync("/api/payments/checkout-session", payload);
@@ -453,13 +444,12 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task CreateCheckoutSession_EmptyOrderItemsWithoutExistingOrder_ReturnsBadRequest()
+    public async Task CreateCheckoutSession_WithoutExistingOrder_ReturnsBadRequest()
     {
         var payload = new
         {
             customerName = "Payment Test",
-            customerPhone = "5550001234",
-            orderItems = Array.Empty<object>()
+            customerPhone = "5550001234"
         };
 
         var response = await _client.PostAsJsonAsync("/api/payments/checkout-session", payload);
