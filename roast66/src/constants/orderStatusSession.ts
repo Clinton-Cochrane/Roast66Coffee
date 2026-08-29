@@ -59,10 +59,18 @@ export function writeOrderStatusSession(
   window.dispatchEvent(new CustomEvent(ORDER_STATUS_SESSION_UPDATED_EVENT));
 }
 
-export function clearOrderStatusSession(): void {
+export function clearOrderStatusSession(expectedTrackingToken?: string): void {
   if (typeof window === "undefined") {
     return;
   }
+
+  if (expectedTrackingToken !== undefined) {
+    const currentToken = readOrderStatusSession()?.trackingToken;
+    if (currentToken !== expectedTrackingToken.trim()) {
+      return;
+    }
+  }
+
   sessionStorage.removeItem(ORDER_STATUS_LOOKUP_SESSION_KEY);
   window.dispatchEvent(new CustomEvent(ORDER_STATUS_SESSION_UPDATED_EVENT));
 }

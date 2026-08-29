@@ -57,4 +57,19 @@ describe("orderStatusSession", () => {
     expect(spy).toHaveBeenCalled();
     window.removeEventListener(ORDER_STATUS_SESSION_UPDATED_EVENT, spy);
   });
+
+  it("only clears a session when the expected tracking token matches", () => {
+    writeOrderStatusSession("new-token", 1);
+    const spy = vi.fn();
+    window.addEventListener(ORDER_STATUS_SESSION_UPDATED_EVENT, spy);
+
+    clearOrderStatusSession("stale-token");
+    expect(readOrderStatusSession()?.trackingToken).toBe("new-token");
+    expect(spy).not.toHaveBeenCalled();
+
+    clearOrderStatusSession("new-token");
+    expect(readOrderStatusSession()).toBeNull();
+    expect(spy).toHaveBeenCalledTimes(1);
+    window.removeEventListener(ORDER_STATUS_SESSION_UPDATED_EVENT, spy);
+  });
 });

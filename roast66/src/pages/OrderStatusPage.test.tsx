@@ -1,7 +1,7 @@
 import React from "react";
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { LanguageProvider } from "../i18n/LanguageContext";
 import { ORDER_STATUS_LOOKUP_SESSION_KEY } from "../constants/orderStatusSession";
 
@@ -40,6 +40,45 @@ const lookupResponseOther = {
   orderItems: [{ quantity: 1, menuItem: { name: "Espresso" } }],
 };
 
+function unavailableLookupError(): unknown {
+  return {
+    isAxiosError: true,
+    response: {
+      status: 404,
+      data: {
+        code: "order_status_unavailable",
+        message: "This order status is no longer available.",
+      },
+    },
+  };
+}
+
+function transientLookupError(): unknown {
+  return {
+    isAxiosError: true,
+    response: {
+      status: 503,
+      data: { message: "Temporarily unavailable" },
+    },
+  };
+}
+
+function LocationProbe() {
+  const location = useLocation();
+  return <div data-testid="location">{`${location.pathname}${location.search}`}</div>;
+}
+
+function renderPage(initialEntry = "/order-status") {
+  return render(
+    <LanguageProvider>
+      <MemoryRouter initialEntries={[initialEntry]}>
+        <OrderStatusPage />
+        <LocationProbe />
+      </MemoryRouter>
+    </LanguageProvider>
+  );
+}
+
 describe("OrderStatusPage", () => {
   beforeEach(() => {
     sessionStorage.clear();
@@ -47,22 +86,100 @@ describe("OrderStatusPage", () => {
     mockGet.mockResolvedValue({ data: lookupResponse });
   });
 
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("runs lookup from session on mount when saved session exists", async () => {
     sessionStorage.setItem(
       ORDER_STATUS_LOOKUP_SESSION_KEY,
       JSON.stringify({ trackingToken: "token-42", orderStatus: 1 })
     );
-    render(
-      <LanguageProvider>
-        <MemoryRouter>
-          <OrderStatusPage />
-        </MemoryRouter>
-      </LanguageProvider>
-    );
+    renderPage();
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledWith("/order/track/token-42");
     });
     expect(await screen.findByText(/Order #42/i)).toBeInTheDocument();
+  });
+
+  it("loads a valid bookmarked tracking link normally", async () => {
+    renderPage("/order-status?token=bookmark-token");
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith("/order/track/bookmark-token");
+    });
+    expect(await screen.findByText(/Order #42/i)).toBeInTheDocument();
+    expect(JSON.parse(sessionStorage.getItem(ORDER_STATUS_LOOKUP_SESSION_KEY)!)).toEqual({
+      trackingToken: "bookmark-token",
+      orderStatus: 1,
+    });
+  });
+
+  it("shows a neutral message and clears an unavailable bookmarked session", async () => {
+    mockGet.mockRejectedValueOnce(unavailableLookupError());
+    sessionStorage.setItem(
+      ORDER_STATUS_LOOKUP_SESSION_KEY,
+      JSON.stringify({ trackingToken: "expired-token", orderStatus: 3 })
+    );
+
+    renderPage("/order-status?token=expired-token");
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "This order status is no longer available."
+    );
+    expect(screen.getByRole("textbox", { name: /tracking code/i })).toHaveValue("");
+    expect(screen.queryByText("Alex")).not.toBeInTheDocument();
+    expect(screen.queryByText("Latte")).not.toBeInTheDocument();
+    expect(sessionStorage.getItem(ORDER_STATUS_LOOKUP_SESSION_KEY)).toBeNull();
+    await waitFor(() => {
+      expect(screen.getByTestId("location")).toHaveTextContent("/order-status");
+    });
+    expect(screen.getByTestId("location")).not.toHaveTextContent("token=");
+    expect(mockGet).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the same unavailable state after a manual lookup", async () => {
+    mockGet.mockRejectedValueOnce(unavailableLookupError());
+    const { container } = renderPage();
+    const form = container.querySelector("form");
+    if (!form) {
+      throw new Error("form not found");
+    }
+
+    fireEvent.change(screen.getByRole("textbox", { name: /tracking code/i }), {
+      target: { value: "unknown-token" },
+    });
+    fireEvent.submit(form);
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "This order status is no longer available."
+    );
+    expect(screen.getByRole("textbox", { name: /tracking code/i })).toHaveValue("");
+  });
+
+  it("preserves saved state and the bookmark after a transient restore failure", async () => {
+    mockGet.mockRejectedValueOnce(transientLookupError());
+    sessionStorage.setItem(
+      ORDER_STATUS_LOOKUP_SESSION_KEY,
+      JSON.stringify({ trackingToken: "saved-token", orderStatus: 1 })
+    );
+
+    renderPage("/order-status?token=saved-token");
+
+    await waitFor(() => {
+      expect(mockGet).toHaveBeenCalledWith("/order/track/saved-token");
+    });
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /tracking code/i })).toHaveValue(
+      "saved-token"
+    );
+    expect(JSON.parse(sessionStorage.getItem(ORDER_STATUS_LOOKUP_SESSION_KEY)!)).toEqual({
+      trackingToken: "saved-token",
+      orderStatus: 1,
+    });
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/order-status?token=saved-token"
+    );
   });
 
   it("does not let a slow session restore overwrite a completed manual lookup", async () => {
@@ -80,13 +197,7 @@ describe("OrderStatusPage", () => {
       ORDER_STATUS_LOOKUP_SESSION_KEY,
       JSON.stringify({ trackingToken: "token-42", orderStatus: 1 })
     );
-    const { container } = render(
-      <LanguageProvider>
-        <MemoryRouter>
-          <OrderStatusPage />
-        </MemoryRouter>
-      </LanguageProvider>
-    );
+    const { container } = renderPage();
 
     await waitFor(() => {
       expect(mockGet).toHaveBeenCalledTimes(1);
@@ -125,13 +236,7 @@ describe("OrderStatusPage", () => {
   it("polling uses last successful lookup credentials, not in-progress form edits", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
 
-    const { container } = render(
-      <LanguageProvider>
-        <MemoryRouter>
-          <OrderStatusPage />
-        </MemoryRouter>
-      </LanguageProvider>
-    );
+    const { container } = renderPage();
 
     const form = container.querySelector("form");
     if (!form) {
@@ -155,7 +260,34 @@ describe("OrderStatusPage", () => {
 
     expect(mockGet).toHaveBeenCalledTimes(1);
     expect(mockGet).toHaveBeenCalledWith("/order/track/token-42");
+  });
 
-    vi.useRealTimers();
+  it("stops polling after a tracked order becomes unavailable", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    mockGet
+      .mockResolvedValueOnce({ data: lookupResponse })
+      .mockRejectedValueOnce(unavailableLookupError());
+    const { container } = renderPage();
+    const form = container.querySelector("form");
+    if (!form) {
+      throw new Error("form not found");
+    }
+
+    fireEvent.change(screen.getByRole("textbox", { name: /tracking code/i }), {
+      target: { value: "token-42" },
+    });
+    fireEvent.submit(form);
+    expect(await screen.findByText(/Order #42/i)).toBeInTheDocument();
+
+    await vi.advanceTimersByTimeAsync(45_000);
+
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "This order status is no longer available."
+    );
+    expect(sessionStorage.getItem(ORDER_STATUS_LOOKUP_SESSION_KEY)).toBeNull();
+    expect(mockGet).toHaveBeenCalledTimes(2);
+
+    await vi.advanceTimersByTimeAsync(90_000);
+    expect(mockGet).toHaveBeenCalledTimes(2);
   });
 });

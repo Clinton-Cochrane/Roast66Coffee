@@ -214,9 +214,7 @@ export const en = {
     lookup: "Check Status",
     lookingUp: "Looking up...",
     lookupMissingFields: "Enter your private tracking code.",
-    notFound: "No order was found for that tracking code.",
-    restoreNotFound:
-      "We could not reload your order. Check the tracking code, then tap Check Status.",
+    unavailable: "This order status is no longer available.",
     lookupFailed: "Failed to look up order.",
     paymentSubmitted: "Payment submitted. We are confirming it now.",
     paymentCancelled: "Payment was cancelled.",
