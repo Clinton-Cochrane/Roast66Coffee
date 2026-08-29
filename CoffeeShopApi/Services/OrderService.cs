@@ -162,19 +162,6 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         }
     }
 
-    public async Task<bool> DeleteOrderAsync(int id)
-    {
-        var order = await _context.Orders.FindAsync(id);
-        if (order == null)
-        {
-            return false;
-        }
-
-        _context.Orders.Remove(order);
-        await _context.SaveChangesAsync();
-        return true;
-    }
-
     private bool OrderExists(int id)
     {
         return _context.Orders.Any(e => e.Id == id);

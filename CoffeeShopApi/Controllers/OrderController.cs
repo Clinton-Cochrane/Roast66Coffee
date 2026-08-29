@@ -182,16 +182,4 @@ public class OrderController : ControllerBase
         return NoContent();
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteOrder(int id)
-    {
-        var result = await _orderService.DeleteOrderAsync(id);
-        if (!result)
-        {
-            return NotFound();
-        }
-
-        return NoContent();
-    }
 }
