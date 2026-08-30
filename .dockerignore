@@ -1,0 +1,8 @@
+.git
+.github
+.playwright-cli
+**/bin
+**/obj
+roast66/dist
+roast66/node_modules
+roast66/test-results

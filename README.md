@@ -237,14 +237,15 @@ Run backend tests:
 dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
 ```
 
-Run the PostgreSQL migration-lock integration test against a disposable database:
+Run all PostgreSQL migration, physical-schema, and EF-backed data-access contracts against a disposable database:
 
 ```bash
 REQUIRE_POSTGRES_INTEGRATION_TESTS=true \
 POSTGRES_INTEGRATION_CONNECTION_STRING="$STAGING_DATABASE_URL" \
-dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj \
-  --filter FullyQualifiedName~PostgresMigrationLockTests
+dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
 ```
+
+These contracts fail when the EF model and migration snapshot diverge, a migrated PostgreSQL database is missing any mapped table or column, migration locking breaks, or core menu/order/notification/payment queries do not execute with Npgsql.
 
 Run the complete frontend gate:
 
@@ -256,7 +257,19 @@ npm run build
 npm audit
 ```
 
-The current baseline is 41 backend tests and 67 frontend tests. The production frontend build performs TypeScript checks before Vite bundles the application.
+Run the production release smoke with a candidate checkout and a baseline checkout:
+
+```bash
+cd roast66
+npm ci
+npx playwright install chromium
+cd ..
+scripts/ci/render-smoke.sh "$PWD" /path/to/baseline-checkout
+```
+
+The release smoke builds the same backend Dockerfile used by Render, migrates a baseline PostgreSQL 17 database containing representative menu and order data, proves migration failure prevents API startup, verifies migrations finish before the API listens, calls readiness and menu endpoints, builds the frontend with the candidate API URL, and confirms the known menu item renders in Chromium. GitHub Actions runs this as the dedicated `Render release contracts` job.
+
+The production frontend build performs TypeScript checks before Vite bundles the application.
 
 ## Render Deployment
 
