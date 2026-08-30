@@ -13,7 +13,7 @@ services:
     name: roast66-api
     dockerfilePath: ./Dockerfile.backend
     dockerContext: .
-    healthCheckPath: /api/health
+    healthCheckPath: /api/health/ready
     preDeployCommand: dotnet CoffeeShopApi.dll migrate
     envVars:
       - key: ConnectionStrings__DefaultConnection

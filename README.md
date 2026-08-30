@@ -91,7 +91,8 @@ docker-compose.yml    Local frontend, backend, and PostgreSQL stack
 
    - Frontend: `http://localhost:3000`
    - API: `http://localhost:5001`
-   - API health: `http://localhost:5001/api/health`
+   - API liveness: `http://localhost:5001/api/health`
+   - API readiness: `http://localhost:5001/api/health/ready`
 
 The Docker connection string must use `Host=postgres-db`, which is already shown in `CoffeeShopApi/.env.example`.
 
@@ -276,11 +277,12 @@ Deployment flow:
 
 Post-deploy verification:
 
-1. `GET /api/health` succeeds.
-2. The menu loads from the public frontend.
-3. Staff can sign in at both `/admin` and `/cash`.
-4. A test order can be placed and retrieved using its private tracking link.
-5. An unauthenticated request to an admin endpoint returns `401`.
+1. `GET /api/health/ready` succeeds, confirming the API can connect to PostgreSQL.
+2. `GET /api/health` succeeds, confirming the API process is responsive.
+3. The menu loads from the public frontend.
+4. Staff can sign in at both `/admin` and `/cash`.
+5. A test order can be placed and retrieved using its private tracking link.
+6. An unauthenticated request to an admin endpoint returns `401`.
 
 ## Operations Runbook
 
@@ -308,7 +310,9 @@ The provider-specific commands and decision criteria are maintained in [`docs/op
 
 ### Monitoring and automation
 
-- Health endpoint: `GET /api/health`
+- Liveness endpoint: `GET /api/health` checks only that the API process can respond.
+- Readiness endpoint: `GET /api/health/ready` checks the required database connection and is used by Render for routing.
+- Payment, SMS, email, push, Supabase, and keep-alive targets do not gate readiness.
 - GitHub Actions run tests and security checks on pushes and pull requests.
 - Dependabot monitors npm and NuGet dependencies.
 - CodeQL scans C# and JavaScript/TypeScript.

@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CoffeeShopApi.Controllers;
 
 /// <summary>
-/// Health check endpoint for load balancers and monitoring.
+/// Dependency-free liveness endpoint for process monitoring.
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
