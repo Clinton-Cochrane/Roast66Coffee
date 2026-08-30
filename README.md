@@ -32,7 +32,7 @@ The application is a React single-page frontend backed by an ASP.NET Core API an
 - Public order APIs use 256-bit tracking tokens instead of sequential IDs and customer identity.
 - Public tracking responses omit phone numbers, email addresses, provider IDs, and internal database fields.
 - Public order creation, tracking, login, and password-support endpoints are rate limited.
-- Production migrations run as a locked, one-time deployment step rather than during application startup.
+- Production migrations take a PostgreSQL advisory lock and finish before the API starts serving traffic.
 
 Online payments and external SMS are feature-gated and disabled by default until their production integrations are approved and hardened. Payments use a provider-neutral application service; Stripe is the included gateway. SMS uses a provider-neutral sender contract with a disabled default implementation, so no SMS vendor is installed or contacted by default.
 
@@ -208,7 +208,7 @@ See the checked-in `.env.example` and `appsettings.Example.json` files for the c
 
 ## Database Changes and Menu Data
 
-Normal API startup never applies migrations or seeds data.
+Direct `dotnet` API startup does not apply migrations or seed data. Backend container startup applies pending migrations before launching the API, but never seeds menu data.
 
 Create a migration locally:
 
@@ -222,7 +222,7 @@ Apply migrations from a published application:
 dotnet CoffeeShopApi.dll migrate
 ```
 
-The migration command takes a PostgreSQL advisory lock, applies pending EF migrations, and exits. Render invokes it as a pre-deploy command so migrations finish before new application instances receive traffic.
+The migration command takes a PostgreSQL advisory lock, applies pending EF migrations, and exits. Render invokes it as a pre-deploy command on paid services. The backend Docker entrypoint also runs it before starting the API so free services, which do not support pre-deploy commands, cannot launch against an outdated schema. Running both is safe because EF migrations are idempotent and the advisory lock serializes concurrent attempts.
 
 Menu seeding is intentionally separate from schema migration. Use either:
 
@@ -272,7 +272,7 @@ Deployment flow:
 2. Populate every `sync: false` secret in the Render dashboard.
 3. Confirm `Admin__Username`, `Admin__Password`, and `Jwt__Key` before the first production deployment.
 4. Confirm `AllowedOrigins`, `Payments__FrontendBaseUrl`, and `VITE_API_URL` use the actual Render URLs.
-5. Let the API pre-deploy command apply migrations.
+5. Confirm the API startup logs show a successful migration before the application starts.
 6. Seed the menu explicitly if this is a new database.
 
 Post-deploy verification:
@@ -311,7 +311,7 @@ The provider-specific commands and decision criteria are maintained in [`docs/op
 ### Monitoring and automation
 
 - Liveness endpoint: `GET /api/health` checks only that the API process can respond.
-- Readiness endpoint: `GET /api/health/ready` checks the required database connection and is used by Render for routing.
+- Readiness endpoint: `GET /api/health/ready` checks the required database connection and confirms that no EF migrations are pending; Render uses it for routing.
 - Payment, SMS, email, push, Supabase, and keep-alive targets do not gate readiness.
 - GitHub Actions run tests and security checks on pushes and pull requests.
 - Dependabot monitors npm and NuGet dependencies.
