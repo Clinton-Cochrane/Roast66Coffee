@@ -124,6 +124,20 @@ public class MenuHistoryPostgresTests
         await using var connection = new NpgsqlConnection(adminBuilder.ConnectionString);
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
+                    CREATE ROLE anon NOLOGIN;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
+                    CREATE ROLE authenticated NOLOGIN;
+                END IF;
+            END $$;
+            """;
+        await command.ExecuteNonQueryAsync();
+
         command.CommandText = $"CREATE DATABASE \"{databaseName}\"";
         await command.ExecuteNonQueryAsync();
 
