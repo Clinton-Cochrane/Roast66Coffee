@@ -61,7 +61,10 @@ function Navigation() {
       }
     };
 
-    const interval = window.setInterval(() => void pull(), 90_000);
+    const shouldPoll = session.orderStatus !== ORDER_STATUS.Completed;
+    const interval = shouldPoll
+      ? window.setInterval(() => void pull(), 90_000)
+      : null;
     const onVisibility = () => {
       if (document.visibilityState === "visible") void pull();
     };
@@ -70,7 +73,9 @@ function Navigation() {
 
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
+      if (interval !== null) {
+        window.clearInterval(interval);
+      }
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [location.pathname, orderTrackingSession?.trackingToken, orderTrackingSession?.orderStatus]);
