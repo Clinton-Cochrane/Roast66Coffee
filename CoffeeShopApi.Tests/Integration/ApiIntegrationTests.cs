@@ -425,10 +425,13 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task HealthEndpoint_ReturnsOk()
+    public async Task HealthEndpoints_ReturnOk()
     {
-        var response = await _client.GetAsync("/api/health");
-        response.EnsureSuccessStatusCode();
+        var livenessResponse = await _client.GetAsync("/api/health");
+        var readinessResponse = await _client.GetAsync("/api/health/ready");
+
+        livenessResponse.EnsureSuccessStatusCode();
+        readinessResponse.EnsureSuccessStatusCode();
     }
 
     [Fact]

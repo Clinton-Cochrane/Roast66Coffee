@@ -15,6 +15,8 @@ using Serilog;
 using System.Security.Claims;
 using CoffeeShopApi.Services.Payments;
 using CoffeeShopApi.Services.Sms;
+using CoffeeShopApi.Health;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace CoffeeShopApi
 {
@@ -86,6 +88,13 @@ namespace CoffeeShopApi
             services.AddHostedService<ConnectionWarmupService>();
             services.AddHostedService<NotificationRetentionWorker>();
             services.AddHttpClient();
+            services.AddScoped<IDatabaseReadinessProbe, EfCoreDatabaseReadinessProbe>();
+            services.AddHealthChecks()
+                .AddCheck<DatabaseReadinessHealthCheck>(
+                    "database",
+                    failureStatus: HealthStatus.Unhealthy,
+                    tags: [ReadinessHealthCheckOptions.RequiredTag],
+                    timeout: TimeSpan.FromSeconds(3));
 
             services.AddControllers()
                 .AddJsonOptions(options =>
@@ -228,6 +237,9 @@ namespace CoffeeShopApi
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+                endpoints.MapHealthChecks(
+                    "/api/health/ready",
+                    ReadinessHealthCheckOptions.Create());
                 endpoints.MapGet("/", async context =>
                 {
                     await context.Response.WriteAsync("Welcome to the Coffee Shop API!");

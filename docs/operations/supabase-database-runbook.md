@@ -85,7 +85,7 @@ ConnectionStrings__DefaultConnection="$STAGING_DATABASE_URL" \
   dotnet CoffeeShopApi.dll migrate
 ```
 
-Verify migration history, table row counts, menu reads, admin login, private order tracking, payment identifiers when present, and `GET /api/health`.
+Verify migration history, table row counts, menu reads, admin login, private order tracking, payment identifiers when present, and `GET /api/health/ready`.
 
 ## Restore into a replacement Supabase project
 
