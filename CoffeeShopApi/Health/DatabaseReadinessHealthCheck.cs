@@ -7,6 +7,7 @@ namespace CoffeeShopApi.Health;
 internal interface IDatabaseReadinessProbe
 {
     Task<bool> CanConnectAsync(CancellationToken cancellationToken);
+    Task<bool> HasPendingMigrationsAsync(CancellationToken cancellationToken);
 }
 
 internal sealed class EfCoreDatabaseReadinessProbe(ApplicationDbContext context)
@@ -14,6 +15,16 @@ internal sealed class EfCoreDatabaseReadinessProbe(ApplicationDbContext context)
 {
     public Task<bool> CanConnectAsync(CancellationToken cancellationToken) =>
         context.Database.CanConnectAsync(cancellationToken);
+
+    public async Task<bool> HasPendingMigrationsAsync(CancellationToken cancellationToken)
+    {
+        if (!context.Database.IsRelational())
+        {
+            return false;
+        }
+
+        return (await context.Database.GetPendingMigrationsAsync(cancellationToken)).Any();
+    }
 }
 
 internal sealed class DatabaseReadinessHealthCheck(
@@ -26,13 +37,19 @@ internal sealed class DatabaseReadinessHealthCheck(
     {
         try
         {
-            if (await probe.CanConnectAsync(cancellationToken))
+            if (!await probe.CanConnectAsync(cancellationToken))
             {
-                return HealthCheckResult.Healthy();
+                logger.LogWarning("Database readiness check reported that the database is unavailable.");
+                return HealthCheckResult.Unhealthy("The required database is unavailable.");
             }
 
-            logger.LogWarning("Database readiness check reported that the database is unavailable.");
-            return HealthCheckResult.Unhealthy("The required database is unavailable.");
+            if (await probe.HasPendingMigrationsAsync(cancellationToken))
+            {
+                logger.LogWarning("Database readiness check found pending schema migrations.");
+                return HealthCheckResult.Unhealthy("The required database schema is not current.");
+            }
+
+            return HealthCheckResult.Healthy();
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {

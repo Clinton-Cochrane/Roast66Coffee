@@ -11,7 +11,9 @@ public class DatabaseReadinessHealthCheckTests
     [Fact]
     public async Task Check_WhenDatabaseIsAvailable_ReturnsHealthy()
     {
-        var check = CreateCheck(_ => Task.FromResult(true));
+        var check = CreateCheck(
+            _ => Task.FromResult(true),
+            _ => Task.FromResult(false));
 
         var result = await check.CheckHealthAsync(new HealthCheckContext());
 
@@ -21,7 +23,9 @@ public class DatabaseReadinessHealthCheckTests
     [Fact]
     public async Task Check_WhenDatabaseIsUnavailable_ReturnsUnhealthy()
     {
-        var check = CreateCheck(_ => Task.FromResult(false));
+        var check = CreateCheck(
+            _ => Task.FromResult(false),
+            _ => Task.FromResult(false));
 
         var result = await check.CheckHealthAsync(new HealthCheckContext());
 
@@ -29,13 +33,28 @@ public class DatabaseReadinessHealthCheckTests
     }
 
     [Fact]
+    public async Task Check_WhenDatabaseHasPendingMigrations_ReturnsUnhealthy()
+    {
+        var check = CreateCheck(
+            _ => Task.FromResult(true),
+            _ => Task.FromResult(true));
+
+        var result = await check.CheckHealthAsync(new HealthCheckContext());
+
+        Assert.Equal(HealthStatus.Unhealthy, result.Status);
+        Assert.Equal("The required database schema is not current.", result.Description);
+    }
+
+    [Fact]
     public async Task Check_WhenDatabaseTimesOut_ReturnsUnhealthy()
     {
-        var check = CreateCheck(async cancellationToken =>
-        {
-            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
-            return true;
-        });
+        var check = CreateCheck(
+            async cancellationToken =>
+            {
+                await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+                return true;
+            },
+            _ => Task.FromResult(false));
         using var timeout = new CancellationTokenSource(TimeSpan.FromMilliseconds(50));
 
         var result = await check.CheckHealthAsync(new HealthCheckContext(), timeout.Token);
@@ -104,15 +123,20 @@ public class DatabaseReadinessHealthCheckTests
     }
 
     private static DatabaseReadinessHealthCheck CreateCheck(
-        Func<CancellationToken, Task<bool>> probe) =>
+        Func<CancellationToken, Task<bool>> canConnect,
+        Func<CancellationToken, Task<bool>> hasPendingMigrations) =>
         new(
-            new StubDatabaseReadinessProbe(probe),
+            new StubDatabaseReadinessProbe(canConnect, hasPendingMigrations),
             NullLogger<DatabaseReadinessHealthCheck>.Instance);
 
     private sealed class StubDatabaseReadinessProbe(
-        Func<CancellationToken, Task<bool>> probe) : IDatabaseReadinessProbe
+        Func<CancellationToken, Task<bool>> canConnect,
+        Func<CancellationToken, Task<bool>> hasPendingMigrations) : IDatabaseReadinessProbe
     {
         public Task<bool> CanConnectAsync(CancellationToken cancellationToken) =>
-            probe(cancellationToken);
+            canConnect(cancellationToken);
+
+        public Task<bool> HasPendingMigrationsAsync(CancellationToken cancellationToken) =>
+            hasPendingMigrations(cancellationToken);
     }
 }
