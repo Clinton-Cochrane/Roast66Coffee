@@ -8,162 +8,82 @@ using Npgsql;
 
 namespace CoffeeShopApi.Tests;
 
+[Collection(PostgresIntegrationCollection.Name)]
 public class MenuHistoryPostgresTests
 {
     [Fact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task MigrationAndMenuMaintenance_PreserveHistoryAndRollback()
     {
-        var baseConnectionString = GetRequiredConnectionString();
-        if (baseConnectionString == null)
+        await using var database = await PostgresTestDatabase.CreateAsync("roast66_menu_history");
+        if (database == null)
         {
             return;
         }
 
-        var databaseName = $"roast66_menu_history_{Guid.NewGuid():N}";
-        var databaseConnectionString = await CreateDatabaseAsync(baseConnectionString, databaseName);
+        var databaseConnectionString = database.ConnectionString;
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql(databaseConnectionString)
+            .Options;
 
-        try
+        await using (var context = new ApplicationDbContext(options))
         {
-            var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-                .UseNpgsql(databaseConnectionString)
-                .Options;
-
-            await using (var context = new ApplicationDbContext(options))
-            {
-                var migrator = context.GetService<IMigrator>();
-                await migrator.MigrateAsync("20260828000000_AddPaymentConcurrencyToken");
-            }
-
-            await SeedPreMigrationOrderAsync(databaseConnectionString);
-
-            await using (var context = new ApplicationDbContext(options))
-            {
-                await context.Database.MigrateAsync();
-            }
-
-            await AssertSnapshotsAndSetNullDeleteAsync(databaseConnectionString);
-
-            await using (var context = new ApplicationDbContext(options))
-            {
-                context.MenuItems.Add(new MenuItem
-                {
-                    Name = "Menu before failed import",
-                    Description = "Must survive rollback",
-                    Price = 3m,
-                    CategoryType = CategoryType.COFFEE
-                });
-                await context.SaveChangesAsync();
-
-                var service = new MenuService(context);
-                await Assert.ThrowsAsync<DbUpdateException>(() =>
-                    service.BulkReplaceAsync(
-                    [
-                        new MenuItem
-                        {
-                            Name = null!,
-                            Description = "Invalid replacement",
-                            Price = 4m,
-                            CategoryType = CategoryType.COFFEE
-                        }
-                    ]));
-            }
-
-            await using (var verification = new ApplicationDbContext(options))
-            {
-                Assert.True(await verification.MenuItems.AnyAsync(
-                    item => item.Name == "Menu before failed import"));
-            }
-
-            await AddSeedFailureTriggerAsync(databaseConnectionString);
-            await using (var context = new ApplicationDbContext(options))
-            {
-                await Assert.ThrowsAsync<DbUpdateException>(() =>
-                    SeedMenuItems.SeedAsync(context));
-            }
-
-            await using (var verification = new ApplicationDbContext(options))
-            {
-                Assert.True(await verification.MenuItems.AnyAsync(
-                    item => item.Name == "Menu before failed import"));
-            }
-        }
-        finally
-        {
-            await DropDatabaseAsync(baseConnectionString, databaseName);
-        }
-    }
-
-    private static string? GetRequiredConnectionString()
-    {
-        var connectionString = Environment.GetEnvironmentVariable(
-            "POSTGRES_INTEGRATION_CONNECTION_STRING");
-        if (!string.IsNullOrWhiteSpace(connectionString))
-        {
-            return connectionString;
+            var migrator = context.GetService<IMigrator>();
+            await migrator.MigrateAsync("20260828000000_AddPaymentConcurrencyToken");
         }
 
-        Assert.False(
-            string.Equals(
-                Environment.GetEnvironmentVariable("REQUIRE_POSTGRES_INTEGRATION_TESTS"),
-                "true",
-                StringComparison.OrdinalIgnoreCase),
-            "POSTGRES_INTEGRATION_CONNECTION_STRING is required for this test run.");
-        return null;
-    }
+        await SeedPreMigrationOrderAsync(databaseConnectionString);
 
-    private static async Task<string> CreateDatabaseAsync(
-        string baseConnectionString,
-        string databaseName)
-    {
-        var adminBuilder = new NpgsqlConnectionStringBuilder(baseConnectionString)
+        await using (var context = new ApplicationDbContext(options))
         {
-            Database = "postgres",
-            Pooling = false
-        };
-        await using var connection = new NpgsqlConnection(adminBuilder.ConnectionString);
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText =
-            """
-            DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
-                    CREATE ROLE anon NOLOGIN;
-                END IF;
-                IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-                    CREATE ROLE authenticated NOLOGIN;
-                END IF;
-            END $$;
-            """;
-        await command.ExecuteNonQueryAsync();
+            await context.Database.MigrateAsync();
+        }
 
-        command.CommandText = $"CREATE DATABASE \"{databaseName}\"";
-        await command.ExecuteNonQueryAsync();
+        await AssertSnapshotsAndSetNullDeleteAsync(databaseConnectionString);
 
-        var databaseBuilder = new NpgsqlConnectionStringBuilder(baseConnectionString)
+        await using (var context = new ApplicationDbContext(options))
         {
-            Database = databaseName,
-            Pooling = false
-        };
-        return databaseBuilder.ConnectionString;
-    }
+            context.MenuItems.Add(new MenuItem
+            {
+                Name = "Menu before failed import",
+                Description = "Must survive rollback",
+                Price = 3m,
+                CategoryType = CategoryType.COFFEE
+            });
+            await context.SaveChangesAsync();
 
-    private static async Task DropDatabaseAsync(
-        string baseConnectionString,
-        string databaseName)
-    {
-        NpgsqlConnection.ClearAllPools();
-        var builder = new NpgsqlConnectionStringBuilder(baseConnectionString)
+            var service = new MenuService(context);
+            await Assert.ThrowsAsync<DbUpdateException>(() =>
+                service.BulkReplaceAsync(
+                [
+                    new MenuItem
+                    {
+                        Name = null!,
+                        Description = "Invalid replacement",
+                        Price = 4m,
+                        CategoryType = CategoryType.COFFEE
+                    }
+                ]));
+        }
+
+        await using (var verification = new ApplicationDbContext(options))
         {
-            Database = "postgres",
-            Pooling = false
-        };
-        await using var connection = new NpgsqlConnection(builder.ConnectionString);
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText = $"DROP DATABASE IF EXISTS \"{databaseName}\" WITH (FORCE)";
-        await command.ExecuteNonQueryAsync();
+            Assert.True(await verification.MenuItems.AnyAsync(
+                item => item.Name == "Menu before failed import"));
+        }
+
+        await AddSeedFailureTriggerAsync(databaseConnectionString);
+        await using (var context = new ApplicationDbContext(options))
+        {
+            await Assert.ThrowsAsync<DbUpdateException>(() =>
+                SeedMenuItems.SeedAsync(context));
+        }
+
+        await using (var verification = new ApplicationDbContext(options))
+        {
+            Assert.True(await verification.MenuItems.AnyAsync(
+                item => item.Name == "Menu before failed import"));
+        }
     }
 
     private static async Task SeedPreMigrationOrderAsync(string connectionString)

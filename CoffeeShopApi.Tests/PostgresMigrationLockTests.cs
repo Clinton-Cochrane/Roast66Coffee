@@ -2,6 +2,7 @@ using Npgsql;
 
 namespace CoffeeShopApi.Tests;
 
+[Collection(PostgresIntegrationCollection.Name)]
 public class PostgresMigrationLockTests
 {
     [Fact]

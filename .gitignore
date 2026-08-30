@@ -26,6 +26,7 @@ node_modules/
 
 # Testing
 **/coverage/
+**/test-results/
 
 # Environment and secrets
 .env
