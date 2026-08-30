@@ -149,10 +149,11 @@ namespace CoffeeShopApi.Controllers
 
 
         // Get all menu items
+        [Authorize(Roles = "Admin")]
         [HttpGet("menu")]
         public async Task<ActionResult<IEnumerable<MenuItem>>> GetMenuItems()
         {
-            return await _context.MenuItems.ToListAsync();
+            return Ok(await _menuService.GetAllMenuItemsAsync());
         }
 
         // Add a new menu item
@@ -160,10 +161,8 @@ namespace CoffeeShopApi.Controllers
         [HttpPost("menu")]
         public async Task<ActionResult<MenuItem>> PostMenuItem(MenuItem menuItem)
         {
-            menuItem.IsFeaturedOnHome = false;
-            _context.MenuItems.Add(menuItem);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetMenuItems), new { id = menuItem.Id }, menuItem);
+            var createdItem = await _menuService.CreateMenuItemAsync(menuItem);
+            return CreatedAtAction(nameof(GetMenuItems), new { id = createdItem.Id }, createdItem);
         }
 
         // Update an existing menu item
@@ -197,6 +196,10 @@ namespace CoffeeShopApi.Controllers
             {
                 HomepageSpecialSelectionResult.Updated => NoContent(),
                 HomepageSpecialSelectionResult.NotFound => NotFound(),
+                HomepageSpecialSelectionResult.Unavailable => Conflict(new
+                {
+                    message = "Archived menu items cannot be featured."
+                }),
                 HomepageSpecialSelectionResult.LimitReached => Conflict(new
                 {
                     message = $"Only {MenuService.MaxHomepageSpecials} homepage specials can be selected."
@@ -229,21 +232,18 @@ namespace CoffeeShopApi.Controllers
         [HttpDelete("menu/{id}")]
         public async Task<IActionResult> DeleteMenuItem(int id)
         {
-            var menuItem = await _context.MenuItems.FindAsync(id);
-            if (menuItem == null)
-            {
-                return NotFound();
-            }
-            _context.MenuItems.Remove(menuItem);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            return await _menuService.DeleteMenuItemAsync(id) ? NoContent() : NotFound();
         }
 
-        private bool MenuItemExists(int id)
-        {
-            return _context.MenuItems.Any(e => e.Id == id);
-        }
+        [Authorize(Roles = "Admin")]
+        [HttpPut("menu/{id}/archive")]
+        public async Task<IActionResult> ArchiveMenuItem(int id) =>
+            await _menuService.ArchiveMenuItemAsync(id) ? NoContent() : NotFound();
+
+        [Authorize(Roles = "Admin")]
+        [HttpPut("menu/{id}/restore")]
+        public async Task<IActionResult> RestoreMenuItem(int id) =>
+            await _menuService.RestoreMenuItemAsync(id) ? NoContent() : NotFound();
 
         [Authorize(Roles = "Admin")]
         // Get all orders
@@ -280,7 +280,15 @@ namespace CoffeeShopApi.Controllers
                     order = PublicOrderDto.FromOrder(duplicate)
                 });
             }
-            var newOrder = await _orderService.CreateOrderAsync(order);
+            Order newOrder;
+            try
+            {
+                newOrder = await _orderService.CreateOrderAsync(order, cancellationToken);
+            }
+            catch (UnavailableMenuItemsException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
             _staffPushQueue.TryEnqueue(newOrder.Id);
             return CreatedAtAction(
                 nameof(GetOrders),
@@ -404,7 +412,7 @@ namespace CoffeeShopApi.Controllers
         [HttpGet("menu/export")]
         public async Task<ActionResult<IEnumerable<MenuItem>>> ExportMenu()
         {
-            var items = await _menuService.GetMenuItemsAsync();
+            var items = await _menuService.GetAllMenuItemsAsync();
             return Ok(items);
         }
 
@@ -419,7 +427,7 @@ namespace CoffeeShopApi.Controllers
             {
                 return BadRequest("Menu must contain at least one item.");
             }
-            await _menuService.BulkReplaceAsync(menuItems);
+            await _menuService.BulkReplaceAsync(menuItems, HttpContext.RequestAborted);
             return Ok(new { message = "Menu imported successfully.", count = menuItems.Count });
         }
 

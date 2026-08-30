@@ -278,11 +278,11 @@ function ViewOrders() {
 
                       return (
                         <li key={item.id ?? idx} className="flex flex-col border-b pb-2">
-                          {item.menuItem?.name || item.MenuItem?.name ? (
+                          {item.itemName || item.ItemName || item.menuItem?.name || item.MenuItem?.name ? (
                             <>
                               <span>
                                 <strong>{t("adminOrders.itemLabel")}</strong>{" "}
-                                {item.menuItem?.name ?? item.MenuItem?.name}
+                                {item.itemName ?? item.ItemName ?? item.menuItem?.name ?? item.MenuItem?.name}
                               </span>
                               <span>
                                 {" "}
@@ -293,7 +293,11 @@ function ViewOrders() {
                                   <strong>{t("adminOrders.shotsLabel")}</strong>{" "}
                                   {addOns
                                     .map((addOn) => {
-                                      const name = addOn.menuItem?.name ?? addOn.MenuItem?.name;
+                                      const name =
+                                        addOn.itemName ??
+                                        addOn.ItemName ??
+                                        addOn.menuItem?.name ??
+                                        addOn.MenuItem?.name;
                                       return name ? `${name} × ${addOn.quantity}` : null;
                                     })
                                     .filter(Boolean)

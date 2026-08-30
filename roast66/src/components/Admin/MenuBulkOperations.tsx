@@ -88,6 +88,9 @@ function MenuBulkOperations({ onMenuUpdated }: MenuBulkOperationsProps) {
           setImportError(t("adminBulk.fileMustContainArray"));
           return;
         }
+        if (!window.confirm(t("adminBulk.importConfirm", { count: items.length }))) {
+          return;
+        }
         setIsImporting(true);
         await axiosInstance.post("/admin/menu/import", items);
         toast.success(t("adminBulk.importCountSuccess", { count: items.length }));

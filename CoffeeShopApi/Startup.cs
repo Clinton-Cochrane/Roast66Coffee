@@ -37,8 +37,9 @@ namespace CoffeeShopApi
             SecurityConfiguration.Validate(Configuration, _env);
             if (_env.IsEnvironment("Testing"))
             {
+                var databaseName = Configuration["Testing:DatabaseName"] ?? "IntegrationTestDb";
                 services.AddDbContext<ApplicationDbContext>(options =>
-                    options.UseInMemoryDatabase("IntegrationTestDb"));
+                    options.UseInMemoryDatabase(databaseName));
             }
             else
             {

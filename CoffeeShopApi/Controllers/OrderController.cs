@@ -88,7 +88,15 @@ public class OrderController : ControllerBase
             });
         }
 
-        var createdOrder = await _orderService.CreateOrderAsync(order);
+        Order createdOrder;
+        try
+        {
+            createdOrder = await _orderService.CreateOrderAsync(order, cancellationToken);
+        }
+        catch (UnavailableMenuItemsException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         _staffPushQueue.TryEnqueue(createdOrder.Id);
         return CreatedAtAction(
             nameof(TrackOrder),
@@ -146,13 +154,13 @@ public class OrderController : ControllerBase
                 var itemTotal = item.UnitPrice * item.Quantity;
                 return new
                 {
-                    name = item.MenuItem?.Name ?? $"Item {item.MenuItemId}",
+                    name = item.ItemName,
                     quantity = item.Quantity,
                     notes = item.Notes,
                     lineTotal = itemTotal + addOnTotal,
                     addOns = addOns.Select(a => new
                     {
-                        name = a.MenuItem?.Name ?? $"Add-on {a.MenuItemId}",
+                        name = a.ItemName,
                         quantity = a.Quantity,
                         lineTotal = a.UnitPrice * a.Quantity
                     })

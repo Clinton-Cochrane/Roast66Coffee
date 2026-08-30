@@ -1,4 +1,5 @@
 using CoffeeShopApi.Models;
+using CoffeeShopApi.Services;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -88,21 +89,7 @@ namespace CoffeeShopApi.Data
                 // Add more drinks as needed
             };
 
-            // Loop through each drink and add or update it
-            try
-            {
-                context.MenuItems.RemoveRange(context.MenuItems);
-                await context.SaveChangesAsync();
-
-                await context.MenuItems.AddRangeAsync(drinks);
-                await context.SaveChangesAsync();
-                Console.WriteLine("Seeding completed successfully.");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error during seeding: {ex.Message}");
-                throw;
-            }
+            await new MenuService(context).BulkReplaceAsync(drinks);
         }
     }
 }
