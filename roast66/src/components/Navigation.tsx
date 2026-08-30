@@ -6,12 +6,16 @@ import logo from "../logo-sign.svg";
 import { ORDER_STATUS } from "../constants/orderStatus";
 import { getOrderStatusFromDto } from "../constants/orderStatusParse";
 import {
+  clearOrderStatusSession,
   ORDER_STATUS_SESSION_UPDATED_EVENT,
   readOrderStatusSession,
   writeOrderStatusSession,
   type OrderStatusLookupSessionPayload,
 } from "../constants/orderStatusSession";
-import { fetchOrderLookup } from "../lib/orderStatusLookup";
+import {
+  fetchOrderLookup,
+  isOrderStatusUnavailable,
+} from "../lib/orderStatusLookup";
 import { useI18n } from "../i18n/LanguageContext";
 
 const merchUrl = "https://roast-66-coffee.printify.me/products";
@@ -40,7 +44,7 @@ function Navigation() {
     if (location.pathname === "/order-status") return;
 
     const session = readOrderStatusSession();
-    if (!session || session.orderStatus === ORDER_STATUS.Completed) return;
+    if (!session) return;
 
     let cancelled = false;
     const pull = async () => {
@@ -50,8 +54,10 @@ function Navigation() {
         if (!cancelled) {
           writeOrderStatusSession(session.trackingToken, getOrderStatusFromDto(data));
         }
-      } catch {
-        /* Keep navigation usable if background status refresh fails. */
+      } catch (error: unknown) {
+        if (!cancelled && isOrderStatusUnavailable(error)) {
+          clearOrderStatusSession(session.trackingToken);
+        }
       }
     };
 
