@@ -219,9 +219,7 @@ export const esMx: Messages = {
     lookup: "Ver estado",
     lookingUp: "Buscando...",
     lookupMissingFields: "Ingresa el código privado de seguimiento.",
-    notFound: "No se encontró un pedido con ese código.",
-    restoreNotFound:
-      "No pudimos recargar tu pedido. Verifica el código y toca Ver estado.",
+    unavailable: "El estado de este pedido ya no está disponible.",
     lookupFailed: "No se pudo consultar el pedido.",
     paymentSubmitted: "Pago enviado. Lo estamos confirmando.",
     paymentCancelled: "El pago fue cancelado.",

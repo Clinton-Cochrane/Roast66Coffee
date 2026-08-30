@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, type FormEvent } from "react";
+import React, { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import axiosInstance from "../axiosConfig";
@@ -14,7 +14,10 @@ import {
   writeOrderStatusSession,
 } from "../constants/orderStatusSession";
 import { useI18n } from "../i18n/LanguageContext";
-import { fetchOrderLookup } from "../lib/orderStatusLookup";
+import {
+  fetchOrderLookup,
+  isOrderStatusUnavailable,
+} from "../lib/orderStatusLookup";
 import type { OrderDto, OrderLineItemDto } from "../types/api";
 
 const ENABLE_ONLINE_PREPAY =
@@ -31,11 +34,37 @@ function OrderStatusPage() {
   const [order, setOrder] = useState<OrderDto | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isUnavailable, setIsUnavailable] = useState(false);
   const [prepayLoading, setPrepayLoading] = useState(false);
   const restoreRanRef = useRef(false);
   /** Bumps when a manual lookup starts so in-flight restore cannot overwrite state or sessionStorage. */
   const lookupEpochRef = useRef(0);
   const pollTokenRef = useRef<string | null>(null);
+
+  const showUnavailable = useCallback(
+    (failedToken: string) => {
+      lookupEpochRef.current += 1;
+      pollTokenRef.current = null;
+      setIsLoading(false);
+      setOrder(null);
+      setLastUpdatedAt(null);
+      setIsUnavailable(true);
+      setTrackingToken("");
+      clearOrderStatusSession(failedToken);
+      setSearchParams(
+        (current) => {
+          if (!current.has("token")) {
+            return current;
+          }
+          const next = new URLSearchParams(current);
+          next.delete("token");
+          return next;
+        },
+        { replace: true }
+      );
+    },
+    [setSearchParams]
+  );
 
   useEffect(() => {
     const checkout = searchParams.get("checkout");
@@ -90,6 +119,8 @@ function OrderStatusPage() {
       const epochAtRestoreStart = lookupEpochRef.current;
       setIsLoading(true);
       setOrder(null);
+      setLastUpdatedAt(null);
+      setIsUnavailable(false);
       try {
         const data = await fetchOrderLookup(sessionToken);
         if (lookupEpochRef.current !== epochAtRestoreStart) {
@@ -97,15 +128,17 @@ function OrderStatusPage() {
         }
         setOrder(data);
         setLastUpdatedAt(new Date());
+        setIsUnavailable(false);
         pollTokenRef.current = sessionToken;
         writeOrderStatusSession(sessionToken, getOrderStatusFromDto(data));
       } catch (err: unknown) {
-        if (
-          lookupEpochRef.current === epochAtRestoreStart &&
-          axios.isAxiosError(err) &&
-          err.response?.status === 404
-        ) {
-          toast.error(t("orderStatus.restoreNotFound"));
+        if (lookupEpochRef.current !== epochAtRestoreStart) {
+          return;
+        }
+        if (isOrderStatusUnavailable(err)) {
+          showUnavailable(sessionToken);
+        } else {
+          toast.error(t("orderStatus.lookupFailed"));
         }
       } finally {
         if (lookupEpochRef.current === epochAtRestoreStart) {
@@ -115,7 +148,7 @@ function OrderStatusPage() {
     };
 
     void runRestore();
-  }, [searchParams]);
+  }, [searchParams, showUnavailable, t]);
 
   const handleLookup = async (e: FormEvent) => {
     e.preventDefault();
@@ -123,20 +156,23 @@ function OrderStatusPage() {
       toast.error(t("orderStatus.lookupMissingFields"));
       return;
     }
+    const requestedToken = trackingToken.trim();
     lookupEpochRef.current += 1;
     pollTokenRef.current = null;
     setIsLoading(true);
     setOrder(null);
+    setLastUpdatedAt(null);
+    setIsUnavailable(false);
     try {
-      const data = await fetchOrderLookup(trackingToken);
+      const data = await fetchOrderLookup(requestedToken);
       setOrder(data);
       setLastUpdatedAt(new Date());
-      pollTokenRef.current = trackingToken.trim();
-      writeOrderStatusSession(trackingToken, getOrderStatusFromDto(data));
+      setIsUnavailable(false);
+      pollTokenRef.current = requestedToken;
+      writeOrderStatusSession(requestedToken, getOrderStatusFromDto(data));
     } catch (err: unknown) {
-      if (axios.isAxiosError(err) && err.response?.status === 404) {
-        clearOrderStatusSession();
-        toast.error(t("orderStatus.notFound"));
+      if (isOrderStatusUnavailable(err)) {
+        showUnavailable(requestedToken);
       } else {
         toast.error(t("orderStatus.lookupFailed"));
       }
@@ -227,8 +263,14 @@ function OrderStatusPage() {
         setOrder(data);
         setLastUpdatedAt(new Date());
         writeOrderStatusSession(pollToken, getOrderStatusFromDto(data));
-      } catch {
-        /* ignore — user can use Check Status */
+      } catch (err: unknown) {
+        if (
+          !cancelled &&
+          lookupEpochRef.current === epochAtRequest &&
+          isOrderStatusUnavailable(err)
+        ) {
+          showUnavailable(pollToken);
+        }
       }
     };
 
@@ -245,7 +287,7 @@ function OrderStatusPage() {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [order?.id, isCompleted]);
+  }, [order?.id, isCompleted, showUnavailable]);
 
   return (
     <div className="p-6 max-w-lg mx-auto">
@@ -266,6 +308,15 @@ function OrderStatusPage() {
           {isLoading ? t("orderStatus.lookingUp") : t("orderStatus.lookup")}
         </Button>
       </form>
+
+      {isUnavailable ? (
+        <p
+          role="status"
+          className="mb-8 rounded-lg border border-gray-200 bg-gray-50 p-4 text-gray-700"
+        >
+          {t("orderStatus.unavailable")}
+        </p>
+      ) : null}
 
       {order ? (
         <div className="bg-gray-50 rounded-lg p-4">

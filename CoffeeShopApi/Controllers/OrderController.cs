@@ -32,6 +32,10 @@ public class OrderController : ControllerBase
         return Ok(await _orderService.GetOrdersAsync());
     }
 
+    [HttpGet("track")]
+    [EnableRateLimiting("PublicTracking")]
+    public IActionResult TrackOrderWithoutToken() => TrackingUnavailable();
+
     [HttpGet("track/{trackingToken}")]
     [EnableRateLimiting("PublicTracking")]
     public async Task<ActionResult<PublicOrderDto>> TrackOrder(
@@ -41,7 +45,7 @@ public class OrderController : ControllerBase
         var order = await _orderService.GetOrderByTrackingTokenAsync(trackingToken, cancellationToken);
         if (order == null)
         {
-            return NotFound();
+            return TrackingUnavailable();
         }
         return Ok(PublicOrderDto.FromOrder(order));
     }
@@ -101,7 +105,7 @@ public class OrderController : ControllerBase
         var order = await _orderService.GetOrderByTrackingTokenAsync(trackingToken, cancellationToken);
         if (order == null)
         {
-            return NotFound();
+            return TrackingUnavailable();
         }
 
         var notifications = await _notificationService.GetCustomerNotificationsForOrderAsync(
@@ -131,7 +135,7 @@ public class OrderController : ControllerBase
         var order = await _orderService.GetOrderByTrackingTokenAsync(trackingToken, cancellationToken);
         if (order == null)
         {
-            return NotFound();
+            return TrackingUnavailable();
         }
 
         var items = (order.OrderItems ?? [])
@@ -168,6 +172,9 @@ public class OrderController : ControllerBase
             total
         });
     }
+
+    private NotFoundObjectResult TrackingUnavailable() =>
+        NotFound(OrderTrackingUnavailableDto.Response);
 
     [Authorize(Roles = "Admin")]
     [HttpPut("{id}")]
