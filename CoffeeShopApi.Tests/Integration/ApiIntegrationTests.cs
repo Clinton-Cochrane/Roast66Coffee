@@ -84,7 +84,11 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     [Fact]
     public async Task PostOrder_DoesNotCreateCustomerEmailOrSmsNotifications()
     {
-        var order = CreateValidOrder($"Notify-{Guid.NewGuid():N}");
+        var order = CreateValidOrder(
+            $"Notify-{Guid.NewGuid():N}",
+            $"555{Random.Shared.Next(1000000, 9999999)}");
+        order.CustomerEmail = "customer@example.com";
+        order.CustomerNotificationOptIn = true;
         var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
         post.EnsureSuccessStatusCode();
         var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
@@ -108,10 +112,11 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     [Fact]
     public async Task PostOrder_DuplicateOrderWithinWindow_Returns409Conflict()
     {
-        var order = new CreateOrderRequest
+        var order = new Order
         {
             CustomerName = "Duplicate Test Customer",
-            OrderItems = [new CreateOrderItemRequest { MenuItemId = 1, Quantity = 2 }]
+            CustomerPhone = "5559876543",
+            OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 2 }]
         };
         var firstResponse = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
         firstResponse.EnsureSuccessStatusCode();
@@ -133,10 +138,11 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         _client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-        var order = new CreateOrderRequest
+        var order = new Order
         {
             CustomerName = "Admin Token Test Customer",
-            OrderItems = [new CreateOrderItemRequest { MenuItemId = 1, Quantity = 1 }]
+            CustomerPhone = "5559998888",
+            OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 1 }]
         };
         var postResponse = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
         postResponse.EnsureSuccessStatusCode();
@@ -189,16 +195,17 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         }
 
         var customerName = $"Admin shots {Guid.NewGuid():N}";
-        var order = new CreateOrderRequest
+        var order = new Order
         {
             CustomerName = customerName,
+            CustomerPhone = $"555{Random.Shared.Next(1000000, 9999999)}",
             OrderItems =
             [
-                new CreateOrderItemRequest
+                new OrderItem
                 {
                     MenuItemId = drinkId,
                     Quantity = 1,
-                    AddOns = [new CreateOrderAddOnRequest { MenuItemId = shotId, Quantity = 2 }]
+                    AddOns = [new AddOn { MenuItemId = shotId, Quantity = 2 }]
                 }
             ]
         };
@@ -266,13 +273,15 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task UpdateOrderStatus_ToReadyForPickup_DoesNotCreateCustomerNotificationWithoutContact()
+    public async Task UpdateOrderStatus_ToReadyForPickup_LogsCustomerReadyNotification()
     {
         var token = await GetAdminToken();
         _client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
-        var order = CreateValidOrder($"Ready-{Guid.NewGuid():N}");
+        var order = CreateValidOrder(
+            $"Ready-{Guid.NewGuid():N}",
+            $"555{Random.Shared.Next(1000000, 9999999)}");
         var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
         post.EnsureSuccessStatusCode();
         var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
@@ -288,13 +297,15 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         var notifications = await notificationsResponse.Content.ReadFromJsonAsync<List<NotificationLogResponse>>(JsonOptions);
 
         Assert.NotNull(notifications);
-        Assert.Empty(notifications!);
+        Assert.Contains(notifications!, n => n.EventType == "order.ready_for_pickup" && n.RecipientRole == "customer");
     }
 
     [Fact]
     public async Task PublicTracking_WithToken_ReturnsMinimalOrderAndSummary()
     {
-        var order = CreateValidOrder($"Summary-{Guid.NewGuid():N}");
+        var order = CreateValidOrder(
+            $"Summary-{Guid.NewGuid():N}",
+            $"555{Random.Shared.Next(1000000, 9999999)}");
         var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
         post.EnsureSuccessStatusCode();
         var created = await post.Content.ReadFromJsonAsync<PublicOrderResponse>(JsonOptions);
@@ -315,14 +326,18 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         Assert.Equal($"/order-status?token={created.TrackingToken}", summaryPayload.TrackerUrl);
 
         var oldLookup = await _client.GetAsync(
-            $"/api/order/lookup?orderId={created.Id}&customerName={Uri.EscapeDataString(order.CustomerName!)}");
+            $"/api/order/lookup?orderId={created.Id}&customerName={Uri.EscapeDataString(order.CustomerName)}");
         Assert.Equal(HttpStatusCode.NotFound, oldLookup.StatusCode);
     }
 
     [Fact]
     public async Task PurgeEmailNotificationLogs_RemovesOldEmailRows()
     {
-        var order = CreateValidOrder($"Purge-{Guid.NewGuid():N}");
+        var order = CreateValidOrder(
+            $"Purge-{Guid.NewGuid():N}",
+            $"555{Random.Shared.Next(1000000, 9999999)}");
+        order.CustomerEmail = "customer@example.com";
+        order.CustomerNotificationOptIn = true;
         var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
         post.EnsureSuccessStatusCode();
         var created = await post.Content.ReadFromJsonAsync<PublicOrderDto>(JsonOptions);
@@ -459,14 +474,15 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
-    private static CreateOrderRequest CreateValidOrder(string? customerName = null)
+    private static Order CreateValidOrder(string? customerName = null, string? customerPhone = null)
     {
-        return new CreateOrderRequest
+        return new Order
         {
             CustomerName = customerName ?? "Integration Test Customer",
+            CustomerPhone = customerPhone ?? "5551234567",
             OrderItems =
             [
-                new CreateOrderItemRequest { MenuItemId = 1, Quantity = 2 }
+                new OrderItem { MenuItemId = 1, Quantity = 2 }
             ]
         };
     }

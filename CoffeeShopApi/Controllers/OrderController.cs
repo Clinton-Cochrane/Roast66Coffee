@@ -69,19 +69,17 @@ public class OrderController : ControllerBase
 
     [HttpPost]
     [EnableRateLimiting("Order")]
-    public async Task<ActionResult<PublicOrderDto>> PostOrder(
-        CreateOrderRequest request,
-        CancellationToken cancellationToken)
+    public async Task<ActionResult<Order>> PostOrder(Order order, CancellationToken cancellationToken)
     {
-        var submission = await _orderService.SubmitOrderAsync(request, cancellationToken);
-        if (submission.Status == OrderSubmissionStatus.Invalid)
+        if (order.OrderItems == null || order.OrderItems.Count == 0)
         {
-            return BadRequest(new ValidationProblemDetails(submission.Errors!));
+            ModelState.AddModelError("OrderItems", "The OrderItems field is required.");
+            return BadRequest(ModelState);
         }
 
-        if (submission.Status == OrderSubmissionStatus.Duplicate)
+        var duplicate = await _orderService.FindDuplicateOrderAsync(order);
+        if (duplicate != null)
         {
-            var duplicate = submission.Order!;
             return StatusCode(StatusCodes.Status409Conflict, new
             {
                 message = "Duplicate order detected. An identical order was placed recently.",
@@ -90,7 +88,15 @@ public class OrderController : ControllerBase
             });
         }
 
-        var createdOrder = submission.Order!;
+        Order createdOrder;
+        try
+        {
+            createdOrder = await _orderService.CreateOrderAsync(order, cancellationToken);
+        }
+        catch (UnavailableMenuItemsException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         _staffPushQueue.TryEnqueue(createdOrder.Id);
         return CreatedAtAction(
             nameof(TrackOrder),

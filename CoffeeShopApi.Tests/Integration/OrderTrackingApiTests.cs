@@ -81,10 +81,11 @@ public class OrderTrackingApiTests : IClassFixture<WebAppFactory>
 
     private async Task<CreatedOrderResponse> CreateOrderAsync()
     {
-        var order = new CreateOrderRequest
+        var order = new Order
         {
             CustomerName = $"Tracking-{Guid.NewGuid():N}",
-            OrderItems = [new CreateOrderItemRequest { MenuItemId = 1, Quantity = 1 }]
+            CustomerPhone = $"555{Random.Shared.Next(1000000, 9999999)}",
+            OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 1 }]
         };
         var response = await _client.PostAsJsonAsync("/api/order", order);
         response.EnsureSuccessStatusCode();

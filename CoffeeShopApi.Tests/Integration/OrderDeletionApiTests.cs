@@ -24,12 +24,12 @@ public class OrderDeletionApiTests : IClassFixture<WebAppFactory>
     [Fact]
     public async Task DeleteOrder_IsUnavailableToAnonymousAndAdminCallers()
     {
-        var order = new CreateOrderRequest
+        var order = new Order
         {
             CustomerName = $"Deletion regression {Guid.NewGuid():N}",
             OrderItems =
             [
-                new CreateOrderItemRequest { MenuItemId = 1, Quantity = 1 }
+                new OrderItem { MenuItemId = 1, Quantity = 1 }
             ]
         };
         var createResponse = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
