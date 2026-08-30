@@ -23,6 +23,11 @@ import "../styles/OrderPage.css";
 
 const MOBILE_ORDER_MEDIA_QUERY = "(max-width: 960px)";
 const MAX_LINE_QUANTITY = 12;
+const MAX_PRIMARY_LINES = 20;
+const MAX_DRINK_UNITS = 50;
+const MAX_FLAVORS_PER_DRINK = 12;
+const MAX_NOTES_LENGTH = 500;
+const MAX_ORDER_VALUE = 500;
 
 type CartAddOn = MenuItemDto & { quantity: number };
 type CartLine = MenuItemDto & {
@@ -40,7 +45,6 @@ function OrderPage() {
   const [menuItems, setMenuItems] = useState<MenuItemDto[]>([]);
   const [orderItems, setOrderItems] = useState<CartLine[]>([]);
   const [customerName, setCustomerName] = useState("");
-  const [customerEmail, setCustomerEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [drinkSearch, setDrinkSearch] = useState("");
   const [activeDrinkCategory, setActiveDrinkCategory] =
@@ -186,18 +190,29 @@ function OrderPage() {
   };
 
   const addItemToOrder = (item: MenuItemDto, trigger?: HTMLButtonElement) => {
-    if (canOrderMenuItemDirectly(item)) {
-      const cartLineId = nextCartLineIdRef.current;
-      nextCartLineIdRef.current += 1;
-      setOrderItems((prev) => [
-        ...prev,
-        { ...item, cartLineId, quantity: 1, notes: "", addOns: [] },
-      ]);
-      setActiveCartLineId(cartLineId);
-      openMobileOrderPanel(trigger);
-    } else {
+    if (!canOrderMenuItemDirectly(item)) {
       toast.warning(t("order.flavorStandaloneWarning"));
+      return;
     }
+
+    if (orderItems.length >= MAX_PRIMARY_LINES) {
+      toast.warning(t("order.primaryLineLimit"));
+      return;
+    }
+    const currentUnits = orderItems.reduce((total, orderItem) => total + orderItem.quantity, 0);
+    if (currentUnits >= MAX_DRINK_UNITS) {
+      toast.warning(t("order.drinkUnitLimit"));
+      return;
+    }
+
+    const cartLineId = nextCartLineIdRef.current;
+    nextCartLineIdRef.current += 1;
+    setOrderItems((prev) => [
+      ...prev,
+      { ...item, cartLineId, quantity: 1, notes: "", addOns: [] },
+    ]);
+    setActiveCartLineId(cartLineId);
+    openMobileOrderPanel(trigger);
   };
 
   useEffect(() => {
@@ -301,11 +316,18 @@ function OrderPage() {
       return;
     }
 
+    const otherUnits = orderItems.reduce(
+      (total, item, itemIndex) => total + (itemIndex === index ? 0 : item.quantity),
+      0
+    );
+    const maximumForLine = Math.min(MAX_LINE_QUANTITY, MAX_DRINK_UNITS - otherUnits);
+    if (parsedQuantity > maximumForLine) {
+      toast.warning(t("order.drinkUnitLimit"));
+    }
+
     setOrderItems((previousItems) =>
       previousItems.map((item, itemIndex) =>
-        itemIndex === index
-          ? { ...item, quantity: Math.min(parsedQuantity, MAX_LINE_QUANTITY) }
-          : item
+        itemIndex === index ? { ...item, quantity: Math.min(parsedQuantity, maximumForLine) } : item
       )
     );
   };
@@ -332,7 +354,9 @@ function OrderPage() {
     const newOrderItems = [...orderItems];
     const addOns = newOrderItems[index].addOns;
 
-    if (!addOns.some((addOn) => addOn.id === flavor.id)) {
+    if (addOns.length >= MAX_FLAVORS_PER_DRINK) {
+      toast.warning(t("order.flavorLimit"));
+    } else if (!addOns.some((addOn) => addOn.id === flavor.id)) {
       addOns.push({ ...flavor, quantity: 1 });
       setOrderItems(newOrderItems);
     } else {
@@ -369,8 +393,6 @@ function OrderPage() {
     );
   };
 
-  const hasValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-
   const handleOrderSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submissionInFlightRef.current) {
@@ -380,11 +402,12 @@ function OrderPage() {
       toast.error(t("order.orderRequiredError"));
       return;
     }
+    if (calculateOrderTotal() > MAX_ORDER_VALUE) {
+      toast.error(t("order.orderValueLimit"));
+      return;
+    }
     const orderData = {
-      customerName,
-      customerPhone: null,
-      customerEmail: customerEmail.trim() || null,
-      customerNotificationOptIn: hasValidEmail(customerEmail),
+      customerName: customerName.trim(),
       orderItems: orderItems.map((item) => ({
         menuItemId: item.id,
         quantity: item.quantity,
@@ -409,7 +432,6 @@ function OrderPage() {
       setOrderItems([]);
       setActiveCartLineId(null);
       setCustomerName("");
-      setCustomerEmail("");
       navigate("/order/confirmation", { state: { order: createdOrder } });
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response?.status === 409) {
@@ -418,7 +440,6 @@ function OrderPage() {
         setOrderItems([]);
         setActiveCartLineId(null);
         setCustomerName("");
-        setCustomerEmail("");
         navigate("/order/duplicate", {
           state: { order: existingOrder, existingOrderId },
         });
@@ -458,26 +479,9 @@ function OrderPage() {
                 aria-label={t("order.namePlaceholder")}
                 value={customerName}
                 onChange={(e) => setCustomerName(e.target.value)}
+                maxLength={100}
                 required
               />
-            </div>
-            <div className="min-w-0">
-              <FormInput
-                type="email"
-                name="customerEmail"
-                autoComplete="email"
-                inputMode="email"
-                spellCheck={false}
-                placeholder={t("order.emailPlaceholder")}
-                title={t("order.emailPlaceholder")}
-                aria-label={t("order.emailPlaceholder")}
-                aria-describedby="order-email-help"
-                value={customerEmail}
-                onChange={(e) => setCustomerEmail(e.target.value)}
-              />
-              <p id="order-email-help" className="r66-order-email-help">
-                {t("order.emailHelpText")}
-              </p>
             </div>
           </div>
 
@@ -757,6 +761,7 @@ function OrderPage() {
                               name={`orderNotes-${activeOrderItemIndex}`}
                               autoComplete="off"
                               value={activeOrderItem.notes}
+                              maxLength={MAX_NOTES_LENGTH}
                               onChange={(e) =>
                                 handleNotesChange(activeOrderItemIndex, e.target.value)
                               }

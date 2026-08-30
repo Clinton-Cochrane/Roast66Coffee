@@ -146,12 +146,6 @@ export const en = {
     placeYourOrder: "Place Your Order",
     checkOrderStatus: "Check Order Status",
     namePlaceholder: "Your Name",
-    phonePlaceholder: "Phone For When Order Is Ready",
-    emailPlaceholder: "Email for order updates (optional)",
-    emailHelpText:
-      "We only send order status updates when a valid email address is provided.",
-    emailOptIn:
-      "Send me order status updates by email. We only use this for your order updates.",
     instructions:
       "Choose a drink below, then customize it with flavors and notes on the right.",
     chooseDrink: "Choose a drink",
@@ -196,6 +190,10 @@ export const en = {
       "Flavors cannot be ordered alone. Add them as add-ons to an existing drink.",
     itemRemoved: "{{itemName}} removed from order.",
     orderRequiredError: "Please add at least one item to your order.",
+    primaryLineLimit: "An order can contain up to 20 drink lines.",
+    drinkUnitLimit: "An order can contain up to 50 total drink units.",
+    flavorLimit: "A drink can contain up to 12 flavors.",
+    orderValueLimit: "The order total cannot exceed $500.",
     checkoutMissingUrl: "Missing checkout URL",
     submitFailed:
       "Failed to place the order. Please try again or check the console for details.",
@@ -259,8 +257,6 @@ export const en = {
     paymentOptional:
       "Your order is confirmed. Pay by card or wallet now, or choose another payment method at pickup.",
     viewPaymentOptions: "View payment options",
-    emailUpdates: "We will send order status updates to",
-    emailOptional: "Email updates are optional. Download your order summary for your records.",
     downloadSummary: "Download Order Summary",
     statusTitle: "Order Status",
     laterStatusStart: "Want to check status later? Go to",
