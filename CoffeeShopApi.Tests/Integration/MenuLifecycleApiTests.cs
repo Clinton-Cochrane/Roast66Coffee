@@ -60,10 +60,10 @@ public class MenuLifecycleApiTests : IClassFixture<WebAppFactory>
         Assert.True(archivedItem.IsArchived);
         Assert.False(archivedItem.IsFeaturedOnHome);
 
-        var archivedOrder = new CreateOrderRequest
+        var archivedOrder = new Order
         {
             CustomerName = "Archived item customer",
-            OrderItems = [new CreateOrderItemRequest { MenuItemId = itemId, Quantity = 1 }]
+            OrderItems = [new OrderItem { MenuItemId = itemId, Quantity = 1 }]
         };
         var archivedOrderResponse = await _client.PostAsJsonAsync(
             "/api/order",

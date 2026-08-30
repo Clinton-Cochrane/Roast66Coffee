@@ -66,7 +66,7 @@ public class ValidationApiTests : IClassFixture<WebAppFactory>
     [Fact]
     public async Task PostOrder_EmptyOrderItems_ReturnsBadRequest()
     {
-        var order = new CreateOrderRequest
+        var order = new Order
         {
             CustomerName = "Test Customer",
             OrderItems = []
@@ -80,7 +80,7 @@ public class ValidationApiTests : IClassFixture<WebAppFactory>
     [Fact]
     public async Task PostOrder_NullOrderItems_ReturnsBadRequest()
     {
-        var order = new CreateOrderRequest
+        var order = new Order
         {
             CustomerName = "Test Customer",
             OrderItems = null!
@@ -94,10 +94,10 @@ public class ValidationApiTests : IClassFixture<WebAppFactory>
     [Fact]
     public async Task PostOrder_EmptyCustomerName_ReturnsBadRequest()
     {
-        var order = new CreateOrderRequest
+        var order = new Order
         {
             CustomerName = "",
-            OrderItems = [new CreateOrderItemRequest { MenuItemId = 1, Quantity = 1 }]
+            OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 1 }]
         };
 
         var response = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
@@ -108,10 +108,10 @@ public class ValidationApiTests : IClassFixture<WebAppFactory>
     [Fact]
     public async Task PostOrder_InvalidQuantity_Zero_ReturnsBadRequest()
     {
-        var order = new CreateOrderRequest
+        var order = new Order
         {
             CustomerName = "Test Customer",
-            OrderItems = [new CreateOrderItemRequest { MenuItemId = 1, Quantity = 0 }]
+            OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 0 }]
         };
 
         var response = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);

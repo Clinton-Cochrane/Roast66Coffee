@@ -150,6 +150,12 @@ export const esMx: Messages = {
     placeYourOrder: "Haz tu pedido",
     checkOrderStatus: "Ver estado del pedido",
     namePlaceholder: "Tu nombre",
+    phonePlaceholder: "Teléfono para cuando el pedido esté listo",
+    emailPlaceholder: "Correo para actualizaciones del pedido (opcional)",
+    emailHelpText:
+      "Solo enviamos actualizaciones del pedido cuando se proporciona un correo válido.",
+    emailOptIn:
+      "Envíame actualizaciones del estado por correo. Solo lo usamos para tu pedido.",
     instructions:
       "Elige una bebida abajo y personalízala con sabores y notas a la derecha.",
     chooseDrink: "Elige una bebida",
@@ -194,10 +200,6 @@ export const esMx: Messages = {
       "Los sabores no se pueden ordenar solos. Agrégalos como extras a una bebida.",
     itemRemoved: "{{itemName}} fue eliminado del pedido.",
     orderRequiredError: "Agrega al menos un artículo a tu pedido.",
-    primaryLineLimit: "Un pedido puede contener hasta 20 líneas de bebidas.",
-    drinkUnitLimit: "Un pedido puede contener hasta 50 bebidas en total.",
-    flavorLimit: "Una bebida puede contener hasta 12 sabores.",
-    orderValueLimit: "El total del pedido no puede superar los $500.",
     checkoutMissingUrl: "Falta URL de pago",
     submitFailed:
       "No se pudo enviar el pedido. Intenta de nuevo o revisa la consola.",
@@ -264,6 +266,9 @@ export const esMx: Messages = {
     paymentOptional:
       "Tu pedido está confirmado. Paga ahora con tarjeta o cartera digital, o elige otro método al recoger.",
     viewPaymentOptions: "Ver opciones de pago",
+    emailUpdates: "Enviaremos actualizaciones del pedido a",
+    emailOptional:
+      "Las actualizaciones por correo son opcionales. Descarga el resumen de tu pedido para tus registros.",
     downloadSummary: "Descargar resumen del pedido",
     statusTitle: "Estado del pedido",
     laterStatusStart: "¿Quieres revisar el estado después? Ve a",
