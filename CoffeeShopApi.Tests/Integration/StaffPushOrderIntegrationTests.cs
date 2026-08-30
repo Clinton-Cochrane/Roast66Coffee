@@ -73,12 +73,11 @@ public class StaffPushOrderIntegrationTests
         await context.SaveChangesAsync();
     }
 
-    private static Order CreateValidOrder() =>
+    private static CreateOrderRequest CreateValidOrder() =>
         new()
         {
             CustomerName = $"Push Test {Guid.NewGuid():N}",
-            CustomerPhone = $"555{Random.Shared.Next(1000000, 9999999)}",
-            OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 1 }]
+            OrderItems = [new CreateOrderItemRequest { MenuItemId = 1, Quantity = 1 }]
         };
 
     private sealed class PushWebAppFactory(IStaffPushSender sender) : WebAppFactory

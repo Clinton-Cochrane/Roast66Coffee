@@ -342,8 +342,18 @@ describe("OrderPage", () => {
       target: { value: "Light ice" },
     });
     fireEvent.change(screen.getByRole("textbox", { name: "Your Name" }), {
-      target: { value: "Alex" },
+      target: { value: "  Alex  " },
     });
+
+    expect(screen.queryByRole("textbox", { name: /email/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Your Name" })).toHaveAttribute(
+      "maxlength",
+      "100"
+    );
+    expect(screen.getByRole("textbox", { name: "Notes (optional)" })).toHaveAttribute(
+      "maxlength",
+      "500"
+    );
 
     expect(screen.getByRole("heading", { name: "Current Order" })).toBeInTheDocument();
     expect(screen.getAllByText("$5.50").length).toBeGreaterThan(0);
@@ -353,9 +363,6 @@ describe("OrderPage", () => {
     await waitFor(() => {
       expect(mockPost).toHaveBeenCalledWith("/admin/orders", {
         customerName: "Alex",
-        customerPhone: null,
-        customerEmail: null,
-        customerNotificationOptIn: false,
         orderItems: [
           {
             menuItemId: 1,
@@ -487,6 +494,82 @@ describe("OrderPage", () => {
     expect(screen.queryByTestId("order-item")).not.toBeInTheDocument();
     expect(screen.getByText("Your order is empty.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Place Order" })).toBeDisabled();
+  });
+
+  it("limits an order to 20 primary lines", async () => {
+    mockGet.mockResolvedValue({ data: menuPayload });
+
+    renderOrderPage({ pathname: "/order", state: {} });
+    fireEvent.click(screen.getByRole("button", { name: "Coffee" }));
+    const orderButton = await screen.findByRole("button", { name: "Order Espresso" });
+
+    for (let index = 0; index < 21; index += 1) {
+      fireEvent.click(orderButton);
+    }
+
+    expect(screen.getAllByTestId("order-item")).toHaveLength(20);
+    expect(toastFns.warning).toHaveBeenCalledWith(
+      "An order can contain up to 20 drink lines."
+    );
+  });
+
+  it("limits the combined drink quantity to 50 units", async () => {
+    mockGet.mockResolvedValue({ data: menuPayload });
+
+    renderOrderPage({ pathname: "/order", state: {} });
+    fireEvent.click(screen.getByRole("button", { name: "Coffee" }));
+    const orderButton = await screen.findByRole("button", { name: "Order Espresso" });
+    for (let index = 0; index < 5; index += 1) {
+      fireEvent.click(orderButton);
+    }
+
+    const editButtons = screen.getAllByRole("button", { name: "Edit Espresso" });
+    for (let index = 0; index < editButtons.length; index += 1) {
+      fireEvent.click(editButtons[index]);
+      fireEvent.change(screen.getByRole("spinbutton", { name: "Quantity for Espresso" }), {
+        target: { value: "12" },
+      });
+    }
+
+    expect(screen.getAllByTestId("order-item")[4]).toHaveTextContent("× 2");
+    expect(toastFns.warning).toHaveBeenCalledWith(
+      "An order can contain up to 50 total drink units."
+    );
+  });
+
+  it("limits each drink to 12 distinct flavors", async () => {
+    const flavors = Array.from({ length: 13 }, (_, index) => ({
+      id: index + 20,
+      name: `Flavor ${index + 1}`,
+      price: 0.1,
+      description: "Test flavor",
+      categoryType: CategoryType.FLAVORS,
+    }));
+    mockGet.mockResolvedValue({ data: [...menuPayload, ...flavors] });
+
+    renderOrderPage({ pathname: "/order", state: {} });
+    fireEvent.click(screen.getByRole("button", { name: "Coffee" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Order Espresso" }));
+    const flavorSelect = screen.getByRole("combobox", { name: "Add a Flavor" });
+    for (const flavor of flavors) {
+      fireEvent.change(flavorSelect, { target: { value: JSON.stringify(flavor) } });
+    }
+
+    expect(screen.getAllByRole("spinbutton")).toHaveLength(13);
+    expect(toastFns.warning).toHaveBeenCalledWith("A drink can contain up to 12 flavors.");
+  });
+
+  it("blocks a client-visible order total above $500", async () => {
+    mockGet.mockResolvedValue({
+      data: [{ ...menuPayload[0], price: 500.01 }],
+    });
+
+    renderOrderPage({ pathname: "/order", state: {} });
+    await buildBasicOrder();
+    fireEvent.click(screen.getByRole("button", { name: "Place Order" }));
+
+    expect(mockPost).not.toHaveBeenCalled();
+    expect(toastFns.error).toHaveBeenCalledWith("The order total cannot exceed $500.");
   });
 
   it("caps each flavor at 12 and removes only the flavor when its quantity becomes zero", async () => {

@@ -54,7 +54,7 @@
 
 .r66-order-customer-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 1rem;
   margin-bottom: 0.75rem;
 }
@@ -73,13 +73,6 @@
 .r66-order-select:hover,
 .r66-order-notes:hover {
   border-color: #a98d7b;
-}
-
-.r66-order-email-help {
-  margin: -0.15rem 0 0;
-  color: #6f5b4b;
-  font-size: 0.875rem;
-  line-height: 1.35;
 }
 
 .r66-order-workspace {

@@ -264,15 +264,19 @@ namespace CoffeeShopApi.Controllers
 
         [HttpPost("orders")]
         [EnableRateLimiting("Order")]
-        public async Task<ActionResult<Order>> PostOrder(Order order, CancellationToken cancellationToken)
+        public async Task<ActionResult<PublicOrderDto>> PostOrder(
+            CreateOrderRequest request,
+            CancellationToken cancellationToken)
         {
-            if (order.OrderItems == null || order.OrderItems.Count == 0)
+            var submission = await _orderService.SubmitOrderAsync(request, cancellationToken);
+            if (submission.Status == OrderSubmissionStatus.Invalid)
             {
-                return BadRequest(new { message = "At least one order item is required." });
+                return BadRequest(new ValidationProblemDetails(submission.Errors!));
             }
-            var duplicate = await _orderService.FindDuplicateOrderAsync(order);
-            if (duplicate != null)
+
+            if (submission.Status == OrderSubmissionStatus.Duplicate)
             {
+                var duplicate = submission.Order!;
                 return StatusCode(StatusCodes.Status409Conflict, new
                 {
                     message = "Duplicate order detected. An identical order was placed recently.",
@@ -280,15 +284,8 @@ namespace CoffeeShopApi.Controllers
                     order = PublicOrderDto.FromOrder(duplicate)
                 });
             }
-            Order newOrder;
-            try
-            {
-                newOrder = await _orderService.CreateOrderAsync(order, cancellationToken);
-            }
-            catch (UnavailableMenuItemsException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
+
+            var newOrder = submission.Order!;
             _staffPushQueue.TryEnqueue(newOrder.Id);
             return CreatedAtAction(
                 nameof(GetOrders),

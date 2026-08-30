@@ -16,11 +16,6 @@ function OrderConfirmationPage() {
   const location = useLocation();
   const navigate = useNavigate();
   const order = (location.state as { order?: OrderDto } | null)?.order;
-  const customerEmail = order?.customerEmail ?? order?.CustomerEmail ?? "";
-  const notificationOptIn = Boolean(
-    order?.customerNotificationOptIn ?? order?.CustomerNotificationOptIn
-  );
-  const hasEmailUpdates = notificationOptIn && customerEmail.trim().length > 0;
   const trackingToken = order?.trackingToken ?? order?.TrackingToken ?? "";
   const isPaid = Boolean(order?.paidUtc ?? order?.PaidUtc);
   const statusVal = order ? getOrderStatusFromDto(order) : 0;
@@ -137,18 +132,11 @@ function OrderConfirmationPage() {
             </Link>
           </div>
         ) : null}
-        {hasEmailUpdates ? (
-          <p className="text-sm text-[#5b4940] mt-2">
-            {t("orderConfirmation.emailUpdates")} <strong>{customerEmail}</strong>.
-          </p>
-        ) : (
-          <div className="mt-3">
-            <p className="text-sm text-[#5b4940] mb-2">{t("orderConfirmation.emailOptional")}</p>
-            <Button color="gray" onClick={handleDownloadSummary}>
-              {t("orderConfirmation.downloadSummary")}
-            </Button>
-          </div>
-        )}
+        <div className="mt-3">
+          <Button color="gray" onClick={handleDownloadSummary}>
+            {t("orderConfirmation.downloadSummary")}
+          </Button>
+        </div>
       </div>
 
       <h2 className="text-xl font-bold mb-4 text-[#4a3326]">{t("orderConfirmation.statusTitle")}</h2>
