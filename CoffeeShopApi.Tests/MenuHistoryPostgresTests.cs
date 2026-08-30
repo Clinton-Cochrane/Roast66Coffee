@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql;
+using System.ComponentModel.DataAnnotations;
 
 namespace CoffeeShopApi.Tests;
 
@@ -53,7 +54,7 @@ public class MenuHistoryPostgresTests
             await context.SaveChangesAsync();
 
             var service = new MenuService(context);
-            await Assert.ThrowsAsync<DbUpdateException>(() =>
+            await Assert.ThrowsAsync<ValidationException>(() =>
                 service.BulkReplaceAsync(
                 [
                     new MenuItem
@@ -72,6 +73,35 @@ public class MenuHistoryPostgresTests
                 item => item.Name == "Menu before failed import"));
         }
 
+        int seededCount;
+        await using (var context = new ApplicationDbContext(options))
+        {
+            await SeedMenuItems.SeedAsync(context);
+            seededCount = await context.MenuItems.CountAsync();
+            await SeedMenuItems.SeedAsync(context);
+            Assert.Equal(seededCount, await context.MenuItems.CountAsync());
+            context.MenuItems.Add(new MenuItem
+            {
+                Name = "Menu before failed seed",
+                Description = "Must survive seed rollback",
+                Price = 5m,
+                CategoryType = CategoryType.COFFEE
+            });
+            await context.SaveChangesAsync();
+        }
+
+        await using (var verification = new ApplicationDbContext(options))
+        {
+            Assert.True(seededCount > 1);
+            Assert.Equal(1, await verification.Orders.CountAsync());
+            Assert.Equal(1, await verification.OrderItems.CountAsync());
+            Assert.Equal(1, await verification.Set<AddOn>().CountAsync());
+            var retainedLine = await verification.OrderItems.SingleAsync();
+            Assert.Null(retainedLine.MenuItemId);
+            Assert.Equal("Historical Latte", retainedLine.ItemName);
+            Assert.Equal(4.50m, retainedLine.UnitPrice);
+        }
+
         await AddSeedFailureTriggerAsync(databaseConnectionString);
         await using (var context = new ApplicationDbContext(options))
         {
@@ -82,7 +112,10 @@ public class MenuHistoryPostgresTests
         await using (var verification = new ApplicationDbContext(options))
         {
             Assert.True(await verification.MenuItems.AnyAsync(
-                item => item.Name == "Menu before failed import"));
+                item => item.Name == "Menu before failed seed"));
+            Assert.Equal(seededCount + 1, await verification.MenuItems.CountAsync());
+            Assert.Equal(1, await verification.OrderItems.CountAsync());
+            Assert.Equal(1, await verification.Set<AddOn>().CountAsync());
         }
     }
 

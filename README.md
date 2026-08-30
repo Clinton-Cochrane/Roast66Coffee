@@ -224,10 +224,19 @@ dotnet CoffeeShopApi.dll migrate
 
 The migration command takes a PostgreSQL advisory lock, applies pending EF migrations, and exits. Render invokes it as a pre-deploy command on paid services. The backend Docker entrypoint also runs it before starting the API so free services, which do not support pre-deploy commands, cannot launch against an outdated schema. Running both is safe because EF migrations are idempotent and the advisory lock serializes concurrent attempts.
 
-Menu seeding is intentionally separate from schema migration. Use either:
+Menu seeding is intentionally separate from schema migration. The destructive
+default-menu reset is available only in Development (and automated Testing),
+never in a deployed Production or Staging API. In Development, use `/admin` →
+**Bulk Menu Operations** → **Seed Default Menu**, or send an authenticated
+`POST /api/admin/menu/reset-to-defaults` request with this JSON body:
 
-- `/admin` → **Bulk Menu Operations** → **Seed Default Menu**
-- Authenticated `GET /api/Admin/seed-menu?confirm=true`
+```json
+{ "confirmation": "RESET DEFAULT MENU" }
+```
+
+For a new production database, import an explicitly reviewed menu JSON backup
+through the authenticated bulk-menu workflow instead of enabling default-menu
+reset behavior.
 
 ## Testing and Quality Checks
 

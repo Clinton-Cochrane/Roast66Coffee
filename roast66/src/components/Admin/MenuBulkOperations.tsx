@@ -14,6 +14,13 @@ type MenuBulkOperationsProps = {
   onMenuUpdated?: () => void;
 };
 
+type MenuResetSummary = {
+  previousItemCount: number;
+  newItemCount: number;
+};
+
+const MENU_RESET_CONFIRMATION = "RESET DEFAULT MENU";
+
 function MenuBulkOperations({ onMenuUpdated }: MenuBulkOperationsProps) {
   const { t } = useI18n();
   const [isSeeding, setIsSeeding] = useState(false);
@@ -22,13 +29,28 @@ function MenuBulkOperations({ onMenuUpdated }: MenuBulkOperationsProps) {
   const [importError, setImportError] = useState("");
 
   const handleSeedMenu = async () => {
-    if (!window.confirm(t("adminBulk.seedConfirm"))) {
+    const confirmation = window.prompt(
+      t("adminBulk.seedConfirm", { confirmation: MENU_RESET_CONFIRMATION })
+    );
+    if (confirmation === null) {
+      return;
+    }
+    if (confirmation !== MENU_RESET_CONFIRMATION) {
+      toast.error(t("adminBulk.seedConfirmationMismatch"));
       return;
     }
     setIsSeeding(true);
     try {
-      await axiosInstance.get("/admin/seed-menu?confirm=true");
-      toast.success(t("adminBulk.seedSuccess"));
+      const { data } = await axiosInstance.post<MenuResetSummary>(
+        "/admin/menu/reset-to-defaults",
+        { confirmation }
+      );
+      toast.success(
+        t("adminBulk.seedSuccess", {
+          previousItemCount: data.previousItemCount,
+          newItemCount: data.newItemCount,
+        })
+      );
       onMenuUpdated?.();
     } catch (err: unknown) {
       const msg = axios.isAxiosError(err)
@@ -116,9 +138,11 @@ function MenuBulkOperations({ onMenuUpdated }: MenuBulkOperationsProps) {
     <Card title={t("adminBulk.title")}>
       <p className="text-sm text-gray-600 mb-4">{t("adminBulk.description")}</p>
       <div className="flex flex-wrap gap-3">
-        <Button onClick={handleSeedMenu} disabled={isSeeding} color="blue">
-          {isSeeding ? t("adminBulk.seeding") : t("adminBulk.seedDefault")}
-        </Button>
+        {import.meta.env.DEV ? (
+          <Button onClick={handleSeedMenu} disabled={isSeeding} color="blue">
+            {isSeeding ? t("adminBulk.seeding") : t("adminBulk.seedDefault")}
+          </Button>
+        ) : null}
         <Button onClick={handleDownloadMenu} disabled={isExporting} color="green">
           {isExporting ? t("adminBulk.downloading") : t("adminBulk.downloadJson")}
         </Button>

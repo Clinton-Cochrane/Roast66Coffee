@@ -48,6 +48,7 @@ namespace CoffeeShopApi
             }
 
             services.AddScoped<MenuService>();
+            services.AddSingleton<IDefaultMenuProvider, DefaultMenuProvider>();
             services.AddScoped<OrderService>();
             services.AddScoped<NotificationService>();
             services.AddScoped<NotificationSettingsService>();

@@ -6,6 +6,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoffeeShopApi.Data
 {
+    public interface IDefaultMenuProvider
+    {
+        IReadOnlyList<MenuItem> GetMenuItems();
+    }
+
+    public sealed class DefaultMenuProvider : IDefaultMenuProvider
+    {
+        public IReadOnlyList<MenuItem> GetMenuItems() => SeedMenuItems.CreateDefaultMenuItems();
+    }
+
     public static class SeedMenuItems
     {
         public static async Task<bool> SeedIfEmptyAsync(ApplicationDbContext context)
@@ -20,6 +30,11 @@ namespace CoffeeShopApi.Data
         }
 
         public static async Task SeedAsync(ApplicationDbContext context)
+        {
+            await new MenuService(context).BulkReplaceAsync(CreateDefaultMenuItems());
+        }
+
+        public static IReadOnlyList<MenuItem> CreateDefaultMenuItems()
         {
             // List of drinks to insert/update
             var drinks = new List<MenuItem>
@@ -89,7 +104,7 @@ namespace CoffeeShopApi.Data
                 // Add more drinks as needed
             };
 
-            await new MenuService(context).BulkReplaceAsync(drinks);
+            return drinks;
         }
     }
 }

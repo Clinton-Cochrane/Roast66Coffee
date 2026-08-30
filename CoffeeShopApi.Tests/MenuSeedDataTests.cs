@@ -1,6 +1,7 @@
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Migrations;
 using CoffeeShopApi.Models;
+using CoffeeShopApi.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Migrations.Operations;
@@ -51,6 +52,16 @@ public class MenuSeedDataTests
 
         Assert.Single(context.MenuItems.Where(item => item.Name == "Watermelon Shot"));
         AssertFlavorDescriptionsDoNotContainShot(context);
+    }
+
+    [Fact]
+    public void DefaultMenu_PassesBulkReplacementValidation()
+    {
+        var menuItems = SeedMenuItems.CreateDefaultMenuItems();
+
+        MenuService.ValidateReplacement(menuItems);
+
+        Assert.NotEmpty(menuItems);
     }
 
     [Fact]

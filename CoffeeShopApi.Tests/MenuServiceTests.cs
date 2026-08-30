@@ -1,6 +1,7 @@
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Services;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Xunit;
 
@@ -56,12 +57,70 @@ public class MenuServiceTests
             new() { Name = "Mocha", Price = 4m, Description = "Chocolate", CategoryType = CategoryType.COFFEE }
         };
 
-        await service.BulkReplaceAsync(newItems);
+        var summary = await service.BulkReplaceAsync(newItems);
 
         var result = await service.GetMenuItemsAsync();
+        Assert.Equal(1, summary.PreviousItemCount);
+        Assert.Equal(2, summary.NewItemCount);
         Assert.Equal(2, result.Count());
         Assert.Contains(result, r => r.Name == "Latte");
         Assert.Contains(result, r => r.Name == "Mocha");
+    }
+
+    [Fact]
+    public async Task BulkReplaceAsync_RejectsInvalidItemsBeforeChangingExistingMenu()
+    {
+        await using var context = CreateInMemoryContext();
+        context.MenuItems.Add(new MenuItem
+        {
+            Name = "Existing",
+            Price = 3m,
+            Description = "Must remain",
+            CategoryType = CategoryType.COFFEE
+        });
+        await context.SaveChangesAsync();
+        var service = new MenuService(context);
+
+        await Assert.ThrowsAsync<ValidationException>(() => service.BulkReplaceAsync(
+        [
+            new MenuItem
+            {
+                Name = " ",
+                Price = 4m,
+                CategoryType = CategoryType.COFFEE
+            }
+        ]));
+
+        var item = Assert.Single(await service.GetAllMenuItemsAsync());
+        Assert.Equal("Existing", item.Name);
+    }
+
+    [Fact]
+    public async Task BulkReplaceAsync_CanBeRepeatedWithoutCreatingDuplicates()
+    {
+        await using var context = CreateInMemoryContext();
+        var service = new MenuService(context);
+        var replacement = new[]
+        {
+            new MenuItem
+            {
+                Name = "Repeatable Latte",
+                Price = 4m,
+                CategoryType = CategoryType.COFFEE
+            }
+        };
+
+        var first = await service.BulkReplaceAsync(replacement);
+        var firstId = (await service.GetAllMenuItemsAsync()).Single().Id;
+        var second = await service.BulkReplaceAsync(replacement);
+        var secondItem = Assert.Single(await service.GetAllMenuItemsAsync());
+
+        Assert.Equal(0, first.PreviousItemCount);
+        Assert.Equal(1, first.NewItemCount);
+        Assert.Equal(1, second.PreviousItemCount);
+        Assert.Equal(1, second.NewItemCount);
+        Assert.NotEqual(firstId, secondItem.Id);
+        Assert.Equal("Repeatable Latte", secondItem.Name);
     }
 
     [Fact]

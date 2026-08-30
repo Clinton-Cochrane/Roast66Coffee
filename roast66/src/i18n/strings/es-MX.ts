@@ -426,8 +426,10 @@ export const esMx: Messages = {
     description:
       "Descarga el menú en JSON para editarlo sin conexión, o sube un archivo JSON para reemplazar todo el menú. Usa el formulario de abajo para cambios pequeños.",
     seedConfirm:
-      "Esto reemplazará todos los artículos del menú con la semilla predeterminada. ¿Continuar?",
-    seedSuccess: "Menú sembrado correctamente.",
+      "Esto reemplaza cada artículo con el menú local predeterminado. Escribe {{confirmation}} para continuar.",
+    seedConfirmationMismatch: "El menú no se restableció porque la confirmación no coincidió.",
+    seedSuccess:
+      "Menú predeterminado restablecido: {{previousItemCount}} artículos reemplazados por {{newItemCount}}.",
     seedFailed: "No se pudo sembrar el menú.",
     downloadSuccess: "Menú descargado.",
     downloadFailed: "No se pudo descargar el menú.",

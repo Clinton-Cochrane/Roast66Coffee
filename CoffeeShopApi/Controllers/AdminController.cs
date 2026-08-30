@@ -13,6 +13,7 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Linq;
+using Microsoft.Extensions.Hosting;
 
 namespace CoffeeShopApi.Controllers
 {
@@ -20,7 +21,6 @@ namespace CoffeeShopApi.Controllers
     [Route("api/[controller]")]
     public class AdminController : ControllerBase
     {
-        private readonly ApplicationDbContext _context;
         private readonly OrderService _orderService;
         private readonly MenuService _menuService;
         private readonly NotificationService _notificationService;
@@ -29,10 +29,14 @@ namespace CoffeeShopApi.Controllers
         private readonly SupportEmailService _supportEmailService;
         private readonly NotificationRetentionService _notificationRetentionService;
         private readonly IStaffPushNotificationQueue _staffPushQueue;
+        private readonly IWebHostEnvironment _environment;
+        private readonly ILogger<AdminController> _logger;
+        private readonly IDefaultMenuProvider _defaultMenuProvider;
+
+        public const string DefaultMenuResetConfirmation = "RESET DEFAULT MENU";
 
 
         public AdminController(
-            ApplicationDbContext context,
             OrderService orderService,
             MenuService menuService,
             NotificationService notificationService,
@@ -40,9 +44,11 @@ namespace CoffeeShopApi.Controllers
             NotificationSettingsService notificationSettingsService,
             SupportEmailService supportEmailService,
             NotificationRetentionService notificationRetentionService,
-            IStaffPushNotificationQueue staffPushQueue)
+            IStaffPushNotificationQueue staffPushQueue,
+            IWebHostEnvironment environment,
+            ILogger<AdminController> logger,
+            IDefaultMenuProvider defaultMenuProvider)
         {
-            _context = context;
             _orderService = orderService;
             _menuService = menuService;
             _notificationService = notificationService;
@@ -51,6 +57,9 @@ namespace CoffeeShopApi.Controllers
             _supportEmailService = supportEmailService;
             _notificationRetentionService = notificationRetentionService;
             _staffPushQueue = staffPushQueue;
+            _environment = environment;
+            _logger = logger;
+            _defaultMenuProvider = defaultMenuProvider;
         }
 
         [HttpPost("login")]
@@ -446,26 +455,49 @@ namespace CoffeeShopApi.Controllers
             return System.Text.RegularExpressions.Regex.Replace(name, "([A-Z])", " $1").Trim();
         }
 
+        public sealed record MenuResetRequest(string? Confirmation);
+
         [Authorize(Roles = "Admin")]
-        [HttpGet("seed-menu")]
-        public async Task<IActionResult> SeedMenuItems(bool confirm = false)
+        [HttpPost("menu/reset-to-defaults")]
+        public async Task<IActionResult> ResetMenuToDefaults(
+            [FromBody] MenuResetRequest? request,
+            CancellationToken cancellationToken)
         {
-
-            if (!confirm)
+            if (!_environment.IsDevelopment() && !_environment.IsEnvironment("Testing"))
             {
-                return BadRequest("Please confirm the operation by passing '?confirm=true' in the query string.");
+                return NotFound();
+            }
 
+            if (!string.Equals(
+                    request?.Confirmation,
+                    DefaultMenuResetConfirmation,
+                    StringComparison.Ordinal))
+            {
+                return BadRequest(new
+                {
+                    message = $"Confirmation must exactly match '{DefaultMenuResetConfirmation}'."
+                });
             }
 
             try
             {
-                await Data.SeedMenuItems.SeedAsync(_context);
-                return Ok("Menu items have been seeded successfully!");
+                var summary = await _menuService.BulkReplaceAsync(
+                    _defaultMenuProvider.GetMenuItems(),
+                    cancellationToken);
+                return Ok(new
+                {
+                    message = "Default menu reset completed.",
+                    summary.PreviousItemCount,
+                    summary.NewItemCount
+                });
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error seeding menu items: {ex.Message}");
-                return StatusCode(500, $"Error: {ex.Message}");
+                _logger.LogError(ex, "Default menu reset failed.");
+                return Problem(
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    title: "Menu reset failed",
+                    detail: "The default menu could not be reset. The existing menu was left unchanged.");
             }
         }
     }

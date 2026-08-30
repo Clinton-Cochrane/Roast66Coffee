@@ -412,8 +412,10 @@ export const en = {
     description:
       "Download menu as JSON to edit offline, or upload a JSON file to replace the entire menu. Use the form below for small edits.",
     seedConfirm:
-      "This will replace all menu items with the default seed. Continue?",
-    seedSuccess: "Menu seeded successfully.",
+      "This replaces every menu item with the local default menu. Type {{confirmation}} to continue.",
+    seedConfirmationMismatch: "The menu was not reset because the confirmation did not match.",
+    seedSuccess:
+      "Default menu reset complete: {{previousItemCount}} items replaced with {{newItemCount}} items.",
     seedFailed: "Failed to seed menu.",
     downloadSuccess: "Menu downloaded.",
     downloadFailed: "Failed to download menu.",

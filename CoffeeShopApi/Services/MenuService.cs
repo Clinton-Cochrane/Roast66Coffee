@@ -1,6 +1,7 @@
 // Services/MenuService.cs
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Data;
+using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -15,6 +16,8 @@ namespace CoffeeShopApi.Services
     }
 
     public enum MenuItemUpdateResult { Updated, NotFound, InvalidPromotion }
+
+    public sealed record MenuReplacementSummary(int PreviousItemCount, int NewItemCount);
 
     public class MenuService(ApplicationDbContext context)
     {
@@ -203,25 +206,19 @@ namespace CoffeeShopApi.Services
         /// Replaces all menu items with the provided list. Used for bulk import.
         /// Ignores client-provided IDs; new items get fresh IDs.
         /// </summary>
-        public async Task BulkReplaceAsync(
+        public async Task<MenuReplacementSummary> BulkReplaceAsync(
             IEnumerable<MenuItem> menuItems,
             CancellationToken cancellationToken = default)
         {
-            var selectedCount = 0;
             var items = menuItems.Select(m =>
             {
-                var isSelected = !m.IsArchived &&
-                    m.IsFeaturedOnHome &&
-                    selectedCount < MaxHomepageSpecials;
-                if (isSelected) selectedCount++;
-
                 return new MenuItem
                 {
                     Name = m.Name,
                     Price = m.Price,
                     Description = m.Description ?? string.Empty,
                     CategoryType = m.CategoryType,
-                    IsFeaturedOnHome = isSelected,
+                    IsFeaturedOnHome = m.IsFeaturedOnHome,
                     IsArchived = m.IsArchived,
                     PromotionType = m.PromotionType,
                     PromotionValue = m.PromotionValue
@@ -232,6 +229,8 @@ namespace CoffeeShopApi.Services
             {
                 throw new ArgumentException("Menu must contain at least one item.", nameof(menuItems));
             }
+
+            ValidateReplacement(items);
 
             IDbContextTransaction? transaction = null;
             if (_context.Database.IsRelational())
@@ -249,6 +248,8 @@ namespace CoffeeShopApi.Services
                 {
                     await transaction.CommitAsync(cancellationToken);
                 }
+
+                return new MenuReplacementSummary(existingItems.Count, items.Count);
             }
             catch
             {
@@ -264,6 +265,63 @@ namespace CoffeeShopApi.Services
                 {
                     await transaction.DisposeAsync();
                 }
+            }
+        }
+
+        public static void ValidateReplacement(IReadOnlyCollection<MenuItem> menuItems)
+        {
+            var errors = new List<string>();
+
+            foreach (var item in menuItems)
+            {
+                var itemErrors = new List<ValidationResult>();
+                if (!Validator.TryValidateObject(
+                        item,
+                        new ValidationContext(item),
+                        itemErrors,
+                        validateAllProperties: true))
+                {
+                    errors.AddRange(itemErrors.Select(error => error.ErrorMessage ?? "Invalid menu item."));
+                }
+
+                if (!Enum.IsDefined(item.CategoryType))
+                {
+                    errors.Add($"Menu item '{item.Name}' has an invalid category.");
+                }
+
+                if (item.IsArchived && item.IsFeaturedOnHome)
+                {
+                    errors.Add($"Archived menu item '{item.Name}' cannot be featured on the homepage.");
+                }
+
+                if (item.PromotionType.HasValue != item.PromotionValue.HasValue ||
+                    (item.PromotionType.HasValue && !Enum.IsDefined(item.PromotionType.Value)) ||
+                    (item.PromotionValue.HasValue &&
+                     (item.PromotionValue.Value <= 0 || item.EffectivePrice < 0.01m)))
+                {
+                    errors.Add($"Menu item '{item.Name}' has an invalid promotion.");
+                }
+            }
+
+            var duplicateNames = menuItems
+                .Where(item => !string.IsNullOrWhiteSpace(item.Name))
+                .GroupBy(item => item.Name.Trim(), StringComparer.OrdinalIgnoreCase)
+                .Where(group => group.Count() > 1)
+                .Select(group => group.Key)
+                .ToList();
+            if (duplicateNames.Count > 0)
+            {
+                errors.Add($"Menu item names must be unique: {string.Join(", ", duplicateNames)}.");
+            }
+
+            if (menuItems.Count(item => item.IsFeaturedOnHome) > MaxHomepageSpecials)
+            {
+                errors.Add($"Only {MaxHomepageSpecials} homepage specials can be selected.");
+            }
+
+            if (errors.Count > 0)
+            {
+                throw new ValidationException(string.Join(" ", errors.Distinct()));
             }
         }
     }
