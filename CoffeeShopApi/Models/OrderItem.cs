@@ -13,10 +13,9 @@ namespace CoffeeShopApi.Models
         [Column("orderid")]
         public int OrderId { get; set; }
 
-        [Required]
         [Range(1, int.MaxValue, ErrorMessage = "MenuItemId must be a valid menu item")]
         [Column("menuitemid")]
-        public int MenuItemId { get; set; }
+        public int? MenuItemId { get; set; }
 
         [Required]
         [Range(1, 100, ErrorMessage = "Quantity must be between 1 and 100")]
@@ -36,6 +35,17 @@ namespace CoffeeShopApi.Models
         [Column("unit_price", TypeName = "numeric(10,2)")]
         public decimal UnitPrice { get; set; }
 
+        [StringLength(200)]
+        [Column("item_name")]
+        public string ItemName { get; set; } = string.Empty;
+
+        [StringLength(500)]
+        [Column("item_description")]
+        public string ItemDescription { get; set; } = string.Empty;
+
+        [Column("item_category_type")]
+        public CategoryType ItemCategoryType { get; set; }
+
         [InverseProperty("OrderItem")]
 
         public List<AddOn>? AddOns { get; set; }
@@ -47,9 +57,8 @@ namespace CoffeeShopApi.Models
         [Key]
         public int Id { get; set; }
 
-        [Required]
         [Column("menuitemid")]
-        public int MenuItemId { get; set; }
+        public int? MenuItemId { get; set; }
 
         [Required]
         [Column("quantity")]
@@ -70,5 +79,16 @@ namespace CoffeeShopApi.Models
 
         [Column("unit_price", TypeName = "numeric(10,2)")]
         public decimal UnitPrice { get; set; }
+
+        [StringLength(200)]
+        [Column("item_name")]
+        public string ItemName { get; set; } = string.Empty;
+
+        [StringLength(500)]
+        [Column("item_description")]
+        public string ItemDescription { get; set; } = string.Empty;
+
+        [Column("item_category_type")]
+        public CategoryType ItemCategoryType { get; set; }
     }
 }

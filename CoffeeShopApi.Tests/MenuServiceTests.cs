@@ -65,6 +65,54 @@ public class MenuServiceTests
     }
 
     [Fact]
+    public async Task Archive_HidesItemFromPublicMenu_AndRestoreReturnsIt()
+    {
+        await using var context = CreateInMemoryContext();
+        var item = new MenuItem
+        {
+            Name = "Latte",
+            Price = 3.50m,
+            CategoryType = CategoryType.COFFEE,
+            IsFeaturedOnHome = true
+        };
+        context.MenuItems.Add(item);
+        await context.SaveChangesAsync();
+        var service = new MenuService(context);
+
+        Assert.True(await service.ArchiveMenuItemAsync(item.Id));
+        Assert.Empty(await service.GetMenuItemsAsync());
+        Assert.Single(await service.GetAllMenuItemsAsync());
+        Assert.True(item.IsArchived);
+        Assert.False(item.IsFeaturedOnHome);
+
+        Assert.True(await service.RestoreMenuItemAsync(item.Id));
+        Assert.Single(await service.GetMenuItemsAsync());
+        Assert.False(item.IsArchived);
+        Assert.False(item.IsFeaturedOnHome);
+    }
+
+    [Fact]
+    public async Task ArchivedItem_CannotBecomeHomepageSpecial()
+    {
+        await using var context = CreateInMemoryContext();
+        var item = new MenuItem
+        {
+            Name = "Archived",
+            Price = 1m,
+            CategoryType = CategoryType.SPECIALS,
+            IsArchived = true
+        };
+        context.MenuItems.Add(item);
+        await context.SaveChangesAsync();
+        var service = new MenuService(context);
+
+        var result = await service.SetHomepageSpecialAsync(item.Id, true);
+
+        Assert.Equal(HomepageSpecialSelectionResult.Unavailable, result);
+        Assert.False(item.IsFeaturedOnHome);
+    }
+
+    [Fact]
     public async Task SetHomepageSpecialAsync_RejectsFourthSelection()
     {
         await using var context = CreateInMemoryContext();

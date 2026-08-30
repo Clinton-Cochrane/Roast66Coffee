@@ -16,6 +16,7 @@ const FALLBACK_SPECIALS: MenuItemDto[] = [
     description: "Freshly brewed classic coffee",
     categoryType: CategoryType.COFFEE,
     isFeaturedOnHome: true,
+    isArchived: false,
   },
   {
     id: -2,
@@ -24,6 +25,7 @@ const FALLBACK_SPECIALS: MenuItemDto[] = [
     description: "Strong and bold espresso shot",
     categoryType: CategoryType.COFFEE,
     isFeaturedOnHome: true,
+    isArchived: false,
   },
   {
     id: -3,
@@ -32,6 +34,7 @@ const FALLBACK_SPECIALS: MenuItemDto[] = [
     description: "Creamy latte with milk foam",
     categoryType: CategoryType.COFFEE,
     isFeaturedOnHome: true,
+    isArchived: false,
   },
 ];
 

@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import axios from "../../axiosConfig";
 import { toast } from "react-toastify";
-import { FaPen, FaPlus, FaTrashCan, FaXmark } from "react-icons/fa6";
+import { FaBoxArchive, FaPen, FaPlus, FaRotateLeft, FaTrashCan, FaXmark } from "react-icons/fa6";
 import FormInput from "../common/FormInput";
 import Button from "../common/Button";
 import type { MenuItemDto } from "../../types/api";
@@ -37,7 +37,9 @@ const emptyMenuItemForm = (): MenuItemFormState => ({
 function ManageMenu() {
   const { locale, t } = useI18n();
   const [menuItems, setMenuItems] = useState<MenuItemDto[]>([]);
+  const [menuFilter, setMenuFilter] = useState<"active" | "archived">("active");
   const [selectedMenuItemId, setSelectedMenuItemId] = useState<number | null>(null);
+  const [deleteConfirmation, setDeleteConfirmation] = useState("");
   const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [updatingSpecialIds, setUpdatingSpecialIds] = useState<Set<number>>(() => new Set());
   const [promotionInputs, setPromotionInputs] = useState<Record<number, string>>({});
@@ -59,6 +61,10 @@ function ManageMenu() {
     [menuItems, selectedMenuItemId]
   );
   const selectedSpecialCount = menuItems.filter((item) => item.isFeaturedOnHome).length;
+  const visibleMenuItems = useMemo(
+    () => menuItems.filter((item) => item.isArchived === (menuFilter === "archived")),
+    [menuFilter, menuItems]
+  );
   const currencyFormatter = useMemo(
     () =>
       new Intl.NumberFormat(locale, {
@@ -163,6 +169,7 @@ function ManageMenu() {
 
   const startCreating = (trigger?: HTMLButtonElement) => {
     setSelectedMenuItemId(null);
+    setDeleteConfirmation("");
     setMenuItemForm(emptyMenuItemForm());
     if (trigger) openMobileEditor(trigger);
     focusEditor();
@@ -170,6 +177,7 @@ function ManageMenu() {
 
   const startEditing = (item: MenuItemDto, trigger: HTMLButtonElement) => {
     setSelectedMenuItemId(item.id);
+    setDeleteConfirmation("");
     setMenuItemForm({
       name: item.name,
       price: item.price.toString(),
@@ -223,6 +231,7 @@ function ManageMenu() {
 
   const finishEditing = () => {
     setSelectedMenuItemId(null);
+    setDeleteConfirmation("");
     setMenuItemForm(emptyMenuItemForm());
     if (isMobileLayout) closeMobileEditor();
   };
@@ -257,7 +266,7 @@ function ManageMenu() {
 
   const handleDelete = () => {
     if (!selectedMenuItem) return;
-    if (!window.confirm(t("adminMenu.deleteConfirm", { name: selectedMenuItem.name }))) return;
+    if (deleteConfirmation !== selectedMenuItem.name) return;
 
     axios
       .delete(`/admin/menu/${selectedMenuItem.id}`)
@@ -267,6 +276,32 @@ function ManageMenu() {
         finishEditing();
       })
       .catch(() => toast.error(t("adminMenu.failedDelete")));
+  };
+
+  const handleArchive = () => {
+    if (!selectedMenuItem) return;
+    axios
+      .put(`/admin/menu/${selectedMenuItem.id}/archive`)
+      .then(() => {
+        toast.success(t("adminMenu.archived"));
+        setMenuFilter("archived");
+        fetchMenuItems();
+        finishEditing();
+      })
+      .catch(() => toast.error(t("adminMenu.failedArchive")));
+  };
+
+  const handleRestore = () => {
+    if (!selectedMenuItem) return;
+    axios
+      .put(`/admin/menu/${selectedMenuItem.id}/restore`)
+      .then(() => {
+        toast.success(t("adminMenu.restored"));
+        setMenuFilter("active");
+        fetchMenuItems();
+        finishEditing();
+      })
+      .catch(() => toast.error(t("adminMenu.failedRestore")));
   };
 
   const handleHomepageSpecialChange = (item: MenuItemDto) => {
@@ -331,11 +366,34 @@ function ManageMenu() {
             </button>
           </div>
 
-          {menuItems.length === 0 ? (
+          <div className="r66-admin-menu-filters" aria-label={t("adminMenu.filterLabel")}>
+            <button
+              type="button"
+              aria-pressed={menuFilter === "active"}
+              onClick={() => {
+                setMenuFilter("active");
+                finishEditing();
+              }}
+            >
+              {t("adminMenu.activeFilter")}
+            </button>
+            <button
+              type="button"
+              aria-pressed={menuFilter === "archived"}
+              onClick={() => {
+                setMenuFilter("archived");
+                finishEditing();
+              }}
+            >
+              {t("adminMenu.archivedFilter")}
+            </button>
+          </div>
+
+          {visibleMenuItems.length === 0 ? (
             <p className="r66-admin-menu-empty">{t("adminMenu.emptyState")}</p>
           ) : (
             <ul className="r66-admin-menu-list">
-              {menuItems.map((item) => {
+              {visibleMenuItems.map((item) => {
                 const category = categories.find((option) => option.id === item.categoryType);
                 const isSelected = selectedMenuItemId === item.id;
                 return (
@@ -343,10 +401,16 @@ function ManageMenu() {
                     key={item.id}
                     className="r66-admin-menu-row"
                     data-selected={isSelected || undefined}
+                    data-archived={item.isArchived || undefined}
                   >
                     <div className="r66-admin-menu-row-main">
                       <div className="r66-admin-menu-row-copy">
                         <strong>{item.name}</strong>
+                        {item.isArchived ? (
+                          <small className="r66-admin-menu-archived-badge">
+                            {t("adminMenu.archivedBadge")}
+                          </small>
+                        ) : null}
                         <span>{item.description}</span>
                         {category ? <small>{category.name}</small> : null}
                       </div>
@@ -371,6 +435,7 @@ function ManageMenu() {
                         aria-pressed={item.isFeaturedOnHome}
                         disabled={
                           updatingSpecialIds.has(item.id) ||
+                          item.isArchived ||
                           (!item.isFeaturedOnHome && selectedSpecialCount >= 3)
                         }
                         onClick={() => handleHomepageSpecialChange(item)}
@@ -382,6 +447,7 @@ function ManageMenu() {
                         type="button"
                         aria-label={t("adminMenu.menuSpecialAria", { name: item.name })}
                         aria-pressed={item.categoryType === 1}
+                        disabled={item.isArchived}
                         onClick={() => updateMenuSpecial(item)}
                         className="r66-admin-menu-compact-toggle"
                       >
@@ -396,6 +462,7 @@ function ManageMenu() {
                           id={`promotion-${item.id}`}
                           value={promotionInputs[item.id] ?? ""}
                           placeholder={t("adminMenu.promotionPlaceholder")}
+                          disabled={item.isArchived}
                           onChange={(event) =>
                             setPromotionInputs((values) => ({
                               ...values,
@@ -535,20 +602,46 @@ function ManageMenu() {
                         >
                           {t("adminMenu.cancelEditing")}
                         </Button>
-                        <Button
-                          type="button"
-                          color="red"
-                          variant="link"
-                          className="r66-admin-menu-delete-button"
-                          onClick={handleDelete}
-                        >
-                          <FaTrashCan aria-hidden="true" />
-                          <span>{t("adminMenu.delete")}</span>
-                        </Button>
+                        {selectedMenuItem.isArchived ? (
+                          <Button type="button" color="green" onClick={handleRestore}>
+                            <FaRotateLeft aria-hidden="true" />
+                            <span>{t("adminMenu.restore")}</span>
+                          </Button>
+                        ) : (
+                          <Button type="button" color="gray" onClick={handleArchive}>
+                            <FaBoxArchive aria-hidden="true" />
+                            <span>{t("adminMenu.archive")}</span>
+                          </Button>
+                        )}
                       </>
                     ) : null}
                   </div>
                 </form>
+                {selectedMenuItem ? (
+                  <section className="r66-admin-menu-danger-zone">
+                    <h4>{t("adminMenu.dangerTitle")}</h4>
+                    <p>{t("adminMenu.deleteHelp", { name: selectedMenuItem.name })}</p>
+                    <label htmlFor="admin-menu-delete-confirmation">
+                      {t("adminMenu.deleteConfirmationLabel", { name: selectedMenuItem.name })}
+                    </label>
+                    <input
+                      id="admin-menu-delete-confirmation"
+                      value={deleteConfirmation}
+                      onChange={(event) => setDeleteConfirmation(event.target.value)}
+                      autoComplete="off"
+                    />
+                    <Button
+                      type="button"
+                      color="red"
+                      className="r66-admin-menu-delete-button"
+                      disabled={deleteConfirmation !== selectedMenuItem.name}
+                      onClick={handleDelete}
+                    >
+                      <FaTrashCan aria-hidden="true" />
+                      <span>{t("adminMenu.delete")}</span>
+                    </Button>
+                  </section>
+                ) : null}
               </div>
             </div>
           </aside>

@@ -40,6 +40,28 @@ namespace CoffeeShopApi.Data
                 .WithMany()
                 .HasForeignKey(payment => payment.OrderId)
                 .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<OrderItem>()
+                .Property(orderItem => orderItem.ItemName)
+                .IsRequired();
+            modelBuilder.Entity<OrderItem>()
+                .Property(orderItem => orderItem.ItemDescription)
+                .IsRequired();
+            modelBuilder.Entity<OrderItem>()
+                .HasOne(orderItem => orderItem.MenuItem)
+                .WithMany()
+                .HasForeignKey(orderItem => orderItem.MenuItemId)
+                .OnDelete(DeleteBehavior.SetNull);
+            modelBuilder.Entity<AddOn>()
+                .Property(addOn => addOn.ItemName)
+                .IsRequired();
+            modelBuilder.Entity<AddOn>()
+                .Property(addOn => addOn.ItemDescription)
+                .IsRequired();
+            modelBuilder.Entity<AddOn>()
+                .HasOne(addOn => addOn.MenuItem)
+                .WithMany()
+                .HasForeignKey(addOn => addOn.MenuItemId)
+                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

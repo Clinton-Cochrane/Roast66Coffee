@@ -6,6 +6,7 @@ export type MenuItemDto = {
   description: string;
   categoryType: number;
   isFeaturedOnHome: boolean;
+  isArchived: boolean;
   effectivePrice?: number;
   promotion?: string | null;
   promotionType?: number | null;
@@ -15,6 +16,8 @@ export type MenuItemDto = {
 export type OrderLineAddOnDto = {
   id?: number;
   quantity: number;
+  itemName?: string;
+  ItemName?: string;
   menuItem?: { name?: string; price?: number };
   MenuItem?: { name?: string; price?: number };
 };
@@ -23,6 +26,8 @@ export type OrderLineItemDto = {
   id?: number;
   quantity?: number;
   notes?: string;
+  itemName?: string;
+  ItemName?: string;
   menuItem?: { name?: string; price?: number };
   MenuItem?: { name?: string; price?: number };
   /** Present on some API responses for order lines with flavor add-ons */

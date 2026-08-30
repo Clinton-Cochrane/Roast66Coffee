@@ -109,30 +109,66 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         return string.Join("|", parts);
     }
 
-    public async Task<Order> CreateOrderAsync(Order order, bool preserveSnapshotPrices = false)
+    public async Task<Order> CreateOrderAsync(
+        Order order,
+        CancellationToken cancellationToken = default)
     {
-        var ids = (order.OrderItems ?? []).Select(x => x.MenuItemId)
-            .Concat((order.OrderItems ?? []).SelectMany(x => x.AddOns ?? []).Select(x => x.MenuItemId))
-            .Distinct().ToList();
-        var prices = await _context.MenuItems.Where(x => ids.Contains(x.Id))
-            .ToDictionaryAsync(x => x.Id, x => x.EffectivePrice);
+        var requestedIds = (order.OrderItems ?? []).Select(item => item.MenuItemId)
+            .Concat((order.OrderItems ?? [])
+                .SelectMany(item => item.AddOns ?? [])
+                .Select(addOn => addOn.MenuItemId))
+            .ToList();
+
+        if (requestedIds.Count == 0 || requestedIds.Any(id => id is null))
+        {
+            throw new UnavailableMenuItemsException();
+        }
+
+        var ids = requestedIds.Select(id => id!.Value).Distinct().ToList();
+        var menuItems = await _context.MenuItems
+            .Where(item => ids.Contains(item.Id) && !item.IsArchived)
+            .ToDictionaryAsync(item => item.Id, cancellationToken);
+
+        if (menuItems.Count != ids.Count)
+        {
+            throw new UnavailableMenuItemsException();
+        }
+
         foreach (var item in order.OrderItems ?? [])
         {
-            prices.TryGetValue(item.MenuItemId, out var price);
-            item.UnitPrice = preserveSnapshotPrices && item.UnitPrice > 0 ? item.UnitPrice : price;
+            var menuItem = menuItems[item.MenuItemId!.Value];
+            StampSnapshot(item, menuItem);
+
             foreach (var addOn in item.AddOns ?? [])
             {
-                prices.TryGetValue(addOn.MenuItemId, out var addOnPrice);
-                addOn.UnitPrice = preserveSnapshotPrices && addOn.UnitPrice > 0 ? addOn.UnitPrice : addOnPrice;
+                var addOnMenuItem = menuItems[addOn.MenuItemId!.Value];
+                StampSnapshot(addOn, addOnMenuItem);
             }
         }
+
         if (string.IsNullOrEmpty(order.TrackingToken))
         {
             order.TrackingToken = GenerateTrackingToken();
         }
         _context.Orders.Add(order);
-        await _context.SaveChangesAsync();
-        return (await GetOrderByIdAsync(order.Id))!;
+        await _context.SaveChangesAsync(cancellationToken);
+        return (await GetOrderByIdAsync(order.Id, cancellationToken))!;
+    }
+
+    private static void StampSnapshot(OrderItem orderItem, MenuItem menuItem)
+    {
+        orderItem.ItemName = menuItem.Name;
+        orderItem.ItemDescription = menuItem.Description;
+        orderItem.ItemCategoryType = menuItem.CategoryType;
+        orderItem.UnitPrice = menuItem.EffectivePrice;
+    }
+
+    private static void StampSnapshot(AddOn addOn, MenuItem menuItem)
+    {
+        addOn.ItemName = menuItem.Name;
+        addOn.ItemDescription = menuItem.Description;
+        addOn.ItemCategoryType = menuItem.CategoryType;
+        addOn.UnitPrice = menuItem.EffectivePrice;
     }
 
     internal static string GenerateTrackingToken() =>

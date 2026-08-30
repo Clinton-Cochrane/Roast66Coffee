@@ -46,6 +46,9 @@ namespace CoffeeShopApi.Models
         [Column("is_featured_on_home")]
         public bool IsFeaturedOnHome { get; set; }
 
+        [Column("is_archived")]
+        public bool IsArchived { get; set; }
+
         [Column("promotion_type")]
         public PromotionType? PromotionType { get; set; }
 

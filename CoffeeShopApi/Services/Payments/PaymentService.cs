@@ -346,21 +346,17 @@ public sealed class PaymentService
         var lineItems = new List<GatewayLineItem>();
         foreach (var item in order.OrderItems)
         {
-            var menuItem = item.MenuItem
-                ?? throw new InvalidOperationException($"Order item {item.Id} is missing menu data.");
             lineItems.Add(new GatewayLineItem(
-                menuItem.Name,
-                menuItem.Description,
+                item.ItemName,
+                item.ItemDescription,
                 item.UnitPrice,
                 item.Quantity));
 
             foreach (var addOn in item.AddOns ?? [])
             {
-                var addOnItem = addOn.MenuItem
-                    ?? throw new InvalidOperationException($"Add-on {addOn.Id} is missing menu data.");
                 lineItems.Add(new GatewayLineItem(
-                    $"{menuItem.Name} add-on: {addOnItem.Name}",
-                    addOnItem.Description,
+                    $"{item.ItemName} add-on: {addOn.ItemName}",
+                    addOn.ItemDescription,
                     addOn.UnitPrice,
                     addOn.Quantity));
             }

@@ -30,7 +30,23 @@ namespace CoffeeShopApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("MenuItemId")
+                    b.Property<int>("ItemCategoryType")
+                        .HasColumnType("integer")
+                        .HasColumnName("item_category_type");
+
+                    b.Property<string>("ItemDescription")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("item_description");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("item_name");
+
+                    b.Property<int?>("MenuItemId")
                         .HasColumnType("integer")
                         .HasColumnName("menuitemid");
 
@@ -76,6 +92,10 @@ namespace CoffeeShopApi.Migrations
                     b.Property<bool>("IsFeaturedOnHome")
                         .HasColumnType("boolean")
                         .HasColumnName("is_featured_on_home");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_archived");
 
                     b.Property<string>("Name")
                         .IsRequired()
@@ -323,7 +343,23 @@ namespace CoffeeShopApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("MenuItemId")
+                    b.Property<int>("ItemCategoryType")
+                        .HasColumnType("integer")
+                        .HasColumnName("item_category_type");
+
+                    b.Property<string>("ItemDescription")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("item_description");
+
+                    b.Property<string>("ItemName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("item_name");
+
+                    b.Property<int?>("MenuItemId")
                         .HasColumnType("integer")
                         .HasColumnName("menuitemid");
 
@@ -512,8 +548,7 @@ namespace CoffeeShopApi.Migrations
                     b.HasOne("CoffeeShopApi.Models.MenuItem", "MenuItem")
                         .WithMany()
                         .HasForeignKey("MenuItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("CoffeeShopApi.Models.OrderItem", "OrderItem")
                         .WithMany("AddOns")
@@ -531,8 +566,7 @@ namespace CoffeeShopApi.Migrations
                     b.HasOne("CoffeeShopApi.Models.MenuItem", "MenuItem")
                         .WithMany()
                         .HasForeignKey("MenuItemId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("CoffeeShopApi.Models.Order", "Order")
                         .WithMany("OrderItems")

@@ -2,6 +2,7 @@
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CoffeeShopApi.Services
 {
@@ -9,6 +10,7 @@ namespace CoffeeShopApi.Services
     {
         Updated,
         NotFound,
+        Unavailable,
         LimitReached
     }
 
@@ -21,6 +23,13 @@ namespace CoffeeShopApi.Services
 
         public async Task<IEnumerable<MenuItem>> GetMenuItemsAsync()
         {
+            return await _context.MenuItems
+                .Where(item => !item.IsArchived)
+                .ToListAsync();
+        }
+
+        public async Task<IEnumerable<MenuItem>> GetAllMenuItemsAsync()
+        {
             return await _context.MenuItems.ToListAsync();
         }
 
@@ -32,6 +41,7 @@ namespace CoffeeShopApi.Services
         public async Task<MenuItem> CreateMenuItemAsync(MenuItem menuItem)
         {
             menuItem.IsFeaturedOnHome = false;
+            menuItem.IsArchived = false;
             _context.MenuItems.Add(menuItem);
             await _context.SaveChangesAsync();
             return menuItem;
@@ -76,12 +86,18 @@ namespace CoffeeShopApi.Services
                 return HomepageSpecialSelectionResult.NotFound;
             }
 
+            if (menuItem.IsArchived && isSelected)
+            {
+                return HomepageSpecialSelectionResult.Unavailable;
+            }
+
             if (menuItem.IsFeaturedOnHome == isSelected)
             {
                 return HomepageSpecialSelectionResult.Updated;
             }
 
-            if (isSelected && await _context.MenuItems.CountAsync(item => item.IsFeaturedOnHome) >= MaxHomepageSpecials)
+            if (isSelected && await _context.MenuItems.CountAsync(
+                    item => !item.IsArchived && item.IsFeaturedOnHome) >= MaxHomepageSpecials)
             {
                 return HomepageSpecialSelectionResult.LimitReached;
             }
@@ -151,6 +167,33 @@ namespace CoffeeShopApi.Services
             return true;
         }
 
+        public async Task<bool> ArchiveMenuItemAsync(int id)
+        {
+            var menuItem = await _context.MenuItems.FindAsync(id);
+            if (menuItem == null)
+            {
+                return false;
+            }
+
+            menuItem.IsArchived = true;
+            menuItem.IsFeaturedOnHome = false;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
+        public async Task<bool> RestoreMenuItemAsync(int id)
+        {
+            var menuItem = await _context.MenuItems.FindAsync(id);
+            if (menuItem == null)
+            {
+                return false;
+            }
+
+            menuItem.IsArchived = false;
+            await _context.SaveChangesAsync();
+            return true;
+        }
+
         private bool MenuItemExists(int id)
         {
             return _context.MenuItems.Any(e => e.Id == id);
@@ -160,12 +203,16 @@ namespace CoffeeShopApi.Services
         /// Replaces all menu items with the provided list. Used for bulk import.
         /// Ignores client-provided IDs; new items get fresh IDs.
         /// </summary>
-        public async Task BulkReplaceAsync(IEnumerable<MenuItem> menuItems)
+        public async Task BulkReplaceAsync(
+            IEnumerable<MenuItem> menuItems,
+            CancellationToken cancellationToken = default)
         {
             var selectedCount = 0;
             var items = menuItems.Select(m =>
             {
-                var isSelected = m.IsFeaturedOnHome && selectedCount < MaxHomepageSpecials;
+                var isSelected = !m.IsArchived &&
+                    m.IsFeaturedOnHome &&
+                    selectedCount < MaxHomepageSpecials;
                 if (isSelected) selectedCount++;
 
                 return new MenuItem
@@ -174,14 +221,50 @@ namespace CoffeeShopApi.Services
                     Price = m.Price,
                     Description = m.Description ?? string.Empty,
                     CategoryType = m.CategoryType,
-                    IsFeaturedOnHome = isSelected
-                    ,PromotionType = m.PromotionType
-                    ,PromotionValue = m.PromotionValue
+                    IsFeaturedOnHome = isSelected,
+                    IsArchived = m.IsArchived,
+                    PromotionType = m.PromotionType,
+                    PromotionValue = m.PromotionValue
                 };
             }).ToList();
-            _context.MenuItems.RemoveRange(_context.MenuItems);
-            await _context.MenuItems.AddRangeAsync(items);
-            await _context.SaveChangesAsync();
+
+            if (items.Count == 0)
+            {
+                throw new ArgumentException("Menu must contain at least one item.", nameof(menuItems));
+            }
+
+            IDbContextTransaction? transaction = null;
+            if (_context.Database.IsRelational())
+            {
+                transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+            }
+
+            try
+            {
+                var existingItems = await _context.MenuItems.ToListAsync(cancellationToken);
+                _context.MenuItems.RemoveRange(existingItems);
+                await _context.MenuItems.AddRangeAsync(items, cancellationToken);
+                await _context.SaveChangesAsync(cancellationToken);
+                if (transaction != null)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
+            }
+            catch
+            {
+                if (transaction != null)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                }
+                throw;
+            }
+            finally
+            {
+                if (transaction != null)
+                {
+                    await transaction.DisposeAsync();
+                }
+            }
         }
     }
 }

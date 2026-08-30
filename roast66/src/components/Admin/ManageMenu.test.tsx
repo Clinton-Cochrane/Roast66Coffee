@@ -34,7 +34,17 @@ const menuItems: MenuItemDto[] = [
     price: 5.25,
     categoryType: 1,
     isFeaturedOnHome: true,
+    isArchived: false,
     promotion: "10%",
+  },
+  {
+    id: 8,
+    name: "Retired Mocha",
+    description: "No longer available",
+    price: 4.75,
+    categoryType: 0,
+    isFeaturedOnHome: false,
+    isArchived: true,
   },
 ];
 
@@ -93,10 +103,11 @@ describe("ManageMenu", () => {
     expect(within(row as HTMLElement).getByRole("button", { name: /menu special/i })).toBeInTheDocument();
     expect(within(row as HTMLElement).getByLabelText(/promo/i)).toHaveValue("10%");
     expect(screen.getByRole("heading", { name: "Create new" })).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Delete" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Permanently delete" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Retired Mocha")).not.toBeInTheDocument();
   });
 
-  it("loads one item into the editor and keeps delete inside edit mode", async () => {
+  it("loads one item into the editor with archive and protected permanent deletion", async () => {
     renderManageMenu();
     const editButton = await screen.findByRole("button", { name: "Edit Blue Flame Nitro" });
 
@@ -105,19 +116,38 @@ describe("ManageMenu", () => {
     expect(screen.getByRole("heading", { name: "Blue Flame Nitro" })).toBeInTheDocument();
     expect(screen.getByLabelText("Name")).toHaveValue("Blue Flame Nitro");
     expect(screen.getByLabelText("Price")).toHaveValue(5.25);
-    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archive" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Permanently delete" })).toBeDisabled();
     expect(editButton).toHaveAttribute("aria-pressed", "true");
   });
 
-  it("deletes only after confirmation from the edit window", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+  it("permanently deletes only after the exact item name is entered", async () => {
     renderManageMenu();
     fireEvent.click(await screen.findByRole("button", { name: "Edit Blue Flame Nitro" }));
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    const deleteButton = screen.getByRole("button", { name: "Permanently delete" });
+    fireEvent.change(screen.getByLabelText(/type blue flame nitro/i), {
+      target: { value: "Blue Flame Nitro" },
+    });
+    fireEvent.click(deleteButton);
 
     await waitFor(() => expect(mockDelete).toHaveBeenCalledWith("/admin/menu/7"));
-    expect(confirm).toHaveBeenCalledWith("Delete Blue Flame Nitro? This cannot be undone.");
-    confirm.mockRestore();
+  });
+
+  it("shows archived items separately and restores them", async () => {
+    renderManageMenu();
+    await screen.findByText("Blue Flame Nitro");
+
+    fireEvent.click(screen.getByRole("button", { name: "Archived" }));
+    const archivedName = await screen.findByText("Retired Mocha");
+    const row = archivedName.closest("li");
+    expect(row).not.toBeNull();
+    expect(within(row as HTMLElement).getByText("Archived")).toBeInTheDocument();
+    expect(within(row as HTMLElement).getByRole("button", { name: /daily special/i })).toBeDisabled();
+
+    fireEvent.click(within(row as HTMLElement).getByRole("button", { name: /edit retired mocha/i }));
+    fireEvent.click(screen.getByRole("button", { name: "Restore" }));
+
+    await waitFor(() => expect(mockPut).toHaveBeenCalledWith("/admin/menu/8/restore"));
   });
 
   it("opens and closes the editor as a mobile bottom sheet", async () => {
