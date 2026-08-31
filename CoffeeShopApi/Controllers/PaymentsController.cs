@@ -105,8 +105,7 @@ public class PaymentsController : ControllerBase
         catch (PaymentWebhookException ex)
         {
             _logger.LogWarning(
-                "Invalid {Provider} payment webhook. Failure type: {FailureType}.",
-                provider ?? _paymentService.DefaultProviderName,
+                "Invalid payment webhook. Failure type: {FailureType}.",
                 ex.GetType().Name);
             return BadRequest();
         }

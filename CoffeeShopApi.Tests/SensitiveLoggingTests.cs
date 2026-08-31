@@ -1,10 +1,13 @@
 using System.Net;
+using CoffeeShopApi.Controllers;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Middleware;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Services;
+using CoffeeShopApi.Services.Payments;
 using CoffeeShopApi.Services.Sms;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.EntityFrameworkCore;
@@ -55,15 +58,66 @@ public class SensitiveLoggingTests
                 $"Request failed with {TrackingToken}, {Jwt}, {ConnectionString}, and {ProviderSecret}."),
             logger);
         var context = CreateTrackingContext();
+        context.Request.Method = $"CUSTOM\r\n{ProviderSecret}";
 
         await Assert.ThrowsAsync<InvalidOperationException>(() => middleware.InvokeAsync(context));
 
         var entry = Assert.Single(logger.Entries);
         Assert.Equal(LogLevel.Error, entry.Level);
         Assert.Null(entry.Exception);
+        Assert.Equal("OTHER", entry.Properties["RequestMethod"]);
         Assert.Equal(nameof(InvalidOperationException), entry.Properties["FailureType"]);
         Assert.Equal(StatusCodes.Status500InternalServerError, entry.Properties["StatusCode"]);
         AssertSensitiveValuesAbsent(entry.Message);
+    }
+
+    [Fact]
+    public async Task RequestLog_UsesSafeFallbackForUnrecognizedMethod()
+    {
+        var logger = new RecordingLogger<SafeRequestLoggingMiddleware>();
+        var middleware = new SafeRequestLoggingMiddleware(_ => Task.CompletedTask, logger);
+        var context = CreateTrackingContext();
+        context.Request.Method = $"CUSTOM\r\n{ProviderSecret}";
+
+        await middleware.InvokeAsync(context);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal("OTHER", entry.Properties["RequestMethod"]);
+        AssertSensitiveValuesAbsent(entry.Message);
+    }
+
+    [Fact]
+    public async Task PaymentWebhookLog_OmitsRouteProvidedProvider()
+    {
+        await using var context = CreateContext();
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Payments:DefaultProvider"] = RejectingPaymentGateway.Name
+        });
+        var paymentService = new PaymentService(
+            context,
+            configuration,
+            new OrderService(context, configuration),
+            [new RejectingPaymentGateway()],
+            new RecordingLogger<PaymentService>());
+        var logger = new RecordingLogger<PaymentsController>();
+        var controller = new PaymentsController(paymentService, logger)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext()
+            }
+        };
+        controller.Request.Body = new MemoryStream("{}"u8.ToArray());
+
+        var result = await controller.HandleProviderWebhook(
+            RejectingPaymentGateway.Name,
+            default);
+
+        Assert.IsType<BadRequestResult>(result);
+        var entry = Assert.Single(logger.Entries);
+        Assert.False(entry.Properties.ContainsKey("Provider"));
+        Assert.DoesNotContain(RejectingPaymentGateway.Name, entry.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -274,6 +328,32 @@ public class SensitiveLoggingTests
             SmsSendRequest request,
             CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException(errorMessage);
+    }
+
+    private sealed class RejectingPaymentGateway : IPaymentGateway
+    {
+        public const string Name = "route-provided-test-provider";
+
+        public string ProviderName => Name;
+
+        public bool IsConfigured() => true;
+
+        public Task<GatewayCheckoutResult> CreateCheckoutAsync(
+            GatewayCheckoutRequest request,
+            string idempotencyKey,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<GatewayCheckoutResult> GetCheckoutAsync(
+            string providerCheckoutId,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<GatewayPaymentEvent?> ParseWebhookAsync(
+            string body,
+            IReadOnlyDictionary<string, string> headers,
+            CancellationToken cancellationToken = default) =>
+            throw new PaymentWebhookException("Rejected test webhook.");
     }
 
     private sealed class StubHttpClientFactory(HttpClient client) : IHttpClientFactory

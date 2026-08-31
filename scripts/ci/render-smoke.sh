@@ -127,7 +127,7 @@ if docker run --rm \
   echo "Candidate image unexpectedly started after its migration command failed." >&2
   exit 1
 fi
-grep -Fq 'The migrate command cannot run in Testing.' "$api_log"
+grep -Fq 'Database migration failed (InvalidOperationException).' "$api_log"
 
 echo "Starting the candidate image through its production entrypoint"
 start_candidate_api

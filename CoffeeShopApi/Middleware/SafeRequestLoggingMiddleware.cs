@@ -48,7 +48,7 @@ public sealed class SafeRequestLoggingMiddleware
         _logger.Log(
             level,
             "HTTP {RequestMethod} {RouteTemplate} responded {StatusCode} in {ElapsedMilliseconds:0.0000} ms with trace {TraceId}.",
-            context.Request.Method,
+            GetSafeRequestMethod(context.Request.Method),
             GetRouteTemplate(context),
             statusCode,
             elapsedMilliseconds,
@@ -59,13 +59,26 @@ public sealed class SafeRequestLoggingMiddleware
     {
         _logger.LogError(
             "HTTP {RequestMethod} {RouteTemplate} responded {StatusCode} in {ElapsedMilliseconds:0.0000} ms with trace {TraceId}. Failure type: {FailureType}.",
-            context.Request.Method,
+            GetSafeRequestMethod(context.Request.Method),
             GetRouteTemplate(context),
             StatusCodes.Status500InternalServerError,
             elapsedMilliseconds,
             context.TraceIdentifier,
             failureType);
     }
+
+    private static string GetSafeRequestMethod(string method) =>
+        method switch
+        {
+            "GET" => "GET",
+            "POST" => "POST",
+            "PUT" => "PUT",
+            "PATCH" => "PATCH",
+            "DELETE" => "DELETE",
+            "HEAD" => "HEAD",
+            "OPTIONS" => "OPTIONS",
+            _ => "OTHER"
+        };
 
     private static string GetRouteTemplate(HttpContext context) =>
         (context.GetEndpoint() as RouteEndpoint)?.RoutePattern.RawText ?? UnmatchedRoute;
