@@ -104,17 +104,24 @@ public class PaymentsController : ControllerBase
         }
         catch (PaymentWebhookException ex)
         {
-            _logger.LogWarning(ex, "Invalid {Provider} payment webhook.", provider ?? _paymentService.DefaultProviderName);
+            _logger.LogWarning(
+                "Invalid {Provider} payment webhook. Failure type: {FailureType}.",
+                provider ?? _paymentService.DefaultProviderName,
+                ex.GetType().Name);
             return BadRequest();
         }
         catch (PaymentWebhookRetryException ex)
         {
-            _logger.LogWarning(ex, "Payment webhook arrived before its local payment record was available.");
+            _logger.LogWarning(
+                "Payment webhook arrived before its local payment record was available. Failure type: {FailureType}.",
+                ex.GetType().Name);
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
         catch (PaymentProviderUnavailableException ex)
         {
-            _logger.LogWarning(ex, "Payment webhook provider is unavailable.");
+            _logger.LogWarning(
+                "Payment webhook provider is unavailable. Failure type: {FailureType}.",
+                ex.GetType().Name);
             return StatusCode(StatusCodes.Status503ServiceUnavailable);
         }
     }

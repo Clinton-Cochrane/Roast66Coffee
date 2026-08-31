@@ -8,6 +8,7 @@ using CoffeeShopApi.Data;
 using System;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
+using Serilog.Events;
 
 namespace CoffeeShopApi
 {
@@ -97,8 +98,10 @@ namespace CoffeeShopApi
             catch (Exception ex)
             {
                 var logger = services.GetRequiredService<ILogger<Program>>();
-                logger.LogError(ex, "An error occurred during database migration.");
-                Console.WriteLine($"Error during database migration: {ex.Message}");
+                logger.LogError(
+                    "Database migration failed. Failure type: {FailureType}.",
+                    ex.GetType().Name);
+                Console.WriteLine($"Database migration failed ({ex.GetType().Name}).");
 
                 // Optionally, stop the application if migration fails
                 Environment.Exit(1);
@@ -109,6 +112,17 @@ namespace CoffeeShopApi
             Host.CreateDefaultBuilder(args)
                 .UseSerilog((context, configuration) => configuration
                     .ReadFrom.Configuration(context.Configuration)
+                    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
+                    .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
+                    .MinimumLevel.Override("Microsoft.AspNetCore.Mvc", LogEventLevel.Warning)
+                    .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
+                    .MinimumLevel.Override(
+                        "Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware",
+                        LogEventLevel.Fatal)
+                    .MinimumLevel.Override(
+                        "Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddleware",
+                        LogEventLevel.Fatal)
                     .Enrich.FromLogContext()
                     .WriteTo.Console())
                 .ConfigureAppConfiguration(SecurityConfiguration.ApplyDevelopmentDefaults)

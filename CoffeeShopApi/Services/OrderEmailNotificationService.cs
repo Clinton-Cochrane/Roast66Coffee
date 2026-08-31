@@ -66,8 +66,7 @@ public class OrderEmailNotificationService
         using var response = await client.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogWarning("Order email send failed. Status: {StatusCode}. Body: {Body}", response.StatusCode, errorBody);
+            _logger.LogWarning("Order email send failed. Status: {StatusCode}.", response.StatusCode);
             throw new InvalidOperationException("Failed to send order email.");
         }
     }

@@ -176,7 +176,7 @@ public class DatabaseReleasePostgresTests
         var retentionService = new NotificationRetentionService(context);
         Assert.Equal(
             1,
-            await retentionService.PurgeEmailNotificationsOlderThanAsync(
+            await retentionService.PurgeNotificationsOlderThanAsync(
                 DateTime.UtcNow.AddDays(-1)));
         Assert.Equal(1, await context.StaffPushSubscriptions.CountAsync());
         Assert.Equal(1, await context.Payments.CountAsync());

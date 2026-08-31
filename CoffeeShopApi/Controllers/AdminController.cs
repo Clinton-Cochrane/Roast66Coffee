@@ -423,11 +423,12 @@ namespace CoffeeShopApi.Controllers
         }
 
         [Authorize(Roles = "Admin")]
+        [HttpPost("notifications/purge-logs")]
         [HttpPost("notifications/purge-email-logs")]
-        public async Task<IActionResult> PurgeEmailNotificationLogs(CancellationToken cancellationToken)
+        public async Task<IActionResult> PurgeNotificationLogs(CancellationToken cancellationToken)
         {
-            await _notificationRetentionService.PurgeEmailNotificationsOlderThanAsync(
-                DateTime.UtcNow.AddDays(-30),
+            await _notificationRetentionService.PurgeNotificationsOlderThanAsync(
+                DateTime.UtcNow.AddDays(-NotificationRetentionService.RetentionDays),
                 cancellationToken);
 
             return NoContent();
@@ -512,7 +513,9 @@ namespace CoffeeShopApi.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Default menu reset failed.");
+                _logger.LogError(
+                    "Default menu reset failed. Failure type: {FailureType}.",
+                    ex.GetType().Name);
                 return Problem(
                     statusCode: StatusCodes.Status500InternalServerError,
                     title: "Menu reset failed",

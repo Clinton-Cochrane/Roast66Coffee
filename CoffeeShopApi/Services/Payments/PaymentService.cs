@@ -163,10 +163,9 @@ public sealed class PaymentService
         if (payment == null)
         {
             _logger.LogWarning(
-                "Ignoring {Provider} payment event because no local payment matched checkout {CheckoutId} or payment {PaymentId}.",
+                "Ignoring {Provider} payment event because no local payment matched internal payment {PaymentId}.",
                 gateway.ProviderName,
-                paymentEvent.ProviderCheckoutId,
-                paymentEvent.ProviderPaymentId);
+                paymentEvent.PaymentId);
             if (paymentEvent.PaymentId.HasValue)
             {
                 throw new PaymentWebhookRetryException(

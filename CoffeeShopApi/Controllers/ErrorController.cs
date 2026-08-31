@@ -13,7 +13,10 @@ namespace CoffeeShopApi.Controllers
             var feature = HttpContext.Features.Get<IExceptionHandlerPathFeature>();
             if (feature?.Error != null)
             {
-                logger.LogError(feature.Error, "Unhandled exception: {Message}", feature.Error.Message);
+                logger.LogError(
+                    "Unhandled request failure with trace {TraceId}. Failure type: {FailureType}.",
+                    HttpContext.TraceIdentifier,
+                    feature.Error.GetType().Name);
             }
             return StatusCode(500, new { message = "An error occurred processing your request." });
         }

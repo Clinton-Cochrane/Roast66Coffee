@@ -50,7 +50,6 @@ public class NotificationService
                 templateKey: "customer_ready_for_pickup",
                 body: body,
                 orderId: order.Id,
-                payload: new { orderId = order.Id, order.CustomerName, order.CustomerPhone, status = order.OrderStatus.ToString() },
                 smsFromAddress: smsFromAddress,
                 cancellationToken: cancellationToken);
         }
@@ -66,7 +65,6 @@ public class NotificationService
                 templateKey: "customer_ready_for_pickup_email",
                 body: string.Empty,
                 orderId: order.Id,
-                payload: new { orderId = order.Id, order.CustomerName, order.CustomerEmail, status = order.OrderStatus.ToString() },
                 smsFromAddress: null,
                 cancellationToken: cancellationToken);
         }
@@ -115,7 +113,9 @@ public class NotificationService
         }
 
         existing.Status = providerStatus.ToLowerInvariant();
-        existing.LastError = string.IsNullOrWhiteSpace(providerError) ? existing.LastError : providerError;
+        existing.LastError = string.IsNullOrWhiteSpace(providerError)
+            ? existing.LastError
+            : "Provider reported a delivery failure.";
         existing.UpdatedUtc = DateTime.UtcNow;
         if (providerStatus.Equals("delivered", StringComparison.OrdinalIgnoreCase))
         {
@@ -133,7 +133,6 @@ public class NotificationService
         string templateKey,
         string body,
         int orderId,
-        object payload,
         string? smsFromAddress,
         CancellationToken cancellationToken)
     {
@@ -163,7 +162,7 @@ public class NotificationService
             Provider = channel == "sms" ? _smsSender.ProviderName : null,
             TemplateKey = templateKey,
             OrderId = orderId,
-            PayloadJson = JsonSerializer.Serialize(payload),
+            PayloadJson = JsonSerializer.Serialize(new { orderId }),
             DedupKey = dedupKey,
             Status = "pending",
             CreatedUtc = DateTime.UtcNow,
@@ -209,7 +208,7 @@ public class NotificationService
             catch (Exception ex)
             {
                 message.Status = attempt == maxAttempts ? "failed" : "retrying";
-                message.LastError = ex.Message;
+                message.LastError = $"{ex.GetType().Name}: notification delivery failed.";
                 message.UpdatedUtc = DateTime.UtcNow;
                 await _context.SaveChangesAsync(cancellationToken);
 
@@ -275,7 +274,7 @@ public class NotificationService
             catch (Exception ex)
             {
                 message.Status = attempt == maxAttempts ? "failed" : "retrying";
-                message.LastError = ex.Message;
+                message.LastError = $"{ex.GetType().Name}: notification delivery failed.";
                 message.UpdatedUtc = DateTime.UtcNow;
                 await _context.SaveChangesAsync(cancellationToken);
 

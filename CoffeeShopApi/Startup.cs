@@ -11,11 +11,11 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Threading.RateLimiting;
-using Serilog;
 using System.Security.Claims;
 using CoffeeShopApi.Services.Payments;
 using CoffeeShopApi.Services.Sms;
 using CoffeeShopApi.Health;
+using CoffeeShopApi.Middleware;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace CoffeeShopApi
@@ -225,9 +225,9 @@ namespace CoffeeShopApi
 
             app.UseStaticFiles();
 
-            app.UseSerilogRequestLogging();
-
             app.UseRouting();
+
+            app.UseMiddleware<SafeRequestLoggingMiddleware>();
 
             app.UseRateLimiter();
 
