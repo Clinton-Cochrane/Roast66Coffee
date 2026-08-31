@@ -327,6 +327,9 @@ Post-deploy verification:
 
 ## Operations Runbook
 
+Application-log contents, PII boundaries, retention, and exposure response are
+defined in [`docs/operations/logging-and-data-retention.md`](docs/operations/logging-and-data-retention.md).
+
 ### Lost or shared staff device
 
 1. Change `Admin__Password` and `Jwt__Key` in Render immediately.

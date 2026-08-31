@@ -385,7 +385,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task PurgeEmailNotificationLogs_RemovesOldEmailRows()
+    public async Task PurgeNotificationLogs_RemovesOldRows()
     {
         var order = CreateValidOrder(
             $"Purge-{Guid.NewGuid():N}",
@@ -398,6 +398,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         Assert.NotNull(created);
 
         var emailNotificationId = Guid.NewGuid();
+        var smsNotificationId = Guid.NewGuid();
 
         using (var scope = _factory.Services.CreateScope())
         {
@@ -416,11 +417,25 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
                 CreatedUtc = DateTime.UtcNow.AddDays(-40),
                 UpdatedUtc = DateTime.UtcNow.AddDays(-40)
             });
+            db.NotificationMessages.Add(new NotificationMessage
+            {
+                Id = smsNotificationId,
+                EventType = "retention.test",
+                RecipientRole = "customer",
+                RecipientPhone = "+15558675309",
+                Channel = "sms",
+                TemplateKey = "retention_test",
+                OrderId = created.Id,
+                DedupKey = $"retention-{smsNotificationId:N}",
+                Status = "sent",
+                CreatedUtc = DateTime.UtcNow.AddDays(-40),
+                UpdatedUtc = DateTime.UtcNow.AddDays(-40)
+            });
             await db.SaveChangesAsync();
         }
 
         var token = await GetAdminToken();
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/notifications/purge-email-logs");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/notifications/purge-logs");
         request.Headers.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
@@ -430,6 +445,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         using var verificationScope = _factory.Services.CreateScope();
         var verificationDb = verificationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
         Assert.Null(await verificationDb.NotificationMessages.FindAsync(emailNotificationId));
+        Assert.Null(await verificationDb.NotificationMessages.FindAsync(smsNotificationId));
     }
 
     [Fact]

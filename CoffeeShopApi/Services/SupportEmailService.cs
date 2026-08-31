@@ -52,8 +52,7 @@ public class SupportEmailService
         using var response = await client.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
-            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-            _logger.LogWarning("Resend forgot-password email failed. Status: {StatusCode}. Body: {Body}", response.StatusCode, errorBody);
+            _logger.LogWarning("Resend forgot-password email failed. Status: {StatusCode}.", response.StatusCode);
             throw new InvalidOperationException("Failed to send forgot-password email.");
         }
     }

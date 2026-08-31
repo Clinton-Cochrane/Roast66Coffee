@@ -22,18 +22,23 @@ public class NotificationRetentionWorker : BackgroundService
             {
                 using var scope = _scopeFactory.CreateScope();
                 var retentionService = scope.ServiceProvider.GetRequiredService<NotificationRetentionService>();
-                var deleted = await retentionService.PurgeEmailNotificationsOlderThanAsync(
-                    DateTime.UtcNow.AddDays(-30),
+                var deleted = await retentionService.PurgeNotificationsOlderThanAsync(
+                    DateTime.UtcNow.AddDays(-NotificationRetentionService.RetentionDays),
                     stoppingToken);
 
                 if (deleted > 0)
                 {
-                    _logger.LogInformation("Purged {Count} email notification records older than 30 days.", deleted);
+                    _logger.LogInformation(
+                        "Purged {Count} notification records older than {RetentionDays} days.",
+                        deleted,
+                        NotificationRetentionService.RetentionDays);
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Email notification retention pass failed.");
+                _logger.LogWarning(
+                    "Notification retention pass failed. Failure type: {FailureType}.",
+                    ex.GetType().Name);
             }
 
             await Task.Delay(CheckInterval, stoppingToken);
