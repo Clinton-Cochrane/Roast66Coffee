@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CoffeeShopApi.Tests.Integration;
@@ -82,6 +83,55 @@ public class MenuLifecycleApiTests : IClassFixture<WebAppFactory>
         Assert.DoesNotContain(adminMenu!, item => item.Id == itemId);
     }
 
+    [Fact]
+    public async Task FourthHomepageSpecial_ReturnsConflictWithoutChangingPriorSelections()
+    {
+        int[] itemIds;
+        await using (var scope = _factory.Services.CreateAsyncScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var testId = Guid.NewGuid().ToString("N");
+            context.MenuItems.AddRange(
+                CreateHomepageCandidate($"First {testId}"),
+                CreateHomepageCandidate($"Second {testId}"),
+                CreateHomepageCandidate($"Third {testId}"),
+                CreateHomepageCandidate($"Fourth {testId}"));
+            await context.SaveChangesAsync();
+            itemIds = await context.MenuItems
+                .Where(item => item.Name.EndsWith(testId))
+                .OrderBy(item => item.Id)
+                .Select(item => item.Id)
+                .ToArrayAsync();
+        }
+
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", await GetAdminTokenAsync());
+        foreach (var itemId in itemIds[..3])
+        {
+            var response = await _client.PutAsJsonAsync(
+                $"/api/admin/menu/{itemId}/homepage-special",
+                new { isSelected = true });
+            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        }
+
+        var conflict = await _client.PutAsJsonAsync(
+            $"/api/admin/menu/{itemIds[3]}/homepage-special",
+            new { isSelected = true });
+
+        Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
+        var conflictBody = await conflict.Content.ReadFromJsonAsync<ConflictResponse>(JsonOptions);
+        Assert.Equal("Only 3 homepage specials can be selected.", conflictBody!.Message);
+
+        await using var verificationScope = _factory.Services.CreateAsyncScope();
+        var verification = verificationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var selectedIds = await verification.MenuItems
+            .Where(item => item.IsFeaturedOnHome && itemIds.Contains(item.Id))
+            .OrderBy(item => item.Id)
+            .Select(item => item.Id)
+            .ToArrayAsync();
+        Assert.Equal(itemIds[..3], selectedIds);
+    }
+
     private async Task<string> GetAdminTokenAsync()
     {
         var response = await _client.PostAsJsonAsync(
@@ -91,6 +141,17 @@ public class MenuLifecycleApiTests : IClassFixture<WebAppFactory>
         var login = await response.Content.ReadFromJsonAsync<LoginResponse>(JsonOptions);
         return login!.Token;
     }
+
+    private static MenuItem CreateHomepageCandidate(string name) =>
+        new()
+        {
+            Name = name,
+            Description = "Homepage-special conflict integration test",
+            Price = 4m,
+            CategoryType = CategoryType.SPECIALS
+        };
+
+    private sealed record ConflictResponse(string Message);
 
     private sealed class LoginResponse
     {

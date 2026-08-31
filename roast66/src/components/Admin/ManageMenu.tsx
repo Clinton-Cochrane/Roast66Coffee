@@ -321,7 +321,14 @@ function ManageMenu() {
       .then(() => {
         toast.success(isSelected ? t("adminMenu.specialSelected") : t("adminMenu.specialRemoved"));
       })
-      .catch(() => {
+      .catch((error: unknown) => {
+        const status = (error as { response?: { status?: number } })?.response?.status;
+        if (status === 409) {
+          toast.error(t("adminMenu.specialLimit"));
+          fetchMenuItems();
+          return;
+        }
+
         setMenuItems((current) =>
           current.map((currentItem) =>
             currentItem.id === item.id
