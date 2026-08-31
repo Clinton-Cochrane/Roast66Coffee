@@ -273,36 +273,52 @@ namespace CoffeeShopApi.Controllers
 
         [HttpPost("orders")]
         [EnableRateLimiting("Order")]
-        public async Task<ActionResult<Order>> PostOrder(Order order, CancellationToken cancellationToken)
+        public async Task<ActionResult<Order>> PostOrder(
+            Order order,
+            [FromHeader(Name = "X-Idempotency-Key")] string? idempotencyKey,
+            CancellationToken cancellationToken)
         {
             if (order.OrderItems == null || order.OrderItems.Count == 0)
             {
                 return BadRequest(new { message = "At least one order item is required." });
             }
-            var duplicate = await _orderService.FindDuplicateOrderAsync(order);
-            if (duplicate != null)
+            var key = idempotencyKey?.Trim();
+            if (string.IsNullOrEmpty(key) || key.Length > OrderController.MaxIdempotencyKeyLength)
             {
-                return StatusCode(StatusCodes.Status409Conflict, new
+                return BadRequest(new
                 {
-                    message = "Duplicate order detected. An identical order was placed recently.",
-                    existingOrderId = duplicate.Id,
-                    order = PublicOrderDto.FromOrder(duplicate)
+                    message = $"X-Idempotency-Key is required and must be at most {OrderController.MaxIdempotencyKeyLength} characters."
                 });
             }
-            Order newOrder;
+            OrderSubmissionResult submission;
             try
             {
-                newOrder = await _orderService.CreateOrderAsync(order, cancellationToken);
+                submission = await _orderService.SubmitOrderAsync(order, key, cancellationToken);
             }
             catch (UnavailableMenuItemsException ex)
             {
                 return BadRequest(new { message = ex.Message });
             }
-            _staffPushQueue.TryEnqueue(newOrder.Id);
+            catch (IdempotencyKeyConflictException ex)
+            {
+                return Conflict(new
+                {
+                    message = ex.Message,
+                    existingOrderId = ex.ExistingOrder.Id
+                });
+            }
+
+            if (!submission.WasCreated)
+            {
+                Response.Headers.Append("Idempotency-Replayed", "true");
+                return Ok(PublicOrderDto.FromOrder(submission.Order));
+            }
+
+            _staffPushQueue.TryEnqueue(submission.Order.Id);
             return CreatedAtAction(
                 nameof(GetOrders),
-                new { id = newOrder.Id },
-                PublicOrderDto.FromOrder(newOrder));
+                new { id = submission.Order.Id },
+                PublicOrderDto.FromOrder(submission.Order));
         }
 
         [Authorize(Roles = "Admin")]

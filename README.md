@@ -11,7 +11,7 @@ The application is a React single-page frontend backed by an ASP.NET Core API an
 - Browse a categorized menu in English or Spanish.
 - Build drinks with quantities, flavors, add-ons, and notes.
 - Place pickup orders with optional email notifications.
-- Detect accidental duplicate submissions within a configurable window.
+- Replay accidental duplicate submissions without creating a second order.
 - Receive a cryptographically random private tracking token after ordering.
 - Follow an order from received through preparing, ready for pickup, and completed.
 - Return to an active tracked order from the navigation bar on the same device.
@@ -32,6 +32,7 @@ The application is a React single-page frontend backed by an ASP.NET Core API an
 - Public order APIs use 256-bit tracking tokens instead of sequential IDs and customer identity.
 - Public tracking responses omit phone numbers, email addresses, provider IDs, and internal database fields.
 - Public order creation, tracking, login, and password-support endpoints are rate limited.
+- PostgreSQL enforces one durable order per client-generated idempotency key.
 - Production migrations take a PostgreSQL advisory lock and finish before the API starts serving traffic.
 
 Online payments and external SMS are feature-gated and disabled by default until their production integrations are approved and hardened. Payments use a provider-neutral application service; Stripe is the included gateway. SMS uses a provider-neutral sender contract with a disabled default implementation, so no SMS vendor is installed or contacted by default.
@@ -179,6 +180,24 @@ Keep this value stable during normal deployments. Rotating it immediately invali
 | `VITE_USE_STATIC_MENU` | Overrides menu data selection. Localhost defaults to the bundled JSON snapshot; set `false` to force API reads or `true` to use the snapshot on any host. |
 | `VITE_ENABLE_ONLINE_PAYMENTS` | Enables the configured online checkout UI when set to `true` |
 | `VITE_VAPID_PUBLIC_KEY` | Optional public key for staff web push |
+
+### Idempotent order submission
+
+`POST /api/order` and the legacy `POST /api/admin/orders` route require an
+`X-Idempotency-Key` header containing a non-empty client-generated value of at
+most 128 characters. A UUID is recommended.
+
+- The first valid request for a key returns `201 Created`.
+- A retry with the same key and equivalent normalized payload returns `200 OK`
+  with the original order and `Idempotency-Replayed: true`.
+- Reusing a key with a different customer or order payload returns `409 Conflict`.
+- Omitting the header or exceeding its length limit returns `400 Bad Request`.
+- Keys do not expire while their order is retained. An intentional repeat order
+  must use a new key, even when its contents are identical.
+
+The browser stores an in-progress submission key in tab-scoped session storage,
+reuses it when an unchanged submission is retried after a network failure, and
+clears it after receiving a successful response.
 
 Vite settings are embedded at build time, so changing them requires rebuilding the static site.
 

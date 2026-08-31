@@ -33,7 +33,7 @@ public class RateLimitTests : IClassFixture<WebAppFactory>
             customerName = "Rate Limit Test Customer",
             orderItems = new[] { new { menuItemId = 1, quantity = 1 } }
         };
-        var response = await _client.PostAsJsonAsync("/api/order", order);
+        var response = await _client.PostOrderAsync(order);
         response.EnsureSuccessStatusCode();
     }
 }

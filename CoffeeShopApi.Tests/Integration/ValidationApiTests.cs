@@ -120,6 +120,36 @@ public class ValidationApiTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
+    public async Task PostOrder_MissingIdempotencyKey_ReturnsBadRequest()
+    {
+        var order = new Order
+        {
+            CustomerName = "Missing Key Customer",
+            OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 1 }]
+        };
+
+        var response = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("X-Idempotency-Key", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task PostOrder_OverlongIdempotencyKey_ReturnsBadRequest()
+    {
+        var order = new Order
+        {
+            CustomerName = "Overlong Key Customer",
+            OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 1 }]
+        };
+
+        var response = await _client.PostOrderAsync(order, new string('k', 129), JsonOptions);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("at most 128", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
     public async Task AdminLogin_EmptyCredentials_ReturnsBadRequest()
     {
         var login = new { username = "", password = "" };

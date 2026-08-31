@@ -72,7 +72,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     public async Task PostOrder_ValidOrder_CreatesOrder()
     {
         var order = CreateValidOrder();
-        var response = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        var response = await _client.PostOrderAsync(order, options: JsonOptions);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var created = await response.Content.ReadFromJsonAsync<Order>(JsonOptions);
@@ -89,7 +89,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
             $"555{Random.Shared.Next(1000000, 9999999)}");
         order.CustomerEmail = "customer@example.com";
         order.CustomerNotificationOptIn = true;
-        var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        var post = await _client.PostOrderAsync(order, options: JsonOptions);
         post.EnsureSuccessStatusCode();
         var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
         Assert.NotNull(created);
@@ -110,7 +110,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task PostOrder_DuplicateOrderWithinWindow_Returns409Conflict()
+    public async Task PostOrder_SameIdempotencyKey_ReturnsOriginalOrder()
     {
         var order = new Order
         {
@@ -118,17 +118,71 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
             CustomerPhone = "5559876543",
             OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 2 }]
         };
-        var firstResponse = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        var idempotencyKey = Guid.NewGuid().ToString("N");
+        var firstResponse = await _client.PostOrderAsync(order, idempotencyKey, JsonOptions);
+        firstResponse.EnsureSuccessStatusCode();
+        var first = await firstResponse.Content.ReadFromJsonAsync<PublicOrderResponse>(JsonOptions);
+
+        var secondResponse = await _client.PostOrderAsync(order, idempotencyKey, JsonOptions);
+        Assert.Equal(HttpStatusCode.OK, secondResponse.StatusCode);
+        Assert.True(secondResponse.Headers.TryGetValues("Idempotency-Replayed", out var replayed));
+        Assert.Equal("true", Assert.Single(replayed));
+
+        var second = await secondResponse.Content.ReadFromJsonAsync<PublicOrderResponse>(JsonOptions);
+        Assert.NotNull(first);
+        Assert.Equal(first!.Id, second!.Id);
+    }
+
+    [Fact]
+    public async Task PostOrder_SameIdempotencyKeyWithDifferentPayload_ReturnsConflict()
+    {
+        var key = Guid.NewGuid().ToString("N");
+        var first = CreateValidOrder($"Conflict-{Guid.NewGuid():N}", "5551234567");
+        var firstResponse = await _client.PostOrderAsync(first, key, JsonOptions);
         firstResponse.EnsureSuccessStatusCode();
 
-        var secondResponse = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
-        Assert.Equal(HttpStatusCode.Conflict, secondResponse.StatusCode);
+        var changed = CreateValidOrder(first.CustomerName, first.CustomerPhone!);
+        changed.OrderItems[0].Quantity = 3;
+        var response = await _client.PostOrderAsync(changed, key, JsonOptions);
 
-        var conflictBody = await secondResponse.Content.ReadFromJsonAsync<DuplicateOrderResponse>(JsonOptions);
-        Assert.NotNull(conflictBody);
-        Assert.NotNull(conflictBody!.Message);
-        Assert.True(conflictBody.ExistingOrderId > 0);
-        Assert.NotNull(conflictBody.Order);
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Contains("different order request", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task PostOrder_IdenticalPayloadWithDifferentKeys_CreatesDeliberateRepeat()
+    {
+        var order = CreateValidOrder($"Repeat-{Guid.NewGuid():N}", "5557654321");
+
+        var firstResponse = await _client.PostOrderAsync(order, options: JsonOptions);
+        var secondResponse = await _client.PostOrderAsync(order, options: JsonOptions);
+
+        Assert.Equal(HttpStatusCode.Created, firstResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, secondResponse.StatusCode);
+        var first = await firstResponse.Content.ReadFromJsonAsync<PublicOrderResponse>(JsonOptions);
+        var second = await secondResponse.Content.ReadFromJsonAsync<PublicOrderResponse>(JsonOptions);
+        Assert.NotEqual(first!.Id, second!.Id);
+    }
+
+    [Fact]
+    public async Task LegacyAdminOrderRoute_UsesTheSameIdempotencyContract()
+    {
+        var key = Guid.NewGuid().ToString("N");
+        var order = CreateValidOrder($"Legacy-{Guid.NewGuid():N}", "5553456789");
+
+        var first = await _client.PostOrderAsync(
+            order,
+            key,
+            JsonOptions,
+            path: "/api/admin/orders");
+        var replay = await _client.PostOrderAsync(
+            order,
+            key,
+            JsonOptions,
+            path: "/api/admin/orders");
+
+        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
     }
 
     [Fact]
@@ -144,7 +198,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
             CustomerPhone = "5559998888",
             OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 1 }]
         };
-        var postResponse = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        var postResponse = await _client.PostOrderAsync(order, options: JsonOptions);
         postResponse.EnsureSuccessStatusCode();
 
         var getResponse = await _client.GetAsync("/api/order");
@@ -209,7 +263,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
                 }
             ]
         };
-        var postResponse = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        var postResponse = await _client.PostOrderAsync(order, options: JsonOptions);
         postResponse.EnsureSuccessStatusCode();
 
         var token = await GetAdminToken();
@@ -282,7 +336,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         var order = CreateValidOrder(
             $"Ready-{Guid.NewGuid():N}",
             $"555{Random.Shared.Next(1000000, 9999999)}");
-        var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        var post = await _client.PostOrderAsync(order, options: JsonOptions);
         post.EnsureSuccessStatusCode();
         var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
         Assert.NotNull(created);
@@ -306,7 +360,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         var order = CreateValidOrder(
             $"Summary-{Guid.NewGuid():N}",
             $"555{Random.Shared.Next(1000000, 9999999)}");
-        var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        var post = await _client.PostOrderAsync(order, options: JsonOptions);
         post.EnsureSuccessStatusCode();
         var created = await post.Content.ReadFromJsonAsync<PublicOrderResponse>(JsonOptions);
         Assert.NotNull(created);
@@ -338,7 +392,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
             $"555{Random.Shared.Next(1000000, 9999999)}");
         order.CustomerEmail = "customer@example.com";
         order.CustomerNotificationOptIn = true;
-        var post = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        var post = await _client.PostOrderAsync(order, options: JsonOptions);
         post.EnsureSuccessStatusCode();
         var created = await post.Content.ReadFromJsonAsync<PublicOrderDto>(JsonOptions);
         Assert.NotNull(created);
@@ -499,13 +553,6 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     private class LoginResponse
     {
         public string Token { get; set; } = string.Empty;
-    }
-
-    private class DuplicateOrderResponse
-    {
-        public string Message { get; set; } = string.Empty;
-        public int ExistingOrderId { get; set; }
-        public Order? Order { get; set; }
     }
 
     private class NotificationLogResponse

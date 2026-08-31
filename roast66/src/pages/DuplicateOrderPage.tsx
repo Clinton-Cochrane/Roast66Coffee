@@ -64,6 +64,10 @@ function DuplicateOrderPage() {
       <p className="text-gray-600 mb-4">{t("duplicateOrder.bodyOne")}</p>
       <p className="text-gray-600 mb-6">{t("duplicateOrder.bodyTwo")}</p>
 
+      <p className="mb-6 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-900">
+        {t("duplicateOrder.safeRetry")}
+      </p>
+
       {existingOrderId ? (
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-left">
           <p className="font-semibold text-amber-900">

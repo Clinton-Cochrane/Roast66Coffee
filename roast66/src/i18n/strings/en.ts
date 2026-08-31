@@ -199,6 +199,8 @@ export const en = {
     checkoutMissingUrl: "Missing checkout URL",
     submitFailed:
       "Failed to place the order. Please try again or check the console for details.",
+    idempotencyConflict:
+      "This submission key was already used for a different order. Please review your order and try again.",
     pageSubtitle: "Build your homemade drink for the road in just a few taps.",
     legacyCardTitle: "Place Order",
     legacyMenuItemIdPlaceholder: "Menu Item ID",
@@ -274,7 +276,8 @@ export const en = {
     bodyOne:
       "Looks like that order went through already - maybe a double-tap or a second click? No worries, your coffee is already in the queue.",
     bodyTwo:
-      "We caught the duplicate so you do not end up with two of the same order. One cup (or two, if you meant it) is on its way.",
+      "Our order guard returned the original confirmation, so no second order was created. One cup (or two, if you meant it) is on its way.",
+    safeRetry: "Your retry used the same secure submission key and matched the original order.",
     confirmedOrder: "Your order #{{orderId}} is confirmed.",
     confirmedOrderHelp: "Use Order Status to track when it is ready for pickup.",
     checkStatus: "Check Order Status",

@@ -1,7 +1,10 @@
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Data;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using System.Security.Cryptography;
+using System.Text;
+using System.Text.Json;
 
 namespace CoffeeShopApi.Services;
 
@@ -55,6 +58,120 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
             .FirstOrDefaultAsync(o => o.TrackingToken == trackingToken, cancellationToken);
     }
 
+    public async Task<OrderSubmissionResult> SubmitOrderAsync(
+        Order order,
+        string idempotencyKey,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedKey = idempotencyKey.Trim();
+        var requestFingerprint = ComputeRequestFingerprint(order);
+        var existing = await GetOrderByIdempotencyKeyAsync(normalizedKey, cancellationToken);
+        if (existing != null)
+        {
+            EnsureMatchingRequest(existing, requestFingerprint);
+            return new OrderSubmissionResult(existing, WasCreated: false);
+        }
+
+        order.IdempotencyKey = normalizedKey;
+        order.RequestFingerprint = requestFingerprint;
+
+        try
+        {
+            var created = await CreateOrderAsync(order, cancellationToken);
+            return new OrderSubmissionResult(created, WasCreated: true);
+        }
+        catch (DbUpdateException ex) when (IsIdempotencyKeyViolation(ex))
+        {
+            // SaveChanges is transactional, so the losing order graph was not persisted.
+            // Clear it before loading the row committed by the concurrent winner.
+            _context.ChangeTracker.Clear();
+            existing = await GetOrderByIdempotencyKeyAsync(normalizedKey, cancellationToken);
+            if (existing == null)
+            {
+                throw;
+            }
+            EnsureMatchingRequest(existing, requestFingerprint);
+            return new OrderSubmissionResult(existing, WasCreated: false);
+        }
+    }
+
+    private async Task<Order?> GetOrderByIdempotencyKeyAsync(
+        string idempotencyKey,
+        CancellationToken cancellationToken)
+    {
+        return await _context.Orders
+            .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.MenuItem)
+            .Include(o => o.OrderItems)
+            .ThenInclude(oi => oi.AddOns!)
+            .ThenInclude(a => a.MenuItem)
+            .FirstOrDefaultAsync(o => o.IdempotencyKey == idempotencyKey, cancellationToken);
+    }
+
+    private static void EnsureMatchingRequest(Order existing, string requestFingerprint)
+    {
+        if (!string.Equals(
+                existing.RequestFingerprint,
+                requestFingerprint,
+                StringComparison.Ordinal))
+        {
+            throw new IdempotencyKeyConflictException(existing);
+        }
+    }
+
+    private static bool IsIdempotencyKeyViolation(DbUpdateException exception) =>
+        exception.InnerException is PostgresException
+        {
+            SqlState: PostgresErrorCodes.UniqueViolation,
+            ConstraintName: "ux_orders_idempotency_key"
+        };
+
+    internal static string ComputeRequestFingerprint(Order order)
+    {
+        var lines = (order.OrderItems ?? [])
+            .Select(item =>
+            {
+                var addOns = (item.AddOns ?? [])
+                    .Select(addOn => new FingerprintAddOn(addOn.MenuItemId, addOn.Quantity))
+                    .OrderBy(addOn => addOn.MenuItemId)
+                    .ThenBy(addOn => addOn.Quantity)
+                    .ToList();
+                return new FingerprintOrderLine(
+                    item.MenuItemId,
+                    item.Quantity,
+                    NormalizeWhitespace(item.Notes),
+                    addOns);
+            })
+            .OrderBy(line => line.MenuItemId)
+            .ThenBy(line => line.Quantity)
+            .ThenBy(line => line.Notes, StringComparer.Ordinal)
+            .ThenBy(line => JsonSerializer.Serialize(line.AddOns), StringComparer.Ordinal)
+            .ToList();
+
+        var canonicalRequest = new FingerprintRequest(
+            NormalizeName(order.CustomerName),
+            NormalizePhone(order.CustomerPhone ?? string.Empty),
+            NormalizeEmail(order.CustomerEmail),
+            order.CustomerNotificationOptIn,
+            lines);
+        var json = JsonSerializer.Serialize(canonicalRequest);
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(json)))
+            .ToLowerInvariant();
+    }
+
+    private static string NormalizeWhitespace(string? value) =>
+        string.Join(
+            " ",
+            (value ?? string.Empty).Trim().Split(
+                (char[]?)null,
+                StringSplitOptions.RemoveEmptyEntries));
+
+    private static string? NormalizeEmail(string? value)
+    {
+        var normalized = value?.Trim().ToLowerInvariant();
+        return string.IsNullOrEmpty(normalized) ? null : normalized;
+    }
+
     /// <summary>
     /// Finds a duplicate order: same customer + same content within the configured time window.
     /// Returns the existing order if found, null otherwise.
@@ -64,9 +181,9 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         var windowStart = DateTime.UtcNow.AddMinutes(-DuplicateDetectionWindowMinutes);
         var customerKey = NormalizeCustomerKey(order);
         if (string.IsNullOrEmpty(customerKey)) return null;
+        if (order.OrderItems == null || order.OrderItems.Count == 0) return null;
 
-        var incomingFingerprint = ComputeOrderContentFingerprint(order);
-        if (string.IsNullOrEmpty(incomingFingerprint)) return null;
+        var incomingFingerprint = ComputeRequestFingerprint(order);
 
         var recentOrders = await _context.Orders
             .Include(o => o.OrderItems)
@@ -78,7 +195,7 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
 
         foreach (var existing in sameCustomer)
         {
-            if (ComputeOrderContentFingerprint(existing) == incomingFingerprint)
+            if (ComputeRequestFingerprint(existing) == incomingFingerprint)
                 return existing;
         }
         return null;
@@ -88,25 +205,8 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
     {
         var phone = NormalizePhone(order.CustomerPhone ?? "");
         if (!string.IsNullOrEmpty(phone)) return $"phone:{phone}";
-        var name = (order.CustomerName ?? "").Trim();
-        return string.IsNullOrEmpty(name) ? "" : $"name:{name.ToLowerInvariant()}";
-    }
-
-    private static string ComputeOrderContentFingerprint(Order order)
-    {
-        if (order.OrderItems == null || order.OrderItems.Count == 0)
-            return string.Empty;
-
-        var parts = order.OrderItems
-            .OrderBy(oi => oi.MenuItemId)
-            .Select(oi =>
-            {
-                var addons = (oi.AddOns ?? [])
-                    .OrderBy(a => a.MenuItemId)
-                    .Select(a => $"{a.MenuItemId}:{a.Quantity}");
-                return $"{oi.MenuItemId}:{oi.Quantity}:{oi.Notes ?? ""}:{string.Join(",", addons)}";
-            });
-        return string.Join("|", parts);
+        var name = NormalizeName(order.CustomerName);
+        return string.IsNullOrEmpty(name) ? "" : $"name:{name}";
     }
 
     public async Task<Order> CreateOrderAsync(
@@ -266,4 +366,27 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
                 .ToLowerInvariant()
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries)
         );
+
+    private sealed record FingerprintRequest(
+        string CustomerName,
+        string CustomerPhone,
+        string? CustomerEmail,
+        bool CustomerNotificationOptIn,
+        IReadOnlyList<FingerprintOrderLine> OrderItems);
+
+    private sealed record FingerprintOrderLine(
+        int? MenuItemId,
+        int Quantity,
+        string Notes,
+        IReadOnlyList<FingerprintAddOn> AddOns);
+
+    private sealed record FingerprintAddOn(int? MenuItemId, int Quantity);
+}
+
+public sealed record OrderSubmissionResult(Order Order, bool WasCreated);
+
+public sealed class IdempotencyKeyConflictException(Order existingOrder)
+    : Exception("The idempotency key has already been used for a different order request.")
+{
+    public Order ExistingOrder { get; } = existingOrder;
 }

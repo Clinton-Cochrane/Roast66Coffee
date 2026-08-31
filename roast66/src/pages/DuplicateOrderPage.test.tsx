@@ -24,6 +24,7 @@ describe("DuplicateOrderPage", () => {
   it("renders duplicate-order messaging and navigation links", () => {
     renderPage();
     expect(screen.getByRole("heading", { name: /double brew detected/i })).toBeInTheDocument();
+    expect(screen.getByText(/same secure submission key/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /check order status/i })).toHaveAttribute(
       "href",
       "/order-status"

@@ -157,6 +157,7 @@ async function buildBasicOrder() {
 describe("OrderPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sessionStorage.clear();
     mockMobileOrderLayout(false);
   });
 
@@ -351,20 +352,24 @@ describe("OrderPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Place Order" }));
 
     await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith("/admin/orders", {
-        customerName: "Alex",
-        customerPhone: null,
-        customerEmail: null,
-        customerNotificationOptIn: false,
-        orderItems: [
-          {
-            menuItemId: 1,
-            quantity: 2,
-            notes: "Light ice",
-            addOns: [{ menuItemId: 2, quantity: 1 }],
-          },
-        ],
-      });
+      expect(mockPost).toHaveBeenCalledWith(
+        "/order",
+        {
+          customerName: "Alex",
+          customerPhone: null,
+          customerEmail: null,
+          customerNotificationOptIn: false,
+          orderItems: [
+            {
+              menuItemId: 1,
+              quantity: 2,
+              notes: "Light ice",
+              addOns: [{ menuItemId: 2, quantity: 1 }],
+            },
+          ],
+        },
+        { headers: { "X-Idempotency-Key": expect.any(String) } }
+      );
     });
     expect(mockNavigate).toHaveBeenCalledWith("/order/confirmation", {
       state: { order: { id: 44, orderItems: [] } },
@@ -425,37 +430,63 @@ describe("OrderPage", () => {
     expect(screen.getByRole("button", { name: "Place Order" })).toBeEnabled();
   });
 
-  it("keeps submission feedback visible until a duplicate order is identified", async () => {
+  it("routes a safely replayed request to the duplicate-order page", async () => {
     mockGet.mockResolvedValue({ data: menuPayload });
-
-    let rejectPost: ((reason: unknown) => void) | undefined;
-    mockPost.mockImplementation(
-      () =>
-        new Promise((_, reject) => {
-          rejectPost = reject;
-        })
-    );
+    mockPost.mockResolvedValue({ data: { id: 42 }, status: 200 });
 
     renderOrderPage({ pathname: "/order", state: {} });
     await buildBasicOrder();
 
     fireEvent.click(screen.getByRole("button", { name: "Place Order" }));
 
-    expect(await screen.findByRole("button", { name: "Placing order…" })).toBeDisabled();
-
-    rejectPost?.({
-      isAxiosError: true,
-      response: {
-        status: 409,
-        data: { order: { id: 42 }, existingOrderId: 42 },
-      },
-    });
-
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith("/order/duplicate", {
         state: { order: { id: 42 }, existingOrderId: 42 },
       });
     });
+  });
+
+  it("reuses the same key when an unchanged failed submission is retried", async () => {
+    mockGet.mockResolvedValue({ data: menuPayload });
+    mockPost
+      .mockRejectedValueOnce(new Error("Network unavailable"))
+      .mockResolvedValueOnce({ data: { id: 45 }, status: 201 });
+
+    renderOrderPage({ pathname: "/order", state: {} });
+    await buildBasicOrder();
+    fireEvent.click(screen.getByRole("button", { name: "Place Order" }));
+    await screen.findByRole("button", { name: "Place Order" });
+    fireEvent.click(screen.getByRole("button", { name: "Place Order" }));
+
+    await waitFor(() => expect(mockPost).toHaveBeenCalledTimes(2));
+    const firstConfig = mockPost.mock.calls[0][2] as { headers: Record<string, string> };
+    const retryConfig = mockPost.mock.calls[1][2] as { headers: Record<string, string> };
+    expect(retryConfig.headers["X-Idempotency-Key"]).toBe(
+      firstConfig.headers["X-Idempotency-Key"]
+    );
+  });
+
+  it("reports key reuse with changed content as a conflict", async () => {
+    mockGet.mockResolvedValue({ data: menuPayload });
+    mockPost.mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 409 },
+    });
+
+    renderOrderPage({ pathname: "/order", state: {} });
+    await buildBasicOrder();
+    fireEvent.click(screen.getByRole("button", { name: "Place Order" }));
+
+    await waitFor(() =>
+      expect(toastFns.error).toHaveBeenCalledWith(
+        "This submission key was already used for a different order. Please review your order and try again."
+      )
+    );
+    expect(mockNavigate).not.toHaveBeenCalledWith(
+      "/order/duplicate",
+      expect.anything()
+    );
+    expect(screen.getByRole("button", { name: "Place Order" })).toBeEnabled();
   });
 
   it("caps drink quantities at 12 and removes a line when its quantity becomes zero", async () => {
