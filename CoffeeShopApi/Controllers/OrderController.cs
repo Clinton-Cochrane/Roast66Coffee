@@ -11,6 +11,7 @@ namespace CoffeeShopApi.Controllers;
 [Route("api/[controller]")]
 public class OrderController : ControllerBase
 {
+    internal const int MaxIdempotencyKeyLength = 128;
     private readonly OrderService _orderService;
     private readonly NotificationService _notificationService;
     private readonly IStaffPushNotificationQueue _staffPushQueue;
@@ -69,7 +70,10 @@ public class OrderController : ControllerBase
 
     [HttpPost]
     [EnableRateLimiting("Order")]
-    public async Task<ActionResult<Order>> PostOrder(Order order, CancellationToken cancellationToken)
+    public async Task<ActionResult<Order>> PostOrder(
+        Order order,
+        [FromHeader(Name = "X-Idempotency-Key")] string? idempotencyKey,
+        CancellationToken cancellationToken)
     {
         if (order.OrderItems == null || order.OrderItems.Count == 0)
         {
@@ -77,31 +81,44 @@ public class OrderController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var duplicate = await _orderService.FindDuplicateOrderAsync(order);
-        if (duplicate != null)
+        var key = idempotencyKey?.Trim();
+        if (string.IsNullOrEmpty(key) || key.Length > MaxIdempotencyKeyLength)
         {
-            return StatusCode(StatusCodes.Status409Conflict, new
+            return BadRequest(new
             {
-                message = "Duplicate order detected. An identical order was placed recently.",
-                existingOrderId = duplicate.Id,
-                order = PublicOrderDto.FromOrder(duplicate)
+                message = $"X-Idempotency-Key is required and must be at most {MaxIdempotencyKeyLength} characters."
             });
         }
 
-        Order createdOrder;
+        OrderSubmissionResult submission;
         try
         {
-            createdOrder = await _orderService.CreateOrderAsync(order, cancellationToken);
+            submission = await _orderService.SubmitOrderAsync(order, key, cancellationToken);
         }
         catch (UnavailableMenuItemsException ex)
         {
             return BadRequest(new { message = ex.Message });
         }
-        _staffPushQueue.TryEnqueue(createdOrder.Id);
+        catch (IdempotencyKeyConflictException ex)
+        {
+            return Conflict(new
+            {
+                message = ex.Message,
+                existingOrderId = ex.ExistingOrder.Id
+            });
+        }
+
+        if (!submission.WasCreated)
+        {
+            Response.Headers.Append("Idempotency-Replayed", "true");
+            return Ok(PublicOrderDto.FromOrder(submission.Order));
+        }
+
+        _staffPushQueue.TryEnqueue(submission.Order.Id);
         return CreatedAtAction(
             nameof(TrackOrder),
-            new { trackingToken = createdOrder.TrackingToken },
-            PublicOrderDto.FromOrder(createdOrder));
+            new { trackingToken = submission.Order.TrackingToken },
+            PublicOrderDto.FromOrder(submission.Order));
     }
 
     [HttpGet("track/{trackingToken}/notifications")]

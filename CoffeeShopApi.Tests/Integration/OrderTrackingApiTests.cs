@@ -87,7 +87,7 @@ public class OrderTrackingApiTests : IClassFixture<WebAppFactory>
             CustomerPhone = $"555{Random.Shared.Next(1000000, 9999999)}",
             OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 1 }]
         };
-        var response = await _client.PostAsJsonAsync("/api/order", order);
+        var response = await _client.PostOrderAsync(order);
         response.EnsureSuccessStatusCode();
         var created = await response.Content.ReadFromJsonAsync<CreatedOrderResponse>();
         return created ?? throw new InvalidOperationException("Order creation returned no body.");

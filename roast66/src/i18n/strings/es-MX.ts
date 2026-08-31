@@ -203,6 +203,8 @@ export const esMx: Messages = {
     checkoutMissingUrl: "Falta URL de pago",
     submitFailed:
       "No se pudo enviar el pedido. Intenta de nuevo o revisa la consola.",
+    idempotencyConflict:
+      "Esta clave de envío ya se usó para otro pedido. Revisa tu pedido e intenta de nuevo.",
     pageSubtitle:
       "Arma tu bebida casera para la carretera en unos toques.",
     legacyCardTitle: "Hacer pedido",
@@ -283,7 +285,9 @@ export const esMx: Messages = {
     bodyOne:
       "Parece que ese pedido ya entró — quizá un doble toque o un segundo clic. No te preocupes, tu café ya está en la fila.",
     bodyTwo:
-      "Detuvimos el duplicado para que no termines con dos pedidos iguales. Una taza (o dos, si eso querías) va en camino.",
+      "Nuestro sistema devolvió la confirmación original, así que no se creó un segundo pedido. Una taza (o dos, si eso querías) va en camino.",
+    safeRetry:
+      "Tu reintento usó la misma clave segura y coincidió con el pedido original.",
     confirmedOrder: "Tu pedido #{{orderId}} está confirmado.",
     confirmedOrderHelp: "Usa Estado del pedido para seguir cuando esté listo.",
     checkStatus: "Ver estado del pedido",

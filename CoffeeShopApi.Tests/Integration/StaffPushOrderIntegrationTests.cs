@@ -22,7 +22,7 @@ public class StaffPushOrderIntegrationTests
         using var client = factory.CreateClient();
         await AddSubscriptionAsync(factory.Services);
 
-        var postTask = client.PostAsJsonAsync("/api/order", CreateValidOrder());
+        var postTask = client.PostOrderAsync(CreateValidOrder());
 
         await sender.Started.WaitAsync(TimeSpan.FromSeconds(2));
         var completed = await Task.WhenAny(postTask, Task.Delay(TimeSpan.FromMilliseconds(500)));
@@ -47,7 +47,7 @@ public class StaffPushOrderIntegrationTests
         using var client = factory.CreateClient();
         await AddSubscriptionAsync(factory.Services);
 
-        var response = await client.PostAsJsonAsync("/api/order", CreateValidOrder());
+        var response = await client.PostOrderAsync(CreateValidOrder());
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var created = await response.Content.ReadFromJsonAsync<PublicOrderDto>();
         Assert.NotNull(created);

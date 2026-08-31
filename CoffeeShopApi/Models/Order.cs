@@ -23,6 +23,16 @@ namespace CoffeeShopApi.Models
         [JsonIgnore]
         public string TrackingToken { get; set; } = string.Empty;
 
+        [StringLength(128)]
+        [Column("idempotencykey")]
+        [JsonIgnore]
+        public string? IdempotencyKey { get; set; }
+
+        [StringLength(64)]
+        [Column("requestfingerprint")]
+        [JsonIgnore]
+        public string? RequestFingerprint { get; set; }
+
         [Required(ErrorMessage = "Customer name is required")]
         [StringLength(100, MinimumLength = 1)]
         [Column("customername")]

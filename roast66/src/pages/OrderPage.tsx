@@ -19,6 +19,10 @@ import { useI18n } from "../i18n/LanguageContext";
 import { canOrderMenuItemDirectly } from "../utils/canOrderMenuItemDirectly";
 import type { MenuItemDto, OrderDto } from "../types/api";
 import PromotionPrice, { effectivePrice } from "../components/common/PromotionPrice";
+import {
+  clearOrderIdempotencyKey,
+  getOrCreateOrderIdempotencyKey,
+} from "../lib/orderSubmissionIdempotency";
 import "../styles/OrderPage.css";
 
 const MOBILE_ORDER_MEDIA_QUERY = "(max-width: 960px)";
@@ -403,25 +407,31 @@ function OrderPage() {
       setIsSubmitting(false);
     };
 
+    const idempotencyKey = getOrCreateOrderIdempotencyKey(orderData);
+
     try {
-      const response = await axiosInstance.post<OrderDto>("/admin/orders", orderData);
+      const response = await axiosInstance.post<OrderDto>("/order", orderData, {
+        headers: { "X-Idempotency-Key": idempotencyKey },
+      });
       const createdOrder = response.data;
+      clearOrderIdempotencyKey(idempotencyKey);
       setOrderItems([]);
       setActiveCartLineId(null);
       setCustomerName("");
       setCustomerEmail("");
-      navigate("/order/confirmation", { state: { order: createdOrder } });
+      if (response.status === 200) {
+        const existingOrderId = createdOrder.id ?? createdOrder.Id;
+        navigate("/order/duplicate", {
+          state: { order: createdOrder, existingOrderId },
+        });
+      } else {
+        navigate("/order/confirmation", { state: { order: createdOrder } });
+      }
     } catch (error: unknown) {
       if (axios.isAxiosError(error) && error.response?.status === 409) {
-        const existingOrder = error.response?.data?.order as OrderDto | undefined;
-        const existingOrderId = error.response?.data?.existingOrderId as number | undefined;
-        setOrderItems([]);
-        setActiveCartLineId(null);
-        setCustomerName("");
-        setCustomerEmail("");
-        navigate("/order/duplicate", {
-          state: { order: existingOrder, existingOrderId },
-        });
+        clearOrderIdempotencyKey(idempotencyKey);
+        toast.error(t("order.idempotencyConflict"));
+        resetSubmissionState();
       } else {
         console.error(
           "Order submission failed:",

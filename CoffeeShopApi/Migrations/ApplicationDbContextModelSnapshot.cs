@@ -299,6 +299,11 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("customerphone");
 
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("idempotencykey");
+
                     b.Property<DateTime>("OrderDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("orderdate");
@@ -321,6 +326,11 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("paymentreference");
 
+                    b.Property<string>("RequestFingerprint")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("requestfingerprint");
+
                     b.Property<string>("TrackingToken")
                         .IsRequired()
                         .HasMaxLength(43)
@@ -328,6 +338,10 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnName("trackingtoken");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_orders_idempotency_key");
 
                     b.HasIndex("TrackingToken")
                         .IsUnique();

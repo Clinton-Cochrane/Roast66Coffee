@@ -30,6 +30,10 @@ namespace CoffeeShopApi.Data
             modelBuilder.Entity<Order>()
                 .HasIndex(order => order.TrackingToken)
                 .IsUnique();
+            modelBuilder.Entity<Order>()
+                .HasIndex(order => order.IdempotencyKey)
+                .IsUnique()
+                .HasDatabaseName("ux_orders_idempotency_key");
             modelBuilder.Entity<Payment>()
                 .HasIndex(payment => new { payment.Provider, payment.IdempotencyKey });
             modelBuilder.Entity<Payment>()

@@ -32,7 +32,7 @@ public class OrderDeletionApiTests : IClassFixture<WebAppFactory>
                 new OrderItem { MenuItemId = 1, Quantity = 1 }
             ]
         };
-        var createResponse = await _client.PostAsJsonAsync("/api/order", order, JsonOptions);
+        var createResponse = await _client.PostOrderAsync(order, options: JsonOptions);
         createResponse.EnsureSuccessStatusCode();
         var created = await createResponse.Content.ReadFromJsonAsync<PublicOrderDto>(JsonOptions);
         Assert.NotNull(created);
