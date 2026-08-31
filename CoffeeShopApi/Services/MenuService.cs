@@ -22,6 +22,10 @@ namespace CoffeeShopApi.Services
     public class MenuService(ApplicationDbContext context)
     {
         public const int MaxHomepageSpecials = 3;
+        // The limit spans rows, so row locks cannot prevent another writer from
+        // selecting a different item after this request counts the current set.
+        private const string HomepageSpecialLockSql =
+            "LOCK TABLE menuitems IN SHARE ROW EXCLUSIVE MODE";
         private readonly ApplicationDbContext _context = context;
 
         public async Task<IEnumerable<MenuItem>> GetMenuItemsAsync()
@@ -81,33 +85,76 @@ namespace CoffeeShopApi.Services
             }
         }
 
-        public async Task<HomepageSpecialSelectionResult> SetHomepageSpecialAsync(int id, bool isSelected)
+        public async Task<HomepageSpecialSelectionResult> SetHomepageSpecialAsync(
+            int id,
+            bool isSelected,
+            CancellationToken cancellationToken = default)
         {
-            var menuItem = await _context.MenuItems.FindAsync(id);
-            if (menuItem == null)
+            IDbContextTransaction? ownedTransaction = null;
+            try
             {
-                return HomepageSpecialSelectionResult.NotFound;
-            }
+                if (_context.Database.IsNpgsql())
+                {
+                    if (_context.Database.CurrentTransaction == null)
+                    {
+                        ownedTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                    }
 
-            if (menuItem.IsArchived && isSelected)
+                    await _context.Database.ExecuteSqlRawAsync(
+                        HomepageSpecialLockSql,
+                        cancellationToken);
+                }
+
+                var menuItem = await _context.MenuItems.FindAsync([id], cancellationToken);
+                HomepageSpecialSelectionResult result;
+                if (menuItem == null)
+                {
+                    result = HomepageSpecialSelectionResult.NotFound;
+                }
+                else if (menuItem.IsArchived && isSelected)
+                {
+                    result = HomepageSpecialSelectionResult.Unavailable;
+                }
+                else if (menuItem.IsFeaturedOnHome == isSelected)
+                {
+                    result = HomepageSpecialSelectionResult.Updated;
+                }
+                else if (isSelected && await _context.MenuItems.CountAsync(
+                             item => !item.IsArchived && item.IsFeaturedOnHome,
+                             cancellationToken) >= MaxHomepageSpecials)
+                {
+                    result = HomepageSpecialSelectionResult.LimitReached;
+                }
+                else
+                {
+                    menuItem.IsFeaturedOnHome = isSelected;
+                    await _context.SaveChangesAsync(cancellationToken);
+                    result = HomepageSpecialSelectionResult.Updated;
+                }
+
+                if (ownedTransaction != null)
+                {
+                    await ownedTransaction.CommitAsync(cancellationToken);
+                }
+
+                return result;
+            }
+            catch
             {
-                return HomepageSpecialSelectionResult.Unavailable;
-            }
+                if (ownedTransaction != null)
+                {
+                    await ownedTransaction.RollbackAsync(cancellationToken);
+                }
 
-            if (menuItem.IsFeaturedOnHome == isSelected)
+                throw;
+            }
+            finally
             {
-                return HomepageSpecialSelectionResult.Updated;
+                if (ownedTransaction != null)
+                {
+                    await ownedTransaction.DisposeAsync();
+                }
             }
-
-            if (isSelected && await _context.MenuItems.CountAsync(
-                    item => !item.IsArchived && item.IsFeaturedOnHome) >= MaxHomepageSpecials)
-            {
-                return HomepageSpecialSelectionResult.LimitReached;
-            }
-
-            menuItem.IsFeaturedOnHome = isSelected;
-            await _context.SaveChangesAsync();
-            return HomepageSpecialSelectionResult.Updated;
         }
 
         public async Task<bool> SetMenuSpecialAsync(int id, bool isSelected)
@@ -232,38 +279,44 @@ namespace CoffeeShopApi.Services
 
             ValidateReplacement(items);
 
-            IDbContextTransaction? transaction = null;
-            if (_context.Database.IsRelational())
-            {
-                transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-            }
-
+            IDbContextTransaction? ownedTransaction = null;
             try
             {
+                if (_context.Database.IsRelational() && _context.Database.CurrentTransaction == null)
+                {
+                    ownedTransaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+                }
+                if (_context.Database.IsNpgsql())
+                {
+                    await _context.Database.ExecuteSqlRawAsync(
+                        HomepageSpecialLockSql,
+                        cancellationToken);
+                }
+
                 var existingItems = await _context.MenuItems.ToListAsync(cancellationToken);
                 _context.MenuItems.RemoveRange(existingItems);
                 await _context.MenuItems.AddRangeAsync(items, cancellationToken);
                 await _context.SaveChangesAsync(cancellationToken);
-                if (transaction != null)
+                if (ownedTransaction != null)
                 {
-                    await transaction.CommitAsync(cancellationToken);
+                    await ownedTransaction.CommitAsync(cancellationToken);
                 }
 
                 return new MenuReplacementSummary(existingItems.Count, items.Count);
             }
             catch
             {
-                if (transaction != null)
+                if (ownedTransaction != null)
                 {
-                    await transaction.RollbackAsync(cancellationToken);
+                    await ownedTransaction.RollbackAsync(cancellationToken);
                 }
                 throw;
             }
             finally
             {
-                if (transaction != null)
+                if (ownedTransaction != null)
                 {
-                    await transaction.DisposeAsync();
+                    await ownedTransaction.DisposeAsync();
                 }
             }
         }

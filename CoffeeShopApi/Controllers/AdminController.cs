@@ -200,7 +200,10 @@ namespace CoffeeShopApi.Controllers
             int id,
             [FromBody] HomepageSpecialSelectionRequest request)
         {
-            var result = await _menuService.SetHomepageSpecialAsync(id, request.IsSelected);
+            var result = await _menuService.SetHomepageSpecialAsync(
+                id,
+                request.IsSelected,
+                HttpContext.RequestAborted);
             return result switch
             {
                 HomepageSpecialSelectionResult.Updated => NoContent(),

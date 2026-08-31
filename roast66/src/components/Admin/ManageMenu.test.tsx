@@ -1,6 +1,7 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { toast } from "react-toastify";
 import ManageMenu from "./ManageMenu";
 import { LanguageProvider } from "../../i18n/LanguageContext";
 import type { MenuItemDto } from "../../types/api";
@@ -84,6 +85,8 @@ describe("ManageMenu", () => {
     mockPost.mockReset();
     mockPut.mockReset();
     mockDelete.mockReset();
+    vi.mocked(toast.success).mockReset();
+    vi.mocked(toast.error).mockReset();
     mockGet.mockImplementation((url: string) =>
       Promise.resolve({ data: url === "/admin/categories" ? categories : menuItems })
     );
@@ -165,5 +168,52 @@ describe("ManageMenu", () => {
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(editButton).toHaveFocus();
+  });
+
+  it("reports a homepage-special conflict and refreshes authoritative state", async () => {
+    const initialItems: MenuItemDto[] = [
+      menuItems[0],
+      {
+        ...menuItems[0],
+        id: 9,
+        name: "Second selected",
+      },
+      {
+        ...menuItems[0],
+        id: 10,
+        name: "Selected elsewhere",
+        isFeaturedOnHome: false,
+      },
+      {
+        ...menuItems[0],
+        id: 11,
+        name: "Rejected candidate",
+        isFeaturedOnHome: false,
+      },
+    ];
+    const authoritativeItems = initialItems.map((item) =>
+      item.id === 10 ? { ...item, isFeaturedOnHome: true } : item
+    );
+    let menuRequestCount = 0;
+    mockGet.mockImplementation((url: string) => {
+      if (url === "/admin/categories") return Promise.resolve({ data: categories });
+      menuRequestCount += 1;
+      return Promise.resolve({ data: menuRequestCount === 1 ? initialItems : authoritativeItems });
+    });
+    mockPut.mockRejectedValue({ response: { status: 409 } });
+    renderManageMenu();
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Toggle daily special for Rejected candidate" })
+    );
+
+    await waitFor(() => expect(menuRequestCount).toBe(2));
+    expect(toast.error).toHaveBeenCalledWith("Only three homepage specials can be selected.");
+    expect(
+      screen.getByRole("button", { name: "Toggle daily special for Selected elsewhere" })
+    ).toHaveAttribute("aria-pressed", "true");
+    expect(
+      screen.getByRole("button", { name: "Toggle daily special for Rejected candidate" })
+    ).toHaveAttribute("aria-pressed", "false");
   });
 });
