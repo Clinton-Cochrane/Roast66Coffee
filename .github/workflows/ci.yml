@@ -35,10 +35,10 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v6
         with:
           dotnet-version: "8.0.x"
 
@@ -56,13 +56,11 @@ jobs:
             --results-directory TestResults/backend
 
       - name: Publish and enforce backend coverage
-        run: |
-          coverage_report=$(rg --files TestResults/backend | rg '/coverage\.cobertura\.xml$' | head -n 1)
-          python3 scripts/ci/backend_coverage.py "$coverage_report"
+        run: python3 scripts/ci/backend_coverage.py TestResults/backend
 
       - name: Upload backend coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: TestResults/backend/**/coverage.cobertura.xml
@@ -75,10 +73,10 @@ jobs:
       contents: read
       actions: write # setup-node npm cache restore/save
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: npm
@@ -102,18 +100,18 @@ jobs:
       contents: read
     steps:
       - name: Check out candidate revision
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: candidate
 
       - name: Check out deployment baseline
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.sha || github.event.before }}
           path: base
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: npm
@@ -133,7 +131,7 @@ jobs:
 
       - name: Upload browser traces on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: render-release-contract-browser-traces
           path: candidate/roast66/test-results

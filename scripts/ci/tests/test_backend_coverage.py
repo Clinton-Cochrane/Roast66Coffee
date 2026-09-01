@@ -58,6 +58,19 @@ class BackendCoverageTests(unittest.TestCase):
         self.assertIn("| Services | 50.00% (1/2) | 50.00% (1/2) |", text)
         self.assertIn("| Security paths | 100.00% (1/1) | n/a |", text)
 
+    def test_discovers_cobertura_report_below_results_directory(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        directory = Path(temporary.name)
+        report = directory / "run-id" / "coverage.cobertura.xml"
+        report.parent.mkdir()
+        report.write_text(report_xml(), encoding="utf-8")
+
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            result = backend_coverage.main([str(directory)])
+
+        self.assertEqual(0, result)
+
     def test_fails_when_a_gate_regresses(self):
         result, _ = self.run_report(report_xml(), "--minimum-line", "70.01")
 

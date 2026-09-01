@@ -25,7 +25,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for dependency in docker dotnet npm npx python3 rg; do
+for dependency in docker dotnet npm npx python3; do
   if ! command -v "$dependency" >/dev/null 2>&1; then
     echo "Required command is unavailable: $dependency" >&2
     exit 1
@@ -70,9 +70,7 @@ POSTGRES_INTEGRATION_CONNECTION_STRING="Host=127.0.0.1;Port=$database_port;Datab
     --settings "$candidate_context/coverlet.runsettings" \
     --collect:"XPlat Code Coverage" \
     --results-directory "$coverage_directory"
-coverage_report=$(rg --files "$coverage_directory" | \
-  rg '/coverage\.cobertura\.xml$' | head -n 1)
-python3 "$candidate_context/scripts/ci/backend_coverage.py" "$coverage_report"
+python3 "$candidate_context/scripts/ci/backend_coverage.py" "$coverage_directory"
 
 echo "Running frontend tests, lint, production build, and dependency audit"
 npm --prefix "$candidate_context/roast66" ci
