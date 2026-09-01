@@ -8,6 +8,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoffeeShopApi.Services;
 
+/// <summary>
+/// Creates a durable, deduplicated audit record before attempting customer delivery.
+/// Delivery failures are recorded with safe classifications only: provider response
+/// bodies, exception messages, and customer message content must not enter logs or
+/// <see cref="NotificationMessage.PayloadJson"/>.
+/// </summary>
 public class NotificationService
 {
     private const string EventOrderReady = "order.ready_for_pickup";
@@ -90,6 +96,10 @@ public class NotificationService
             .ToListAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Applies an asynchronous provider receipt without retaining provider error text,
+    /// which can contain credentials, destinations, or message content.
+    /// </summary>
     public async Task UpdateProviderStatusAsync(
         string provider,
         string providerMessageId,
@@ -124,6 +134,10 @@ public class NotificationService
         await _context.SaveChangesAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Persists the deduplication/audit row before any external call, then performs a
+    /// bounded retry loop. A repeated event returns without sending a second message.
+    /// </summary>
     private async Task SendWithLoggingAsync(
         string channel,
         string eventType,
@@ -286,6 +300,10 @@ public class NotificationService
         }
     }
 
+    /// <summary>
+    /// Hashes the delivery identity so uniqueness does not require storing a readable
+    /// composite key containing the customer destination.
+    /// </summary>
     private static string BuildDedupKey(string eventType, string role, string phone, string templateKey, int orderId)
     {
         var raw = $"{eventType}|{role}|{phone}|{templateKey}|{orderId}";

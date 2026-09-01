@@ -1,5 +1,10 @@
 namespace CoffeeShopApi.Services;
 
+/// <summary>
+/// Single consumer for the in-process staff-push queue. A fresh dependency scope per
+/// order keeps EF contexts isolated, and delivery failure never rolls back the order
+/// that already committed before it was enqueued.
+/// </summary>
 internal sealed class StaffPushNotificationWorker : BackgroundService
 {
     private readonly StaffPushNotificationQueue _queue;

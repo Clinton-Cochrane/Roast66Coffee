@@ -55,10 +55,40 @@ Repository layout:
 CoffeeShopApi/        ASP.NET Core API, EF models, migrations, and services
 CoffeeShopApi.Tests/  Backend unit and API integration tests
 roast66/              React frontend and frontend tests
+docs/operations/      Testing, release, deployment, and incident runbooks
+scripts/ci/            Coverage and production-release smoke automation
 scripts/ops/          Health-check and keepalive helpers
+coverlet.runsettings   Meaningful backend coverage exclusions
 render.yaml           Render database, API, and static-site Blueprint
 docker-compose.yml    Local frontend, backend, and PostgreSQL stack
 ```
+
+Most code is intentionally documented through focused types, descriptive names,
+and small workflows. Comments are reserved for behavior that the code cannot
+explain by itself: security boundaries, concurrency guarantees, destructive
+operations, provider constraints, and the reason a surprising choice is safe.
+The testing and release rationale is maintained in
+[`docs/operations/testing-and-release-readiness.md`](docs/operations/testing-and-release-readiness.md).
+
+### Where the important rules live
+
+| Workflow | Entry points and source of truth | Non-obvious rule |
+| --- | --- | --- |
+| Public ordering | `OrderController` → `OrderService` | The browser supplies menu IDs, but the service validates live availability, snapshots names/prices, and resolves concurrent idempotency retries through a database unique constraint. |
+| Order tracking | `OrderController`, `PublicOrderDto`, `OrderStatusPage.tsx` | A 256-bit URL-safe token is the public credential. Numeric IDs and customer identity are not public lookup credentials. |
+| Staff order queue | `AdminController`, `OrderService`, `ViewOrders.tsx` | Status changes include the caller's expected state and use a concurrency token so retries replay safely without skipping workflow states. |
+| Menu management | `MenuService`, `ManageMenu.tsx` | PostgreSQL serializes homepage-special selection across rows; order history remains intact because order lines contain immutable menu snapshots. |
+| Authentication | `SecurityConfiguration`, `Startup`, `authSession.ts`, `axiosConfig.ts` | Production rejects unsafe secrets at startup. Browser expiry handling improves UX, while the API remains authoritative for JWT validation and roles. |
+| Customer notifications | `NotificationService`, `NotificationRetentionService` | A deduplicated audit row is saved before delivery. Logs and audit payloads retain safe classifications, not provider bodies or customer message content. |
+| Staff push | `StaffPushNotificationQueue`, `StaffPushNotificationWorker`, `StaffPushNotificationService` | Delivery is bounded and best-effort after order commit; one dead or failing browser subscription cannot fail the order or block other devices. |
+| Online payment | `PaymentService`, `IPaymentGateway`, provider adapters | Checkout totals come from the stored order snapshot. Verified webhook replays converge through optimistic concurrency. |
+| Database release | `Program`, `docker/backend-entrypoint.sh`, `DatabaseReadinessHealthCheck` | Migration takes an advisory lock and must finish before startup; readiness requires both connectivity and zero pending migrations. |
+
+Large React screens keep their state orchestration close to the rendered workflow,
+while reusable session, status, idempotency, and transport rules live in `src/lib`,
+`src/constants`, `authSession.ts`, and `axiosConfig.ts`. If a screen grows new
+independent behavior, extract that behavior behind a named hook or module rather
+than extending the component with another cross-cutting effect.
 
 ## Local Development
 
@@ -68,6 +98,7 @@ docker-compose.yml    Local frontend, backend, and PostgreSQL stack
 - Node.js 20+ and npm for frontend-only development
 - .NET 8 SDK for backend development and EF migrations
 - PostgreSQL when running the backend without Docker
+- Python 3 and ripgrep (`rg`) for the coverage summary and full local smoke
 
 ### Recommended: Docker Compose
 
@@ -259,45 +290,80 @@ reset behavior.
 
 ## Testing and Quality Checks
 
-Run backend tests:
+Run the fast backend suite. PostgreSQL-only tests skip unless their required
+environment variables are set:
 
 ```bash
 dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
 ```
 
-Run all PostgreSQL migration, physical-schema, and EF-backed data-access contracts against a disposable database:
+Run the backend exactly as CI does, including migration, physical-schema,
+data-access, RLS, retention, readiness, and migration-lock contracts. The
+connection must be an administrative connection to a disposable local
+PostgreSQL server because the suite creates and drops isolated databases:
 
 ```bash
 REQUIRE_POSTGRES_INTEGRATION_TESTS=true \
-POSTGRES_INTEGRATION_CONNECTION_STRING="$STAGING_DATABASE_URL" \
+POSTGRES_INTEGRATION_CONNECTION_STRING="Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres" \
 dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
 ```
 
-These contracts fail when the EF model and migration snapshot diverge, a migrated PostgreSQL database is missing any mapped table or column, migration locking breaks, or core menu/order/notification/payment queries do not execute with Npgsql.
+Do not point this command at staging or production. Setting
+`REQUIRE_POSTGRES_INTEGRATION_TESTS=true` turns a missing connection into a test
+failure, preventing CI from silently skipping database release contracts.
+
+Collect meaningful backend coverage locally:
+
+```bash
+dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj \
+  --settings coverlet.runsettings \
+  --collect:"XPlat Code Coverage" \
+  --results-directory CoffeeShopApi.Tests/TestResults/backend
+coverage_report=$(rg --files CoffeeShopApi.Tests/TestResults/backend | \
+  rg '/coverage\.cobertura\.xml$' | head -n 1)
+python3 scripts/ci/backend_coverage.py "$coverage_report"
+```
+
+Generated EF migrations, model snapshots, and designer files are excluded from
+application coverage. Their behavior remains protected by PostgreSQL migration
+and schema tests. The summary command reports application, controller, service,
+and security-path coverage and fails below the checked-in CI floors.
 
 Run the complete frontend gate:
 
 ```bash
 cd roast66
-npm test -- --run
+npm ci
+npm test
 npm run lint
 npm run build
-npm audit
+npm audit --audit-level=high
 ```
 
-Run the production release smoke with a candidate checkout and a baseline checkout:
+Run every local release gate, including a disposable PostgreSQL 17 integration
+server and the production Docker/browser smoke, from the candidate checkout:
 
 ```bash
-cd roast66
-npm ci
 npx playwright install chromium
-cd ..
-scripts/ci/render-smoke.sh "$PWD" /path/to/baseline-checkout
+scripts/ci/full-local-smoke.sh /path/to/baseline-checkout
 ```
 
-The release smoke builds the same backend Dockerfile used by Render, migrates a baseline PostgreSQL 17 database containing representative menu and order data, proves migration failure prevents API startup, verifies migrations finish before the API listens, calls readiness and menu endpoints, builds the frontend with the candidate API URL, and confirms the known menu item renders in Chromium. GitHub Actions runs this as the dedicated `Render release contracts` job.
+Use a clean checkout of the PR base revision as the baseline so the smoke proves
+that the candidate can upgrade the schema currently deployed. With no argument,
+the script uses the candidate as its own baseline, which is useful for a clean
+installation check but does not exercise a real version-to-version upgrade.
+
+The full smoke runs the coverage reporter tests; all backend tests with required
+PostgreSQL contracts and coverage gates; frontend tests, lint, build, and audit;
+then the Render release contracts. The release portion builds the production
+backend image, upgrades representative baseline data, proves migration failure
+prevents startup, verifies migration ordering and idempotence, calls readiness
+and menu endpoints, and renders the built frontend in Chromium.
 
 The production frontend build performs TypeScript checks before Vite bundles the application.
+The complete critical-scenario matrix, CI gate ownership, coverage policy, and
+focused commands are in
+[`docs/operations/testing-and-release-readiness.md`](docs/operations/testing-and-release-readiness.md).
 
 ## Render Deployment
 

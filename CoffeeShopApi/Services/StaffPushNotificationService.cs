@@ -6,6 +6,11 @@ using WebPush;
 
 namespace CoffeeShopApi.Services;
 
+/// <summary>
+/// Fans a staff alert out independently to every registered browser subscription.
+/// One device failure never blocks another; expired endpoints are removed, while
+/// transient failures are retried within configured timeout and attempt bounds.
+/// </summary>
 public class StaffPushNotificationService
 {
     private readonly ApplicationDbContext _context;

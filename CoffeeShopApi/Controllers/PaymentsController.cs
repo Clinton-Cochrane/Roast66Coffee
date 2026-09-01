@@ -5,6 +5,11 @@ using Microsoft.AspNetCore.RateLimiting;
 
 namespace CoffeeShopApi.Controllers;
 
+/// <summary>
+/// Thin provider-neutral payment boundary. Provider signature verification and
+/// state transitions are delegated to gateway adapters and <see cref="PaymentService"/>.
+/// Retryable webhook races return 503 so the provider will deliver the event again.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class PaymentsController : ControllerBase

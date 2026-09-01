@@ -15,6 +15,18 @@ namespace CoffeeShopApi.Tests.Integration;
 public class WebAppFactory : WebApplicationFactory<Program>
 {
     private readonly string _databaseName = $"IntegrationTestDb-{Guid.NewGuid():N}";
+    private readonly int? _loginPermitLimit;
+    private readonly int? _orderPermitLimit;
+
+    public WebAppFactory()
+    {
+    }
+
+    internal WebAppFactory(int? loginPermitLimit = null, int? orderPermitLimit = null)
+    {
+        _loginPermitLimit = loginPermitLimit;
+        _orderPermitLimit = orderPermitLimit;
+    }
 
     protected override IHost CreateHost(IHostBuilder builder)
     {
@@ -43,14 +55,25 @@ public class WebAppFactory : WebApplicationFactory<Program>
         builder.ConfigureAppConfiguration((_, config) =>
         {
             // CI and fresh clones have no gitignored appsettings.json; login requires Jwt:Key (32+ chars).
-            config.AddInMemoryCollection(new Dictionary<string, string?>
+            var settings = new Dictionary<string, string?>
             {
                 ["AllowedOrigins"] = "http://localhost",
                 ["Jwt:Key"] = "IntegrationTestSigningKey_NotForProduction_Min32Chars___",
                 ["Jwt:Issuer"] = "Roast66Coffee",
                 ["Jwt:Audience"] = "Roast66Coffee",
                 ["Testing:DatabaseName"] = _databaseName
-            });
+            };
+            if (_loginPermitLimit.HasValue)
+            {
+                settings["Testing:RateLimits:LoginPermitLimit"] =
+                    _loginPermitLimit.Value.ToString();
+            }
+            if (_orderPermitLimit.HasValue)
+            {
+                settings["Testing:RateLimits:OrderPermitLimit"] =
+                    _orderPermitLimit.Value.ToString();
+            }
+            config.AddInMemoryCollection(settings);
         });
     }
 }

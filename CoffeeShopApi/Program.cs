@@ -103,7 +103,8 @@ namespace CoffeeShopApi
                     ex.GetType().Name);
                 Console.WriteLine($"Database migration failed ({ex.GetType().Name}).");
 
-                // Optionally, stop the application if migration fails
+                // The deployment entrypoint must fail closed instead of serving against
+                // a partially migrated or unreachable database.
                 Environment.Exit(1);
             }
         }

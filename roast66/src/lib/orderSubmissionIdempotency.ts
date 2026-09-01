@@ -1,3 +1,9 @@
+/**
+ * Keeps one idempotency key for one normalized UI payload in sessionStorage.
+ * Network retries in the same tab therefore replay the server result, while an
+ * intentional payload change receives a fresh key. Memory is a fallback for
+ * browsers that deny storage access.
+ */
 const PENDING_ORDER_SUBMISSION_KEY = "roast66.pending-order-submission";
 
 type PendingOrderSubmission = {
@@ -32,6 +38,7 @@ const readPendingSubmission = (): PendingOrderSubmission | null => {
   }
 };
 
+/** Reuses the pending key only when JSON-stable customer intent is unchanged. */
 export const getOrCreateOrderIdempotencyKey = (payload: unknown): string => {
   const payloadSignature = JSON.stringify(payload);
   const pending = readPendingSubmission();
@@ -52,6 +59,7 @@ export const getOrCreateOrderIdempotencyKey = (payload: unknown): string => {
   return idempotencyKey;
 };
 
+/** Clears only the completed request, preserving a newer in-flight submission. */
 export const clearOrderIdempotencyKey = (idempotencyKey: string): void => {
   const pending = readPendingSubmission();
   if (pending?.idempotencyKey !== idempotencyKey) return;

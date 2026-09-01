@@ -3,6 +3,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoffeeShopApi.Services;
 
+/// <summary>
+/// Keeps free-tier database/provider connections warm only while a trusted client is
+/// actively sending heartbeats. This is optional cost/latency optimization; failures
+/// here do not define API readiness and must not run continuously when the shop is idle.
+/// </summary>
 public class ConnectionWarmupService : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;

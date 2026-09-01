@@ -1,5 +1,13 @@
 import { useSyncExternalStore } from "react";
 
+/**
+ * Small external store for the staff JWT. Custom events update the current tab,
+ * the browser `storage` event updates sibling tabs, and polling notices expiry
+ * even when no navigation or request occurs.
+ *
+ * Decoding `exp` is a client-side UX guard only. The API remains authoritative
+ * for signature, issuer, audience, role, and lifetime validation.
+ */
 const TOKEN_KEY = "token";
 const SESSION_EVENT = "roast66:adminSessionChanged";
 
@@ -37,6 +45,7 @@ export function clearAdminSession(): void {
   window.dispatchEvent(new Event(SESSION_EVENT));
 }
 
+/** Connects React to every way the local session can change. */
 function subscribe(callback: () => void): () => void {
   window.addEventListener(SESSION_EVENT, callback);
   window.addEventListener("storage", callback);

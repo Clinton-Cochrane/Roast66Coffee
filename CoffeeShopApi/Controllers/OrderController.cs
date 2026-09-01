@@ -7,6 +7,12 @@ using CoffeeShopApi.Services;
 
 
 namespace CoffeeShopApi.Controllers;
+
+/// <summary>
+/// Public order boundary. Creation is durable-key idempotent, and every tracking
+/// response requires the private random token and uses a redacted public DTO.
+/// Numeric-ID access and general order mutation remain staff-only.
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
 public class OrderController : ControllerBase

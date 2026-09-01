@@ -20,6 +20,11 @@ using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace CoffeeShopApi
 {
+    /// <summary>
+    /// Application composition root. Production uses PostgreSQL and strict security
+    /// configuration; the Testing environment swaps only persistence and rate-limit
+    /// sizes while retaining the real HTTP middleware and authorization pipeline.
+    /// </summary>
     public class Startup
     {
         private readonly IWebHostEnvironment _env;
@@ -115,8 +120,15 @@ namespace CoffeeShopApi
                         "Too many requests. Please try again later.", cancellationToken);
                 };
 
-                var permitLogin = _env.IsEnvironment("Testing") ? 1000 : 5;
-                var permitOrder = _env.IsEnvironment("Testing") ? 1000 : 30;
+                // The large Testing defaults prevent unrelated integration tests from
+                // sharing and exhausting a limiter. Targeted tests override them with
+                // small values so the real rejection middleware is still exercised.
+                var permitLogin = _env.IsEnvironment("Testing")
+                    ? Configuration.GetValue("Testing:RateLimits:LoginPermitLimit", 1000)
+                    : 5;
+                var permitOrder = _env.IsEnvironment("Testing")
+                    ? Configuration.GetValue("Testing:RateLimits:OrderPermitLimit", 1000)
+                    : 30;
                 var permitForgotPassword = _env.IsEnvironment("Testing") ? 1000 : 3;
                 var permitPublicTracking = _env.IsEnvironment("Testing") ? 1000 : 20;
 

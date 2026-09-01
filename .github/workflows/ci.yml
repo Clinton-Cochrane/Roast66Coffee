@@ -42,10 +42,31 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Restore and test
+      - name: Verify coverage reporting
+        run: python3 -m unittest discover -s scripts/ci/tests -p 'test_*.py' -v
+
+      - name: Restore and test with application coverage
         run: |
           dotnet restore Roast66.sln
-          dotnet test Roast66.sln --configuration Release --verbosity minimal
+          dotnet test Roast66.sln \
+            --configuration Release \
+            --verbosity minimal \
+            --settings coverlet.runsettings \
+            --collect:"XPlat Code Coverage" \
+            --results-directory TestResults/backend
+
+      - name: Publish and enforce backend coverage
+        run: |
+          coverage_report=$(rg --files TestResults/backend | rg '/coverage\.cobertura\.xml$' | head -n 1)
+          python3 scripts/ci/backend_coverage.py "$coverage_report"
+
+      - name: Upload backend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: TestResults/backend/**/coverage.cobertura.xml
+          if-no-files-found: error
 
   frontend:
     name: Frontend (React)
@@ -72,6 +93,7 @@ jobs:
           npm test
           npm run lint
           npm run build
+          npm audit --audit-level=high
 
   release-contracts:
     name: Render release contracts

@@ -8,6 +8,12 @@ using System.Text.Json;
 
 namespace CoffeeShopApi.Services;
 
+/// <summary>
+/// Owns order persistence invariants: immutable menu snapshots, durable submission
+/// idempotency, private tracking tokens, bounded admin history, and concurrency-safe
+/// status transitions. Controllers should delegate these rules instead of updating
+/// order graphs directly.
+/// </summary>
 public class OrderService(ApplicationDbContext context, IConfiguration configuration)
 {
     /// <summary>
@@ -15,6 +21,11 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
     /// contract if normal order volume grows beyond roughly 50 orders per day.
     /// </summary>
     public const int AdminOrderHistoryPageSize = 50;
+
+    /// <summary>
+    /// Completed orders remain visible to staff for a bounded operational window;
+    /// this does not delete the underlying business record.
+    /// </summary>
     public const int CompletedOrderRetentionHours = 30;
 
     private readonly ApplicationDbContext _context = context;
@@ -34,6 +45,11 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
             .ToListAsync();
     }
 
+    /// <summary>
+    /// Builds the staff queue with active orders first, then recent completed orders.
+    /// <paramref name="request"/> date bounds are UTC and the upper bound is exclusive,
+    /// allowing callers to express a whole local day as [start, next day).
+    /// </summary>
     public async Task<AdminOrderHistoryResponse> GetOrderHistoryAsync(
         AdminOrderHistoryRequest request,
         DateTime nowUtc,
@@ -173,6 +189,11 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
             .FirstOrDefaultAsync(o => o.TrackingToken == trackingToken, cancellationToken);
     }
 
+    /// <summary>
+    /// Creates an order once for a durable client key. Equivalent retries replay the
+    /// stored order; reusing the key for different normalized content is a conflict.
+    /// The unique database constraint selects the winner when requests race.
+    /// </summary>
     public async Task<OrderSubmissionResult> SubmitOrderAsync(
         Order order,
         string idempotencyKey,
@@ -241,6 +262,11 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
             ConstraintName: "ux_orders_idempotency_key"
         };
 
+    /// <summary>
+    /// Produces a stable hash of customer intent, ignoring harmless whitespace,
+    /// casing, and line/add-on ordering while retaining quantities and selections.
+    /// This fingerprint is a replay comparison, not an authentication primitive.
+    /// </summary>
     internal static string ComputeRequestFingerprint(Order order)
     {
         var lines = (order.OrderItems ?? [])
@@ -288,8 +314,9 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
     }
 
     /// <summary>
-    /// Finds a duplicate order: same customer + same content within the configured time window.
-    /// Returns the existing order if found, null otherwise.
+    /// Finds a recent same-customer order with equivalent normalized content.
+    /// This legacy/operator heuristic is time-bounded and is separate from the durable
+    /// idempotency-key contract used by public submission.
     /// </summary>
     public async Task<Order?> FindDuplicateOrderAsync(Order order)
     {
@@ -324,6 +351,11 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         return string.IsNullOrEmpty(name) ? "" : $"name:{name}";
     }
 
+    /// <summary>
+    /// Validates every requested menu reference and stamps names, descriptions,
+    /// categories, and effective prices onto the order graph before saving. Historical
+    /// receipts therefore remain stable when the live menu later changes or is archived.
+    /// </summary>
     public async Task<Order> CreateOrderAsync(
         Order order,
         CancellationToken cancellationToken = default)
@@ -386,12 +418,21 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         addOn.UnitPrice = menuItem.EffectivePrice;
     }
 
+    /// <summary>
+    /// Generates 256 random bits encoded as an unpadded, URL-safe 43-character token.
+    /// The token is the only credential for the public tracking route.
+    /// </summary>
     internal static string GenerateTrackingToken() =>
         Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
             .TrimEnd('=')
             .Replace('+', '-')
             .Replace('/', '_');
 
+    /// <summary>
+    /// Updates editable order data while preserving the persisted status fields.
+    /// Status changes must go through <see cref="AdvanceStatusAsync(int, OrderStatus, CancellationToken)"/>
+    /// so clients cannot bypass the state machine or its concurrency token.
+    /// </summary>
     public async Task<bool> UpdateOrderAsync(Order order)
     {
         var persistedStatus = await _context.Orders
@@ -437,6 +478,11 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         return _context.Orders.Any(e => e.Id == id);
     }
 
+    /// <summary>
+    /// Advances exactly one state when the caller's expected status is current.
+    /// A repeated successful request is reported as a replay; competing or stale
+    /// transitions return a conflict after reloading the database winner.
+    /// </summary>
     internal Task<OrderStatusAdvanceResult> AdvanceStatusAsync(
         int orderId,
         OrderStatus expectedStatus,

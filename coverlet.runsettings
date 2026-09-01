@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <!-- EF migrations, snapshots, and designer files are generated release
+               artifacts. Migration behavior is exercised by PostgreSQL contract
+               tests, but generated source must not dilute application coverage. -->
+          <ExcludeByFile>**/Migrations/*.cs,**/*.Designer.cs</ExcludeByFile>
+          <DeterministicReport>true</DeterministicReport>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

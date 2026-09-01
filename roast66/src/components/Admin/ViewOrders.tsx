@@ -54,6 +54,12 @@ function paymentProviderLabel(order: OrderDto): string {
   return provider.charAt(0).toUpperCase() + provider.slice(1);
 }
 
+/**
+ * Paginated staff queue. Draft filters do not hit the API until applied, polling
+ * fetches only a lightweight new-order count, and explicit refresh retrieves the
+ * page. Status updates include the last-seen status so concurrent staff actions
+ * replay safely or return a conflict instead of skipping state-machine steps.
+ */
 function ViewOrders() {
   const { t } = useI18n();
   const [orders, setOrders] = useState<OrderDto[]>([]);
@@ -124,6 +130,7 @@ function ViewOrders() {
       .finally(() => setLoadingOrders(false));
   }, [appliedFilters, page, t]);
 
+  /** Polls only the badge count; full order graphs load on explicit refresh. */
   const fetchNewOrdersCount = useCallback(() => {
     if (!lastRefreshedAt) return;
     axiosInstance
@@ -184,6 +191,7 @@ function ViewOrders() {
     setPage(1);
   };
 
+  /** Sends the observed state as an optimistic concurrency precondition. */
   const advanceStatus = (id: number, expectedStatus: OrderStatusValue) => {
     setAdvancingOrderIds((current) => ({ ...current, [id]: true }));
     axiosInstance
