@@ -330,6 +330,10 @@ Post-deploy verification:
 Application-log contents, PII boundaries, retention, and exposure response are
 defined in [`docs/operations/logging-and-data-retention.md`](docs/operations/logging-and-data-retention.md).
 
+The bounded admin order-list contract, fixed 50-order page decision, completion
+visibility window, and search/filter semantics are defined in
+[`docs/operations/admin-order-history.md`](docs/operations/admin-order-history.md).
+
 ### Lost or shared staff device
 
 1. Change `Admin__Password` and `Jwt__Key` in Render immediately.

@@ -58,6 +58,18 @@ export type OrderDto = {
   PaidUtc?: string | null;
   paymentProvider?: string | null;
   PaymentProvider?: string | null;
+  completedUtc?: string | null;
+  CompletedUtc?: string | null;
+};
+
+export type AdminOrderHistoryResponse = {
+  items: OrderDto[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasPreviousPage: boolean;
+  hasNextPage: boolean;
 };
 
 export type NotificationLogEntry = {

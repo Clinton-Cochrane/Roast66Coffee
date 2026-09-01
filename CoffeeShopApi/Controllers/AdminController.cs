@@ -258,12 +258,16 @@ namespace CoffeeShopApi.Controllers
             await _menuService.RestoreMenuItemAsync(id) ? NoContent() : NotFound();
 
         [Authorize(Roles = "Admin")]
-        // Get all orders
+        // Get the bounded operational order history.
         [HttpGet("orders")]
-        public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
+        public async Task<ActionResult<AdminOrderHistoryResponse>> GetOrders(
+            [FromQuery] AdminOrderHistoryRequest request,
+            CancellationToken cancellationToken)
         {
-            var orders = await _orderService.GetOrdersAsync();
-            return Ok(orders);
+            return Ok(await _orderService.GetOrderHistoryAsync(
+                request,
+                DateTime.UtcNow,
+                cancellationToken));
         }
 
         [Authorize(Roles = "Admin")]

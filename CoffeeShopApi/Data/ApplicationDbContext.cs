@@ -34,6 +34,15 @@ namespace CoffeeShopApi.Data
                 .HasIndex(order => order.IdempotencyKey)
                 .IsUnique()
                 .HasDatabaseName("ux_orders_idempotency_key");
+            modelBuilder.Entity<Order>()
+                .HasIndex(order => new
+                {
+                    order.OrderStatus,
+                    order.CompletedUtc,
+                    order.OrderDate,
+                    order.Id
+                })
+                .HasDatabaseName("ix_orders_admin_history");
             modelBuilder.Entity<Payment>()
                 .HasIndex(payment => new { payment.Provider, payment.IdempotencyKey });
             modelBuilder.Entity<Payment>()

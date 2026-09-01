@@ -55,6 +55,10 @@ namespace CoffeeShopApi.Models
         [Column("orderstatus")]
         public OrderStatus OrderStatus { get; set; } = OrderStatus.Received;
 
+        /// <summary>When this order most recently transitioned to Completed.</summary>
+        [Column("completedutc")]
+        public DateTime? CompletedUtc { get; set; }
+
         /// <summary>When set, this order has a confirmed payment.</summary>
         [Column("paidutc")]
         public DateTime? PaidUtc { get; set; }

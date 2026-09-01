@@ -279,6 +279,10 @@ namespace CoffeeShopApi.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("CompletedUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completedutc");
+
                     b.Property<string>("CustomerEmail")
                         .HasMaxLength(320)
                         .HasColumnType("character varying(320)")
@@ -342,6 +346,9 @@ namespace CoffeeShopApi.Migrations
                     b.HasIndex("IdempotencyKey")
                         .IsUnique()
                         .HasDatabaseName("ux_orders_idempotency_key");
+
+                    b.HasIndex("OrderStatus", "CompletedUtc", "OrderDate", "Id")
+                        .HasDatabaseName("ix_orders_admin_history");
 
                     b.HasIndex("TrackingToken")
                         .IsUnique();

@@ -10,6 +10,13 @@ namespace CoffeeShopApi.Services;
 
 public class OrderService(ApplicationDbContext context, IConfiguration configuration)
 {
+    /// <summary>
+    /// The operational order history deliberately uses a fixed page size. Revisit this
+    /// contract if normal order volume grows beyond roughly 50 orders per day.
+    /// </summary>
+    public const int AdminOrderHistoryPageSize = 50;
+    public const int CompletedOrderRetentionHours = 30;
+
     private readonly ApplicationDbContext _context = context;
     private readonly IConfiguration _configuration = configuration;
 
@@ -25,6 +32,114 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
             .ThenInclude(oi => oi.AddOns!)
             .ThenInclude(a => a.MenuItem)
             .ToListAsync();
+    }
+
+    public async Task<AdminOrderHistoryResponse> GetOrderHistoryAsync(
+        AdminOrderHistoryRequest request,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
+    {
+        var retentionCutoff = AsUtc(nowUtc).AddHours(-CompletedOrderRetentionHours);
+        var query = _context.Orders
+            .AsNoTracking()
+            .Where(order =>
+                order.OrderStatus != OrderStatus.Completed ||
+                (order.CompletedUtc.HasValue && order.CompletedUtc.Value >= retentionCutoff));
+
+        query = request.StatusFilter switch
+        {
+            AdminOrderStatusFilter.Active => query.Where(order => order.OrderStatus != OrderStatus.Completed),
+            AdminOrderStatusFilter.Received => query.Where(order => order.OrderStatus == OrderStatus.Received),
+            AdminOrderStatusFilter.Preparing => query.Where(order => order.OrderStatus == OrderStatus.Preparing),
+            AdminOrderStatusFilter.ReadyForPickup => query.Where(order => order.OrderStatus == OrderStatus.ReadyForPickup),
+            AdminOrderStatusFilter.Completed => query.Where(order => order.OrderStatus == OrderStatus.Completed),
+            _ => query
+        };
+
+        if (request.FromUtc.HasValue)
+        {
+            var fromUtc = AsUtc(request.FromUtc.Value);
+            query = query.Where(order => order.OrderDate >= fromUtc);
+        }
+
+        if (request.ToUtc.HasValue)
+        {
+            var toUtc = AsUtc(request.ToUtc.Value);
+            query = query.Where(order => order.OrderDate < toUtc);
+        }
+
+        var search = request.Search?.Trim().ToLowerInvariant();
+        if (!string.IsNullOrEmpty(search))
+        {
+            var matchesOrderId = int.TryParse(search, out var orderId);
+            var phoneSearch = new string(search.Where(char.IsDigit).ToArray());
+            query = query.Where(order =>
+                (matchesOrderId && order.Id == orderId) ||
+                order.CustomerName.ToLower().Contains(search) ||
+                (order.CustomerPhone != null &&
+                    ((!string.IsNullOrEmpty(phoneSearch) &&
+                        order.CustomerPhone
+                            .Replace("+", "")
+                            .Replace("(", "")
+                            .Replace(")", "")
+                            .Replace("-", "")
+                            .Replace(" ", "")
+                            .Replace(".", "")
+                            .Contains(phoneSearch)) ||
+                     order.CustomerPhone.ToLower().Contains(search))) ||
+                order.OrderItems.Any(item =>
+                    item.ItemName.ToLower().Contains(search) ||
+                    item.AddOns!.Any(addOn => addOn.ItemName.ToLower().Contains(search))));
+        }
+
+        var totalItems = await query.CountAsync(cancellationToken);
+        var totalPages = (int)Math.Ceiling(totalItems / (double)AdminOrderHistoryPageSize);
+        var items = await query
+            .OrderBy(order => order.OrderStatus == OrderStatus.Completed)
+            .ThenByDescending(order => order.OrderDate)
+            .ThenByDescending(order => order.Id)
+            .Skip((request.Page - 1) * AdminOrderHistoryPageSize)
+            .Take(AdminOrderHistoryPageSize)
+            .Select(order => new AdminOrderListItemDto
+            {
+                Id = order.Id,
+                CustomerName = order.CustomerName,
+                CustomerPhone = order.CustomerPhone,
+                OrderDate = order.OrderDate,
+                OrderStatus = order.OrderStatus,
+                CompletedUtc = order.CompletedUtc,
+                PaidUtc = order.PaidUtc,
+                PaymentProvider = order.PaymentProvider,
+                OrderItems = order.OrderItems
+                    .Select(item => new AdminOrderLineItemDto
+                    {
+                        Id = item.Id,
+                        Quantity = item.Quantity,
+                        Notes = item.Notes,
+                        ItemName = item.ItemName,
+                        AddOns = item.AddOns!
+                            .Select(addOn => new AdminOrderAddOnDto
+                            {
+                                Id = addOn.Id,
+                                Quantity = addOn.Quantity,
+                                ItemName = addOn.ItemName
+                            })
+                            .ToList()
+                    })
+                    .ToList()
+            })
+            .ToListAsync(cancellationToken);
+
+        return new AdminOrderHistoryResponse
+        {
+            Items = items,
+            Page = request.Page,
+            PageSize = AdminOrderHistoryPageSize,
+            TotalItems = totalItems,
+            TotalPages = totalPages,
+            HasPreviousPage = request.Page > 1,
+            HasNextPage = request.Page < totalPages
+        };
     }
 
 
@@ -303,7 +418,13 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         return _context.Orders.Any(e => e.Id == id);
     }
 
-    internal async Task UpdateStatus(Order order, CancellationToken cancellationToken = default)
+    internal Task UpdateStatus(Order order, CancellationToken cancellationToken = default) =>
+        UpdateStatus(order, DateTime.UtcNow, cancellationToken);
+
+    internal async Task UpdateStatus(
+        Order order,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default)
     {
         order.OrderStatus = order.OrderStatus switch
         {
@@ -313,6 +434,7 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
             OrderStatus.Completed => OrderStatus.Received,
             _ => OrderStatus.Received
         };
+        order.CompletedUtc = order.OrderStatus == OrderStatus.Completed ? AsUtc(nowUtc) : null;
         _context.Orders.Update(order);
         await _context.SaveChangesAsync(cancellationToken);
     }
@@ -366,6 +488,13 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
                 .ToLowerInvariant()
                 .Split(' ', StringSplitOptions.RemoveEmptyEntries)
         );
+
+    private static DateTime AsUtc(DateTime value) => value.Kind switch
+    {
+        DateTimeKind.Utc => value,
+        DateTimeKind.Local => value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(value, DateTimeKind.Utc)
+    };
 
     private sealed record FingerprintRequest(
         string CustomerName,

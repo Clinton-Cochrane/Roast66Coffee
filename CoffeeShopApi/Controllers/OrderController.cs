@@ -28,9 +28,14 @@ public class OrderController : ControllerBase
 
     [Authorize(Roles = "Admin")]
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Order>>> GetOrders()
+    public async Task<ActionResult<AdminOrderHistoryResponse>> GetOrders(
+        [FromQuery] AdminOrderHistoryRequest request,
+        CancellationToken cancellationToken)
     {
-        return Ok(await _orderService.GetOrdersAsync());
+        return Ok(await _orderService.GetOrderHistoryAsync(
+            request,
+            DateTime.UtcNow,
+            cancellationToken));
     }
 
     [HttpGet("track")]
