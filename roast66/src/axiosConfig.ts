@@ -6,10 +6,11 @@ const instance = axios.create({
   baseURL: API_BASE_URL,
 });
 
-const PUBLIC_PATHS = ["/admin/orders", "/order", "/payments/checkout-session"];
-const isPublicPost = (config: InternalAxiosRequestConfig): boolean =>
-  config.method?.toLowerCase() === "post" &&
-  PUBLIC_PATHS.some((p) => config.url?.includes(p));
+const PUBLIC_PATHS = ["/order", "/payments/checkout-session"];
+const isPublicPost = (config: InternalAxiosRequestConfig): boolean => {
+  const path = config.url?.split(/[?#]/, 1)[0];
+  return config.method?.toLowerCase() === "post" && PUBLIC_PATHS.includes(path ?? "");
+};
 
 instance.interceptors.request.use(
   (config) => {

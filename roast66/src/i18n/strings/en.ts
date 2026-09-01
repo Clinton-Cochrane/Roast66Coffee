@@ -202,11 +202,6 @@ export const en = {
     idempotencyConflict:
       "This submission key was already used for a different order. Please review your order and try again.",
     pageSubtitle: "Build your homemade drink for the road in just a few taps.",
-    legacyCardTitle: "Place Order",
-    legacyMenuItemIdPlaceholder: "Menu Item ID",
-    legacyQuantityPlaceholder: "Quantity",
-    legacySuccessMessage: "Order placed successfully!",
-    legacyErrorMessage: "Failed to place order.",
   },
   orderStatus: {
     title: "Order Status",
