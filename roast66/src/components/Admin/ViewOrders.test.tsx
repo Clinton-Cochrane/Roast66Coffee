@@ -1,6 +1,6 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import ViewOrders from "./ViewOrders";
 import { LanguageProvider } from "../../i18n/LanguageContext";
 import type { OrderDto } from "../../types/api";
@@ -39,10 +39,20 @@ const completedOrder: OrderDto = {
   ],
 };
 
+const pageResponse = (items: OrderDto[], page = 1, totalItems = items.length) => ({
+  items,
+  page,
+  pageSize: 50,
+  totalItems,
+  totalPages: totalItems === 0 ? 0 : Math.ceil(totalItems / 50),
+  hasPreviousPage: page > 1,
+  hasNextPage: page * 50 < totalItems,
+});
+
 describe("ViewOrders", () => {
   beforeEach(() => {
     mockGet.mockReset();
-    mockGet.mockResolvedValue({ data: [completedOrder] });
+    mockGet.mockResolvedValue({ data: pageResponse([completedOrder]) });
   });
 
   it("mutes completed order copy while leaving completed status and buttons outside it", async () => {
@@ -66,14 +76,9 @@ describe("ViewOrders", () => {
     );
   });
 
-  it("sorts incomplete orders FIFO before completed orders FIFO", async () => {
+  it("preserves the deterministic order supplied by the paginated API", async () => {
     mockGet.mockResolvedValue({
-      data: [
-        {
-          ...completedOrder,
-          id: 3,
-          orderDate: "2026-08-26T13:00:00Z",
-        },
+      data: pageResponse([
         {
           ...completedOrder,
           id: 4,
@@ -82,16 +87,21 @@ describe("ViewOrders", () => {
         },
         {
           ...completedOrder,
-          id: 1,
-          orderDate: "2026-08-26T08:00:00Z",
-        },
-        {
-          ...completedOrder,
           id: 2,
           orderDate: "2026-08-26T09:00:00Z",
           orderStatus: 0,
         },
-      ],
+        {
+          ...completedOrder,
+          id: 3,
+          orderDate: "2026-08-26T13:00:00Z",
+        },
+        {
+          ...completedOrder,
+          id: 1,
+          orderDate: "2026-08-26T08:00:00Z",
+        },
+      ]),
     });
 
     render(
@@ -102,22 +112,22 @@ describe("ViewOrders", () => {
 
     const orderHeadings = await screen.findAllByRole("heading", { level: 2 });
     expect(orderHeadings.map((heading) => heading.textContent)).toEqual([
-      "Order #2",
       "Order #4",
-      "Order #1",
+      "Order #2",
       "Order #3",
+      "Order #1",
     ]);
   });
 
   it("labels a Stripe-settled order as paid", async () => {
     mockGet.mockResolvedValue({
-      data: [
+      data: pageResponse([
         {
           ...completedOrder,
           paidUtc: "2026-08-26T10:05:00Z",
           paymentProvider: "stripe",
         },
-      ],
+      ]),
     });
 
     render(
@@ -139,5 +149,97 @@ describe("ViewOrders", () => {
     await screen.findByRole("heading", { name: "Order #66" });
 
     expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
+  });
+
+  it("submits status and drink-name search filters and resets to page one", async () => {
+    render(
+      <LanguageProvider>
+        <ViewOrders />
+      </LanguageProvider>
+    );
+
+    await screen.findByRole("heading", { name: "Order #66" });
+    fireEvent.change(screen.getByLabelText("Order status"), { target: { value: "completed" } });
+    fireEvent.change(screen.getByLabelText("Search orders"), { target: { value: "Superman" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenCalledWith("/admin/orders", {
+        params: expect.objectContaining({ page: 1, status: "completed", search: "Superman" }),
+      })
+    );
+  });
+
+  it("requests the next fixed-size page", async () => {
+    mockGet.mockResolvedValue({ data: pageResponse([completedOrder], 1, 51) });
+    render(
+      <LanguageProvider>
+        <ViewOrders />
+      </LanguageProvider>
+    );
+
+    expect(await screen.findByText("Page 1 of 2 · 51 orders")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+
+    await waitFor(() =>
+      expect(mockGet).toHaveBeenCalledWith("/admin/orders", {
+        params: expect.objectContaining({ page: 2 }),
+      })
+    );
+  });
+
+  it("shows loading and filtered-empty states", async () => {
+    let resolveRequest!: (value: { data: ReturnType<typeof pageResponse> }) => void;
+    mockGet.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveRequest = resolve;
+        })
+    );
+    render(
+      <LanguageProvider>
+        <ViewOrders />
+      </LanguageProvider>
+    );
+
+    expect(screen.getByText("Loading orders...")).toBeInTheDocument();
+    resolveRequest({ data: pageResponse([]) });
+
+    expect(await screen.findByText("No orders match these filters.")).toBeInTheDocument();
+  });
+
+  it("returns to the last valid page when retention removes the current page", async () => {
+    let retentionExpired = false;
+    const secondPageOrder = { ...completedOrder, id: 67 };
+    mockGet.mockImplementation((url: string, config?: { params?: { page?: number } }) => {
+      if (url.includes("new-count")) return Promise.resolve({ data: { count: 0 } });
+      const requestedPage = config?.params?.page ?? 1;
+      if (requestedPage === 2) {
+        return Promise.resolve({
+          data: retentionExpired
+            ? { ...pageResponse([], 2, 50), totalPages: 1, hasPreviousPage: true }
+            : pageResponse([secondPageOrder], 2, 51),
+        });
+      }
+      return Promise.resolve({
+        data: pageResponse([completedOrder], 1, retentionExpired ? 50 : 51),
+      });
+    });
+
+    render(
+      <LanguageProvider>
+        <ViewOrders />
+      </LanguageProvider>
+    );
+
+    await screen.findByText("Page 1 of 2 · 51 orders");
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByRole("heading", { name: "Order #67" });
+
+    retentionExpired = true;
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+
+    expect(await screen.findByText("Page 1 of 1 · 50 orders")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Order #67" })).not.toBeInTheDocument();
   });
 });

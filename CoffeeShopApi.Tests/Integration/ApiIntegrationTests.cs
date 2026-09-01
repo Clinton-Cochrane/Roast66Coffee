@@ -203,9 +203,9 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
 
         var getResponse = await _client.GetAsync("/api/order");
         getResponse.EnsureSuccessStatusCode();
-        var orders = await getResponse.Content.ReadFromJsonAsync<List<Order>>(JsonOptions);
+        var orders = await getResponse.Content.ReadFromJsonAsync<AdminOrderHistoryResponse>(JsonOptions);
         Assert.NotNull(orders);
-        Assert.Contains(orders, o => o.CustomerName == "Admin Token Test Customer");
+        Assert.Contains(orders.Items, o => o.CustomerName == "Admin Token Test Customer");
     }
 
     [Fact]
@@ -221,7 +221,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task GetAdminOrders_IncludesShotsAndTheirMenuItems()
+    public async Task GetAdminOrders_IncludesHistoricalDrinkAndShotSnapshots()
     {
         int drinkId;
         int shotId;
@@ -273,14 +273,13 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
 
         var response = await _client.SendAsync(request);
         response.EnsureSuccessStatusCode();
-        var orders = await response.Content.ReadFromJsonAsync<List<Order>>(JsonOptions);
-        var adminOrder = Assert.Single(orders!, candidate => candidate.CustomerName == customerName);
+        var orders = await response.Content.ReadFromJsonAsync<AdminOrderHistoryResponse>(JsonOptions);
+        var adminOrder = Assert.Single(orders!.Items, candidate => candidate.CustomerName == customerName);
         var orderItem = Assert.Single(adminOrder.OrderItems);
-        var addOn = Assert.Single(orderItem.AddOns!);
+        var addOn = Assert.Single(orderItem.AddOns);
         Assert.Equal(2, addOn.Quantity);
-        Assert.Equal(shotId, addOn.MenuItemId);
-        Assert.NotNull(addOn.MenuItem);
-        Assert.StartsWith("Admin shot ", addOn.MenuItem!.Name);
+        Assert.StartsWith("Admin drink ", orderItem.ItemName);
+        Assert.StartsWith("Admin shot ", addOn.ItemName);
     }
 
     [Fact]
