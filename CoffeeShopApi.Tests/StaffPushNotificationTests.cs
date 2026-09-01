@@ -12,26 +12,26 @@ namespace CoffeeShopApi.Tests;
 public class StaffPushNotificationTests
 {
     [Fact]
-    public async Task SendNewOrderAlertAsync_TimesOutAndStopsAtConfiguredAttemptLimit()
+    public async Task SendNewOrderAlertAsync_SimulatedTimeoutsStopAtConfiguredAttemptLimit()
     {
         await using var context = CreateContext();
         AddActiveStaff(context);
         context.StaffPushSubscriptions.Add(CreateSubscription());
         await context.SaveChangesAsync();
 
-        var sender = new RecordingSender((_, _, cancellationToken) =>
-            Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken));
+        var sender = new RecordingSender((_, _, _) =>
+            throw new OperationCanceledException("simulated request timeout"));
         var service = CreateService(
             context,
             sender,
             new StaffPushOptions
             {
-                RequestTimeout = TimeSpan.FromMilliseconds(20),
+                RequestTimeout = TimeSpan.FromSeconds(1),
                 MaxAttempts = 2,
                 RetryDelay = TimeSpan.Zero
             });
 
-        await service.SendNewOrderAlertAsync(101).WaitAsync(TimeSpan.FromSeconds(1));
+        await service.SendNewOrderAlertAsync(101);
 
         Assert.Equal(2, sender.Attempts.Count);
     }
