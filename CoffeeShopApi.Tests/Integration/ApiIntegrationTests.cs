@@ -165,24 +165,18 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task LegacyAdminOrderRoute_UsesTheSameIdempotencyContract()
+    public async Task LegacyAdminOrderCreationRoute_IsRemoved()
     {
         var key = Guid.NewGuid().ToString("N");
         var order = CreateValidOrder($"Legacy-{Guid.NewGuid():N}", "5553456789");
 
-        var first = await _client.PostOrderAsync(
-            order,
-            key,
-            JsonOptions,
-            path: "/api/admin/orders");
-        var replay = await _client.PostOrderAsync(
+        var response = await _client.PostOrderAsync(
             order,
             key,
             JsonOptions,
             path: "/api/admin/orders");
 
-        Assert.Equal(HttpStatusCode.Created, first.StatusCode);
-        Assert.Equal(HttpStatusCode.OK, replay.StatusCode);
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
 
     [Fact]
@@ -201,7 +195,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         var postResponse = await _client.PostOrderAsync(order, options: JsonOptions);
         postResponse.EnsureSuccessStatusCode();
 
-        var getResponse = await _client.GetAsync("/api/order");
+        var getResponse = await _client.GetAsync("/api/admin/orders");
         getResponse.EnsureSuccessStatusCode();
         var orders = await getResponse.Content.ReadFromJsonAsync<AdminOrderHistoryResponse>(JsonOptions);
         Assert.NotNull(orders);
@@ -209,7 +203,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task GetAdminOrders_WithToken_SameAuthorizationAsOrderController()
+    public async Task GetAdminOrders_WithToken_ReturnsOk()
     {
         var token = await GetAdminToken();
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/admin/orders");
@@ -532,17 +526,17 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
             CategoryType = CategoryType.COFFEE
         };
 
-        var createResponse = await _client.PostAsJsonAsync("/api/menu", newItem, JsonOptions);
+        var createResponse = await _client.PostAsJsonAsync("/api/admin/menu", newItem, JsonOptions);
         createResponse.EnsureSuccessStatusCode();
         var created = await createResponse.Content.ReadFromJsonAsync<MenuItem>(JsonOptions);
         Assert.NotNull(created);
         Assert.True(created!.Id > 0);
 
         created!.Name = "Updated Drink";
-        var updateResponse = await _client.PutAsJsonAsync($"/api/menu/{created.Id}", created, JsonOptions);
+        var updateResponse = await _client.PutAsJsonAsync($"/api/admin/menu/{created.Id}", created, JsonOptions);
         Assert.Equal(HttpStatusCode.NoContent, updateResponse.StatusCode);
 
-        var deleteResponse = await _client.DeleteAsync($"/api/menu/{created.Id}");
+        var deleteResponse = await _client.DeleteAsync($"/api/admin/menu/{created.Id}");
         Assert.Equal(HttpStatusCode.NoContent, deleteResponse.StatusCode);
     }
 
@@ -558,9 +552,32 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
             CategoryType = CategoryType.COFFEE
         };
 
-        var response = await _client.PutAsJsonAsync("/api/menu/1", item, JsonOptions);
+        var response = await _client.PutAsJsonAsync("/api/admin/menu/1", item, JsonOptions);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task LegacyPublicMenuWriteRoutes_AreRemoved()
+    {
+        var token = await GetAdminToken();
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        var item = new MenuItem
+        {
+            Id = 1,
+            Name = "Legacy menu write",
+            Price = 1m,
+            CategoryType = CategoryType.COFFEE
+        };
+
+        var create = await _client.PostAsJsonAsync("/api/menu", item, JsonOptions);
+        var update = await _client.PutAsJsonAsync("/api/menu/1", item, JsonOptions);
+        var delete = await _client.DeleteAsync("/api/menu/1");
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, create.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, update.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, delete.StatusCode);
     }
 
     [Fact]

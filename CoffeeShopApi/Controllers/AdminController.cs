@@ -28,7 +28,6 @@ namespace CoffeeShopApi.Controllers
         private readonly NotificationSettingsService _notificationSettingsService;
         private readonly SupportEmailService _supportEmailService;
         private readonly NotificationRetentionService _notificationRetentionService;
-        private readonly IStaffPushNotificationQueue _staffPushQueue;
         private readonly IWebHostEnvironment _environment;
         private readonly ILogger<AdminController> _logger;
         private readonly IDefaultMenuProvider _defaultMenuProvider;
@@ -44,7 +43,6 @@ namespace CoffeeShopApi.Controllers
             NotificationSettingsService notificationSettingsService,
             SupportEmailService supportEmailService,
             NotificationRetentionService notificationRetentionService,
-            IStaffPushNotificationQueue staffPushQueue,
             IWebHostEnvironment environment,
             ILogger<AdminController> logger,
             IDefaultMenuProvider defaultMenuProvider)
@@ -56,12 +54,12 @@ namespace CoffeeShopApi.Controllers
             _notificationSettingsService = notificationSettingsService;
             _supportEmailService = supportEmailService;
             _notificationRetentionService = notificationRetentionService;
-            _staffPushQueue = staffPushQueue;
             _environment = environment;
             _logger = logger;
             _defaultMenuProvider = defaultMenuProvider;
         }
 
+        [AllowAnonymous]
         [HttpPost("login")]
         [EnableRateLimiting("Login")]
         public IActionResult Login([FromBody] LoginModel login)
@@ -78,6 +76,7 @@ namespace CoffeeShopApi.Controllers
             return Unauthorized();
         }
 
+        [AllowAnonymous]
         [HttpPost("forgot-password")]
         [EnableRateLimiting("ForgotPassword")]
         public async Task<IActionResult> ForgotPassword(
@@ -278,56 +277,6 @@ namespace CoffeeShopApi.Controllers
             return Ok(new { count });
         }
 
-        [HttpPost("orders")]
-        [EnableRateLimiting("Order")]
-        public async Task<ActionResult<Order>> PostOrder(
-            Order order,
-            [FromHeader(Name = "X-Idempotency-Key")] string? idempotencyKey,
-            CancellationToken cancellationToken)
-        {
-            if (order.OrderItems == null || order.OrderItems.Count == 0)
-            {
-                return BadRequest(new { message = "At least one order item is required." });
-            }
-            var key = idempotencyKey?.Trim();
-            if (string.IsNullOrEmpty(key) || key.Length > OrderController.MaxIdempotencyKeyLength)
-            {
-                return BadRequest(new
-                {
-                    message = $"X-Idempotency-Key is required and must be at most {OrderController.MaxIdempotencyKeyLength} characters."
-                });
-            }
-            OrderSubmissionResult submission;
-            try
-            {
-                submission = await _orderService.SubmitOrderAsync(order, key, cancellationToken);
-            }
-            catch (UnavailableMenuItemsException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (IdempotencyKeyConflictException ex)
-            {
-                return Conflict(new
-                {
-                    message = ex.Message,
-                    existingOrderId = ex.ExistingOrder.Id
-                });
-            }
-
-            if (!submission.WasCreated)
-            {
-                Response.Headers.Append("Idempotency-Replayed", "true");
-                return Ok(PublicOrderDto.FromOrder(submission.Order));
-            }
-
-            _staffPushQueue.TryEnqueue(submission.Order.Id);
-            return CreatedAtAction(
-                nameof(GetOrders),
-                new { id = submission.Order.Id },
-                PublicOrderDto.FromOrder(submission.Order));
-        }
-
         [Authorize(Roles = "Admin")]
         [HttpGet("notificationSettings")]
         public async Task<ActionResult<NotificationSettings>> GetNotificationSettings(
@@ -370,6 +319,7 @@ namespace CoffeeShopApi.Controllers
             return await SaveNotificationSettings(model, cancellationToken);
         }
 
+        [AllowAnonymous]
         [HttpGet("ping")]
         public IActionResult Ping()
         {

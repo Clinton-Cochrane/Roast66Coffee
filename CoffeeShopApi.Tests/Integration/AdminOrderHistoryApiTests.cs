@@ -25,7 +25,7 @@ public class AdminOrderHistoryApiTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task AdminAndLegacyRoutes_ReturnTheSamePagedContract()
+    public async Task AdminRoute_ReturnsThePagedContract()
     {
         var marker = $"History-{Guid.NewGuid():N}";
         using (var scope = _factory.Services.CreateScope())
@@ -57,15 +57,28 @@ public class AdminOrderHistoryApiTests : IClassFixture<WebAppFactory>
         var admin = await _client.GetFromJsonAsync<AdminOrderHistoryResponse>(
             $"/api/admin/orders?search={marker}",
             JsonOptions);
-        var legacy = await _client.GetFromJsonAsync<AdminOrderHistoryResponse>(
-            $"/api/order?search={marker}",
-            JsonOptions);
-
         Assert.NotNull(admin);
-        Assert.NotNull(legacy);
         Assert.Equal(50, admin.PageSize);
-        Assert.Equal(admin.Items.Select(order => order.Id), legacy.Items.Select(order => order.Id));
         Assert.Equal(marker, Assert.Single(admin.Items).CustomerName);
+    }
+
+    [Fact]
+    public async Task AdminRoute_RequiresAdminAuthorization()
+    {
+        var response = await _client.GetAsync("/api/admin/orders");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task LegacyOrderHistoryRoute_IsRemoved()
+    {
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", await GetAdminToken());
+
+        var response = await _client.GetAsync("/api/order");
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
     }
 
     [Theory]
@@ -73,9 +86,7 @@ public class AdminOrderHistoryApiTests : IClassFixture<WebAppFactory>
     [InlineData("/api/admin/orders?page=2147483647")]
     [InlineData("/api/admin/orders?status=unknown")]
     [InlineData("/api/admin/orders?fromUtc=2026-08-31T12:00:00Z&toUtc=2026-08-30T12:00:00Z")]
-    [InlineData("/api/order?page=0")]
-    [InlineData("/api/order?status=unknown")]
-    public async Task OrderHistoryRoutes_RejectInvalidFilters(string path)
+    public async Task AdminOrderHistoryRoute_RejectsInvalidFilters(string path)
     {
         _client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue("Bearer", await GetAdminToken());

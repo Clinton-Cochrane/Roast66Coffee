@@ -26,22 +26,12 @@ public class OrderController : ControllerBase
         _staffPushQueue = staffPushQueue;
     }
 
-    [Authorize(Roles = "Admin")]
-    [HttpGet]
-    public async Task<ActionResult<AdminOrderHistoryResponse>> GetOrders(
-        [FromQuery] AdminOrderHistoryRequest request,
-        CancellationToken cancellationToken)
-    {
-        return Ok(await _orderService.GetOrderHistoryAsync(
-            request,
-            DateTime.UtcNow,
-            cancellationToken));
-    }
-
+    [AllowAnonymous]
     [HttpGet("track")]
     [EnableRateLimiting("PublicTracking")]
     public IActionResult TrackOrderWithoutToken() => TrackingUnavailable();
 
+    [AllowAnonymous]
     [HttpGet("track/{trackingToken}")]
     [EnableRateLimiting("PublicTracking")]
     public async Task<ActionResult<PublicOrderDto>> TrackOrder(
@@ -56,6 +46,7 @@ public class OrderController : ControllerBase
         return Ok(PublicOrderDto.FromOrder(order));
     }
 
+    [AllowAnonymous]
     [HttpGet("lookup")]
     [EnableRateLimiting("PublicTracking")]
     public IActionResult LegacyLookup() => NotFound();
@@ -73,9 +64,10 @@ public class OrderController : ControllerBase
         return order;
     }
 
+    [AllowAnonymous]
     [HttpPost]
     [EnableRateLimiting("Order")]
-    public async Task<ActionResult<Order>> PostOrder(
+    public async Task<ActionResult<PublicOrderDto>> PostOrder(
         Order order,
         [FromHeader(Name = "X-Idempotency-Key")] string? idempotencyKey,
         CancellationToken cancellationToken)
@@ -126,6 +118,7 @@ public class OrderController : ControllerBase
             PublicOrderDto.FromOrder(submission.Order));
     }
 
+    [AllowAnonymous]
     [HttpGet("track/{trackingToken}/notifications")]
     [EnableRateLimiting("PublicTracking")]
     public async Task<IActionResult> GetCustomerNotifications(
@@ -156,6 +149,7 @@ public class OrderController : ControllerBase
         return Ok(result);
     }
 
+    [AllowAnonymous]
     [HttpGet("track/{trackingToken}/summary")]
     [EnableRateLimiting("PublicTracking")]
     public async Task<IActionResult> DownloadOrderSummary(

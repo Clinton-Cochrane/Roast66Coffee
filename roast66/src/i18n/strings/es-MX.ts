@@ -207,11 +207,6 @@ export const esMx: Messages = {
       "Esta clave de envío ya se usó para otro pedido. Revisa tu pedido e intenta de nuevo.",
     pageSubtitle:
       "Arma tu bebida casera para la carretera en unos toques.",
-    legacyCardTitle: "Hacer pedido",
-    legacyMenuItemIdPlaceholder: "ID del artículo del menú",
-    legacyQuantityPlaceholder: "Cantidad",
-    legacySuccessMessage: "¡Pedido realizado con éxito!",
-    legacyErrorMessage: "No se pudo enviar el pedido.",
   },
   orderStatus: {
     title: "Estado del pedido",

@@ -50,6 +50,15 @@ describe("axiosConfig interceptors", () => {
     expect(result.headers.Authorization).toBeUndefined();
   });
 
+  it("adds bearer token for admin order POST requests", () => {
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
+    const config = { method: "post", url: "/admin/orders", headers: {} };
+    const result = requestHolder.fn!(config) as {
+      headers: Record<string, unknown>;
+    };
+    expect(result.headers.Authorization).toBe("Bearer x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
+  });
+
   it("serves menu reads from the public snapshot by default on localhost", () => {
     const result = requestHolder.fn!({
       method: "get",

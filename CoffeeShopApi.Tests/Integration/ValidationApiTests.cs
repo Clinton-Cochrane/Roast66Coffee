@@ -38,7 +38,7 @@ public class ValidationApiTests : IClassFixture<WebAppFactory>
             CategoryType = CategoryType.COFFEE
         };
 
-        var response = await _client.PostAsJsonAsync("/api/menu", invalidItem, JsonOptions);
+        var response = await _client.PostAsJsonAsync("/api/admin/menu", invalidItem, JsonOptions);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -58,7 +58,7 @@ public class ValidationApiTests : IClassFixture<WebAppFactory>
             CategoryType = CategoryType.COFFEE
         };
 
-        var response = await _client.PostAsJsonAsync("/api/menu", invalidItem, JsonOptions);
+        var response = await _client.PostAsJsonAsync("/api/admin/menu", invalidItem, JsonOptions);
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
