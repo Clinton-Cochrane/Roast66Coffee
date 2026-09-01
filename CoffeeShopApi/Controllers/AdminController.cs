@@ -17,6 +17,11 @@ using Microsoft.Extensions.Hosting;
 
 namespace CoffeeShopApi.Controllers
 {
+    /// <summary>
+    /// HTTP boundary for staff authentication and shop operations. It translates
+    /// service outcomes into API status codes; ordering, menu, retention, and
+    /// notification invariants remain in their focused services.
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     public class AdminController : ControllerBase

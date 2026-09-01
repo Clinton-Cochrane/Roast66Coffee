@@ -34,6 +34,12 @@ const emptyMenuItemForm = (): MenuItemFormState => ({
   categoryType: "",
 });
 
+/**
+ * Staff menu workspace. Desktop keeps the editor beside the list; mobile treats
+ * the same editor as an accessible modal and restores focus to its trigger.
+ * Homepage-special toggles are optimistic for responsiveness, then reconciled
+ * with the API when the database-wide three-item constraint rejects a race.
+ */
 function ManageMenu() {
   const { locale, t } = useI18n();
   const [menuItems, setMenuItems] = useState<MenuItemDto[]>([]);
@@ -304,6 +310,7 @@ function ManageMenu() {
       .catch(() => toast.error(t("adminMenu.failedRestore")));
   };
 
+  /** Optimistically toggles one row while preventing duplicate requests for it. */
   const handleHomepageSpecialChange = (item: MenuItemDto) => {
     const isSelected = !item.isFeaturedOnHome;
 

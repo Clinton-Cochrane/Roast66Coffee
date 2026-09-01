@@ -1,5 +1,10 @@
 namespace CoffeeShopApi.Services;
 
+/// <summary>
+/// Best-effort periodic enforcement of notification-audit retention. A failed pass
+/// is logged and retried later so a transient database outage cannot terminate the API.
+/// The authenticated purge endpoint uses the same service for immediate operations.
+/// </summary>
 public class NotificationRetentionWorker : BackgroundService
 {
     private static readonly TimeSpan CheckInterval = TimeSpan.FromHours(12);

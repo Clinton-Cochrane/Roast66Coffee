@@ -5,6 +5,11 @@ using CoffeeShopApi.Models.Payments;
 
 namespace CoffeeShopApi.Data
 {
+    /// <summary>
+    /// Relational contract for application-owned data. Order line/add-on menu
+    /// relationships use SET NULL so immutable snapshots survive menu replacement;
+    /// tracking and idempotency uniqueness are enforced by PostgreSQL, not only code.
+    /// </summary>
     public class ApplicationDbContext : DbContext
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)

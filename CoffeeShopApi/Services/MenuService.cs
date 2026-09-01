@@ -19,6 +19,11 @@ namespace CoffeeShopApi.Services
 
     public sealed record MenuReplacementSummary(int PreviousItemCount, int NewItemCount);
 
+    /// <summary>
+    /// Maintains the live menu and its cross-row constraints. Order history does not
+    /// depend on current menu values because <see cref="OrderService"/> snapshots them
+    /// at submission time.
+    /// </summary>
     public class MenuService(ApplicationDbContext context)
     {
         public const int MaxHomepageSpecials = 3;
@@ -85,6 +90,11 @@ namespace CoffeeShopApi.Services
             }
         }
 
+        /// <summary>
+        /// Atomically enforces the global homepage-special limit. PostgreSQL takes a
+        /// table lock because locking one row cannot serialize writers selecting
+        /// different rows; EF InMemory relies on the surrounding single-process test.
+        /// </summary>
         public async Task<HomepageSpecialSelectionResult> SetHomepageSpecialAsync(
             int id,
             bool isSelected,
@@ -188,6 +198,10 @@ namespace CoffeeShopApi.Services
             return MenuItemUpdateResult.Updated;
         }
 
+        /// <summary>
+        /// Accepts only invariant-culture <c>$amount</c> or <c>percent%</c> notation and
+        /// rejects discounts that would reduce the effective price below one cent.
+        /// </summary>
         public static bool TryParsePromotion(string input, decimal price, out PromotionType type, out decimal value)
         {
             type = default;
@@ -250,8 +264,9 @@ namespace CoffeeShopApi.Services
         }
 
         /// <summary>
-        /// Replaces all menu items with the provided list. Used for bulk import.
-        /// Ignores client-provided IDs; new items get fresh IDs.
+        /// Replaces all menu items with a validated import. Client-provided IDs are
+        /// ignored so imported rows cannot collide with database identity values.
+        /// The delete/insert set is transactional and shares the homepage-special lock.
         /// </summary>
         public async Task<MenuReplacementSummary> BulkReplaceAsync(
             IEnumerable<MenuItem> menuItems,

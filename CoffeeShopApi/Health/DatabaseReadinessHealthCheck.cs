@@ -27,6 +27,11 @@ internal sealed class EfCoreDatabaseReadinessProbe(ApplicationDbContext context)
     }
 }
 
+/// <summary>
+/// Gates traffic on the two database properties required for safe service: a live
+/// connection and a schema with no pending migrations. Optional email, payment,
+/// push, SMS, and keepalive integrations intentionally do not affect readiness.
+/// </summary>
 internal sealed class DatabaseReadinessHealthCheck(
     IDatabaseReadinessProbe probe,
     ILogger<DatabaseReadinessHealthCheck> logger) : IHealthCheck

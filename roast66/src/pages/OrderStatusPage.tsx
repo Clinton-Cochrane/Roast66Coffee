@@ -27,6 +27,11 @@ const ENABLE_ONLINE_PREPAY =
 const PAYMENT_PREPAY_RETURN_KEY = "paymentPrepayReturn";
 const LEGACY_STRIPE_PREPAY_RETURN_KEY = "stripePrepayReturn";
 
+/**
+ * Restores and polls a private token-authenticated order. The lookup epoch makes
+ * manual lookup authoritative over older restore/poll requests, preventing late
+ * responses from replacing the visible order or its sessionStorage record.
+ */
 function OrderStatusPage() {
   const { locale, t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -66,6 +71,8 @@ function OrderStatusPage() {
     [setSearchParams]
   );
 
+  // Provider redirects are reduced to a toast plus the stored private token;
+  // transient query parameters are removed so refresh does not replay the toast.
   useEffect(() => {
     const checkout = searchParams.get("checkout");
     if (checkout !== "success" && checkout !== "cancelled") {
@@ -98,6 +105,8 @@ function OrderStatusPage() {
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams, t]);
 
+  // Restore once from the URL or this tab's last successful tracking session.
+  // A checkout return is handled by the preceding effect to avoid competing reads.
   useEffect(() => {
     const checkout = searchParams.get("checkout");
     if (checkout === "success" || checkout === "cancelled") {
@@ -229,7 +238,10 @@ function OrderStatusPage() {
   const statusValue = order ? getOrderStatusFromDto(order) : ORDER_STATUS.Received;
   const isCompleted = statusValue === ORDER_STATUS.Completed;
 
-  /** Keep customer view in sync when staff advances status (admin). */
+  /**
+   * Keep the customer view in sync while an order is active. Visibility refresh
+   * avoids waiting for the timer after a sleeping mobile tab becomes active.
+   */
   useEffect(() => {
     if (!order) {
       pollTokenRef.current = null;

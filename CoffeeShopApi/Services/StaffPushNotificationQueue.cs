@@ -10,6 +10,11 @@ public interface IStaffPushNotificationQueue
 
 internal sealed record StaffPushNotification(int OrderId);
 
+/// <summary>
+/// Bounded, best-effort, in-process handoff from order creation to the push worker.
+/// Deduplication deliberately lasts only for the configured window and is not durable
+/// across restarts; the customer order succeeds even when this queue is full.
+/// </summary>
 internal sealed class StaffPushNotificationQueue : IStaffPushNotificationQueue
 {
     private readonly Channel<StaffPushNotification> _channel;

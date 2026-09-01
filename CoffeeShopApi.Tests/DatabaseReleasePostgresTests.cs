@@ -182,6 +182,47 @@ public class DatabaseReleasePostgresTests
         Assert.Equal(1, await context.Payments.CountAsync());
     }
 
+    [Fact]
+    [Trait("Category", "PostgreSQLIntegration")]
+    public async Task RowLevelSecurity_HidesOrdersFromSupabaseClientRoles()
+    {
+        await using var database = await PostgresTestDatabase.CreateAsync("roast66_rls_contract");
+        if (database == null)
+        {
+            return;
+        }
+
+        await using var context = database.CreateContext();
+        await context.Database.MigrateAsync();
+        context.Orders.Add(new Order
+        {
+            CustomerName = "RLS Contract Customer",
+            TrackingToken = $"rls-{Guid.NewGuid():N}",
+            OrderItems = []
+        });
+        await context.SaveChangesAsync();
+
+        await using var connection = new NpgsqlConnection(database.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "GRANT USAGE ON SCHEMA public TO anon, authenticated; " +
+            "GRANT SELECT ON public.orders TO anon, authenticated;";
+        await command.ExecuteNonQueryAsync();
+
+        // The grants isolate RLS from ordinary table-permission denial: each role
+        // can SELECT the table but the explicit false policy must hide every row.
+        foreach (var role in new[] { "anon", "authenticated" })
+        {
+            command.CommandText = $"SET ROLE {role}";
+            await command.ExecuteNonQueryAsync();
+            command.CommandText = "SELECT count(*) FROM public.orders";
+            Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
+            command.CommandText = "RESET ROLE";
+            await command.ExecuteNonQueryAsync();
+        }
+    }
+
     private static Dictionary<(string Schema, string Table), HashSet<string>> GetMappedColumns(
         IModel model)
     {

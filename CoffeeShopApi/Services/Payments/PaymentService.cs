@@ -6,6 +6,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CoffeeShopApi.Services.Payments;
 
+/// <summary>
+/// Coordinates provider-neutral checkout and webhook processing. Prices and identity
+/// always come from the already-persisted order snapshot; browser-supplied totals are
+/// never trusted. Provider callbacks are replay-safe and converge on a terminal local
+/// payment state under optimistic concurrency.
+/// </summary>
 public sealed class PaymentService
 {
     private readonly ApplicationDbContext _context;
@@ -36,6 +42,10 @@ public sealed class PaymentService
     public bool IsConfigured(string? providerName = null) =>
         TryGetGateway(providerName, out var gateway) && gateway.IsConfigured();
 
+    /// <summary>
+    /// Returns the existing provider checkout for a repeated idempotency key, or the
+    /// newest pending checkout for the same order, before creating a new provider session.
+    /// </summary>
     public async Task<PaymentCheckoutResult> CreateCheckoutAsync(
         CheckoutSessionRequest request,
         string idempotencyKey,
@@ -146,6 +156,11 @@ public sealed class PaymentService
             gateway.ProviderName);
     }
 
+    /// <summary>
+    /// Parses and verifies a provider webhook through its gateway adapter, locates the
+    /// local payment by strongest available identifier, and applies an idempotent state
+    /// transition. A callback that races local checkout persistence asks the provider to retry.
+    /// </summary>
     public async Task HandleWebhookAsync(
         string? providerName,
         string body,
@@ -199,6 +214,10 @@ public sealed class PaymentService
         }
     }
 
+    /// <summary>
+    /// Rebuilds checkout lines and return URLs from the authoritative stored order.
+    /// Customer identity is checked only to prevent attaching checkout to another order.
+    /// </summary>
     private async Task<PreparedCheckout> PrepareCheckoutAsync(
         CheckoutSessionRequest request,
         CancellationToken cancellationToken)
@@ -273,6 +292,10 @@ public sealed class PaymentService
             cancellationToken);
     }
 
+    /// <summary>
+    /// Treats a concurrent writer reaching the same or paid state as a successful replay;
+    /// a genuinely different winner remains retryable rather than being overwritten.
+    /// </summary>
     private async Task SaveWebhookChangesAsync(
         Payment payment,
         string completedStatus,

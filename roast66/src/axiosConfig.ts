@@ -2,6 +2,11 @@ import axios, { type InternalAxiosRequestConfig } from "axios";
 import { API_BASE_URL, USE_STATIC_MENU } from "./config";
 import { clearAdminSession, getAdminToken } from "./authSession";
 
+/**
+ * Shared API transport. It redirects local menu reads to the bundled snapshot
+ * only in static-menu mode, attaches staff credentials everywhere except the
+ * explicitly public POST routes, and centralizes expired-session handling.
+ */
 const instance = axios.create({
   baseURL: API_BASE_URL,
 });
@@ -23,6 +28,7 @@ instance.interceptors.request.use(
       config.url = `${import.meta.env.BASE_URL}data/menu.json`;
     }
 
+    // Never send a staff JWT to customer submission or provider checkout routes.
     if (!isPublicPost(config)) {
       const token = getAdminToken();
       if (token) {
@@ -47,6 +53,8 @@ instance.interceptors.response.use(
         ? (error.response as { status: number }).status
         : undefined;
     if (status === 401 && typeof window !== "undefined") {
+      // A rejected staff request invalidates the shared browser session. Keep the
+      // cash workflow on /cash; its gate renders the appropriate sign-in view.
       clearAdminSession();
       const pathname = window.location.pathname || "/";
       const loginPath = pathname.startsWith("/cash") ? "/cash" : "/admin";

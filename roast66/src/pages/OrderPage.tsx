@@ -37,6 +37,12 @@ type CartLine = MenuItemDto & {
 };
 type DrinkCategoryFilter = "dailySpecials" | "coffee" | "drinks" | "all";
 
+/**
+ * Customer order builder. Menu rows are copied into client-side cart lines, but
+ * the API revalidates availability and prices before saving authoritative order
+ * snapshots. `cartLineId` is intentionally separate from a menu ID so the same
+ * drink can appear more than once with different notes or add-ons.
+ */
 function OrderPage() {
   const { locale, t } = useI18n();
   const navigate = useNavigate();
@@ -58,6 +64,8 @@ function OrderPage() {
   const [isMobileOrderPanelOpen, setIsMobileOrderPanelOpen] = useState(false);
   const [activeCartLineId, setActiveCartLineId] = useState<number | null>(null);
 
+  // Refs serialize work immediately; React state alone updates too late to stop
+  // two clicks in the same render frame from starting duplicate requests.
   const wakeInFlightRef = useRef(false);
   const submissionInFlightRef = useRef(false);
   const nextCartLineIdRef = useRef(1);
@@ -143,6 +151,7 @@ function OrderPage() {
 
   const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+  /** Retries briefly while a free-tier API wakes, without overlapping wake loops. */
   const ensureMenuItemsLoaded = async () => {
     if (wakeInFlightRef.current) return;
     wakeInFlightRef.current = true;
@@ -204,6 +213,8 @@ function OrderPage() {
     }
   };
 
+  // Home/menu deep links carry a menu ID in router state. Consume it once per
+  // history entry, then replace the state so refresh/back cannot add it again.
   useEffect(() => {
     const state = location.state as { menuItemId?: number } | null | undefined;
     const menuItemId = state?.menuItemId;
@@ -375,6 +386,10 @@ function OrderPage() {
 
   const hasValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
 
+  /**
+   * Keeps the idempotency key after ambiguous network failures, but clears it
+   * after any definitive server result so the next intentional order is new.
+   */
   const handleOrderSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (submissionInFlightRef.current) {
