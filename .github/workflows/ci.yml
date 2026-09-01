@@ -35,7 +35,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -54,7 +54,7 @@ jobs:
       contents: read
       actions: write # setup-node npm cache restore/save
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -80,12 +80,12 @@ jobs:
       contents: read
     steps:
       - name: Check out candidate revision
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: candidate
 
       - name: Check out deployment baseline
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: ${{ github.event.pull_request.base.sha || github.event.before }}
           path: base
