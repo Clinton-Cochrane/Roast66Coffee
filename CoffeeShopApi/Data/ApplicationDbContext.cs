@@ -2,6 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Models.Payments;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace CoffeeShopApi.Data
 {
@@ -10,7 +12,7 @@ namespace CoffeeShopApi.Data
     /// relationships use SET NULL so immutable snapshots survive menu replacement;
     /// tracking and idempotency uniqueness are enforced by PostgreSQL, not only code.
     /// </summary>
-    public class ApplicationDbContext : DbContext
+    public class ApplicationDbContext : IdentityDbContext<StaffUser>
     {
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
@@ -24,10 +26,26 @@ namespace CoffeeShopApi.Data
         public DbSet<NotificationMessage> NotificationMessages { get; set; } = null!;
         public DbSet<StaffPushSubscription> StaffPushSubscriptions { get; set; } = null!;
         public DbSet<Payment> Payments { get; set; } = null!;
+        public DbSet<AuditEvent> AuditEvents { get; set; } = null!;
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<StaffUser>().ToTable("staffusers");
+            modelBuilder.Entity<IdentityRole>().ToTable("staffroles");
+            modelBuilder.Entity<IdentityUserRole<string>>().ToTable("staffuserroles");
+            modelBuilder.Entity<IdentityUserClaim<string>>().ToTable("staffuserclaims");
+            modelBuilder.Entity<IdentityUserLogin<string>>().ToTable("staffuserlogins");
+            modelBuilder.Entity<IdentityRoleClaim<string>>().ToTable("staffroleclaims");
+            modelBuilder.Entity<IdentityUserToken<string>>().ToTable("staffusertokens");
+            modelBuilder.Entity<AuditEvent>()
+                .HasIndex(audit => new { audit.EntityType, audit.EntityId, audit.Action, audit.OccurredUtc })
+                .HasDatabaseName("ix_auditevents_entity_action_occurredutc");
+            modelBuilder.Entity<StaffPushSubscription>()
+                .HasOne(subscription => subscription.StaffUser)
+                .WithMany()
+                .HasForeignKey(subscription => subscription.StaffUserId)
+                .OnDelete(DeleteBehavior.SetNull);
             modelBuilder.Entity<Order>()
                 .Property(order => order.TrackingToken)
                 .HasMaxLength(43)
@@ -80,6 +98,29 @@ namespace CoffeeShopApi.Data
                 .WithMany()
                 .HasForeignKey(addOn => addOn.MenuItemId)
                 .OnDelete(DeleteBehavior.SetNull);
+        }
+
+        public override int SaveChanges(bool acceptAllChangesOnSuccess)
+        {
+            RejectAuditMutations();
+            return base.SaveChanges(acceptAllChangesOnSuccess);
+        }
+
+        public override Task<int> SaveChangesAsync(
+            bool acceptAllChangesOnSuccess,
+            CancellationToken cancellationToken = default)
+        {
+            RejectAuditMutations();
+            return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+        }
+
+        private void RejectAuditMutations()
+        {
+            if (ChangeTracker.Entries<AuditEvent>().Any(entry =>
+                    entry.State is EntityState.Modified or EntityState.Deleted))
+            {
+                throw new InvalidOperationException("Audit events are append-only.");
+            }
         }
     }
 }

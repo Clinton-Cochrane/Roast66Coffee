@@ -21,14 +21,16 @@ The application is a React single-page frontend backed by an ASP.NET Core API an
 
 - Use `/admin` for the order queue, menu management, bulk menu operations, and notification settings.
 - Use `/cash` for a streamlined shop-device workflow.
+- Sign in with an individual staff account; Owners can create, disable, and reset staff accounts.
 - Advance order status and trigger customer-ready notifications.
 - Import, export, or explicitly seed menu data.
 - Register staff devices for web-push notifications.
 
 ### Production safeguards
 
-- Production refuses to start without explicit admin credentials and a stable JWT signing key.
-- Admin sessions expire after eight hours, reject malformed or expired tokens, and synchronize logout across browser tabs.
+- Production refuses to start without a stable JWT signing key. Shared credentials are required only while the temporary legacy-login switch is enabled.
+- Named staff sessions expire after eight hours, reject malformed, expired, disabled-account, and stale-security-stamp tokens, and synchronize logout across browser tabs.
+- Staff mutations are attributed to a stable account and recorded in an append-only audit trail.
 - Public order APIs use 256-bit tracking tokens instead of sequential IDs and customer identity.
 - Public tracking responses omit phone numbers, email addresses, provider IDs, and internal database fields.
 - Public order creation, tracking, login, and password-support endpoints are rate limited.
@@ -44,7 +46,7 @@ Online payments and external SMS are feature-gated and disabled by default until
 | Frontend | React 18, TypeScript, React Router 7, Axios, Tailwind CSS, Vite |
 | Backend | .NET 8, ASP.NET Core Web API, Entity Framework Core |
 | Database | PostgreSQL |
-| Authentication | JWT bearer tokens for staff routes |
+| Authentication | ASP.NET Core Identity accounts and JWT bearer tokens for staff routes |
 | Testing | xUnit, ASP.NET integration tests, Vitest, Testing Library |
 | Deployment | Docker and Render Blueprint |
 | Automation | GitHub Actions, Dependabot, CodeQL |
@@ -78,7 +80,7 @@ The testing and release rationale is maintained in
 | Order tracking | `OrderController`, `PublicOrderDto`, `OrderStatusPage.tsx` | A 256-bit URL-safe token is the public credential. Numeric IDs and customer identity are not public lookup credentials. |
 | Staff order queue | `AdminController`, `OrderService`, `ViewOrders.tsx` | Status changes include the caller's expected state and use a concurrency token so retries replay safely without skipping workflow states. |
 | Menu management | `MenuService`, `ManageMenu.tsx` | PostgreSQL serializes homepage-special selection across rows; order history remains intact because order lines contain immutable menu snapshots. |
-| Authentication | `SecurityConfiguration`, `Startup`, `authSession.ts`, `axiosConfig.ts` | Production rejects unsafe secrets at startup. Browser expiry handling improves UX, while the API remains authoritative for JWT validation and roles. |
+| Authentication | `StaffAccountService`, `StaffTokenService`, `SecurityConfiguration`, `Startup` | Owners manage named accounts. Every request validates account activity and the Identity security stamp, so disabling or resetting one account revokes only that account's sessions. |
 | Customer notifications | `NotificationService`, `NotificationRetentionService` | A deduplicated audit row is saved before delivery. Logs and audit payloads retain safe classifications, not provider bodies or customer message content. |
 | Staff push | `StaffPushNotificationQueue`, `StaffPushNotificationWorker`, `StaffPushNotificationService` | Delivery is bounded and best-effort after order commit; one dead or failing browser subscription cannot fail the order or block other devices. |
 | Online payment | `PaymentService`, `IPaymentGateway`, provider adapters | Checkout totals come from the stored order snapshot. Verified webhook replays converge through optimistic concurrency. |
@@ -185,15 +187,18 @@ ASP.NET configuration uses double underscores in environment-variable names. For
 | Setting | Purpose |
 | --- | --- |
 | `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
-| `Admin__Username` | Staff login username |
-| `Admin__Password` | Staff login password |
+| `Authentication__LegacySharedLoginEnabled` | Temporary shared-login compatibility switch; defaults to `false` |
+| `Admin__Username` | Legacy shared username; required only while the compatibility switch is `true` |
+| `Admin__Password` | Legacy shared password; required only while the compatibility switch is `true` |
 | `Jwt__Key` | Stable signing secret of at least 32 characters |
 | `Jwt__Issuer` | JWT issuer; normally `Roast66Coffee` |
 | `Jwt__Audience` | JWT audience; normally `Roast66Coffee` |
 | `Jwt__TokenExpiryInHours` | Staff session duration; production default is `8` |
 | `AllowedOrigins` | Comma-separated frontend origins allowed by CORS |
 
-Development and testing have explicit local credential defaults. Production has none and will fail during startup if required authentication settings are missing or unsafe.
+Development creates the local Owner during `initialize-local` using the explicit
+development credentials. Production has no account defaults and fails during startup
+when its signing configuration—or enabled legacy fallback—is incomplete or unsafe.
 
 Generate a production JWT key with:
 
@@ -202,6 +207,22 @@ openssl rand -base64 48
 ```
 
 Keep this value stable during normal deployments. Rotating it immediately invalidates every active staff session.
+
+### Initialize the first Owner
+
+Apply migrations, then run the published backend once with one-time bootstrap values:
+
+```bash
+Bootstrap__Username=owner \
+Bootstrap__DisplayName="Shop Owner" \
+Bootstrap__Password='replace-with-a-strong-password' \
+dotnet CoffeeShopApi.dll initialize-owner
+```
+
+Remove the three `Bootstrap__*` values when the command succeeds. They are command
+inputs, not runtime settings. Additional staff and Owners are created from `/admin` →
+**Staff**. The complete rollout and recovery procedure is in
+[`docs/operations/staff-authentication.md`](docs/operations/staff-authentication.md).
 
 ### Frontend settings
 
@@ -377,7 +398,7 @@ Deployment flow:
 
 1. Connect the GitHub repository to Render and create a Blueprint instance.
 2. Populate every `sync: false` secret in the Render dashboard.
-3. Confirm `Admin__Username`, `Admin__Password`, and `Jwt__Key` before the first production deployment.
+3. Confirm `Jwt__Key`; for the first compatibility release, also confirm `Admin__Username`, `Admin__Password`, and `Authentication__LegacySharedLoginEnabled=true`.
 4. Confirm `AllowedOrigins`, `Payments__FrontendBaseUrl`, and `VITE_API_URL` use the actual Render URLs.
 5. Confirm the API startup logs show a successful migration before the application starts.
 6. Seed the menu explicitly if this is a new database.
@@ -388,8 +409,10 @@ Post-deploy verification:
 2. `GET /api/health` succeeds, confirming the API process is responsive.
 3. The menu loads from the public frontend.
 4. Staff can sign in at both `/admin` and `/cash`.
-5. A test order can be placed and retrieved using its private tracking link.
-6. An unauthenticated request to an admin endpoint returns `401`.
+5. An Owner can open the Staff tab, and a normal Admin receives `403` from `GET /api/admin/staff`.
+6. Disable a disposable test account and confirm its existing token receives `401` while another account remains signed in.
+7. A test order can be placed and retrieved using its private tracking link.
+8. An unauthenticated request to an admin endpoint returns `401`.
 
 ## Operations Runbook
 
@@ -402,13 +425,14 @@ visibility window, and search/filter semantics are defined in
 
 ### Lost or shared staff device
 
-1. Change `Admin__Password` and `Jwt__Key` in Render immediately.
-2. Redeploy the API.
-3. Confirm an old token receives `401` from an admin endpoint.
-4. Confirm the previous password can no longer sign in.
-5. Sign trusted staff devices in again and record the rotation time.
+1. An Owner disables the affected named account in `/admin` → **Staff**.
+2. Confirm that account's existing token receives `401` from an admin endpoint.
+3. Reset its password before re-enabling it, if the account will be reused.
+4. Confirm another staff account remains signed in and record the response time.
 
-JWT rotation invalidates all staff devices because the application does not currently maintain per-device revocation records.
+Disabling or resetting a named account refreshes its security stamp and revokes all of
+that account's sessions without disrupting other staff. Rotate `Jwt__Key` only when
+the signing key itself may be exposed; that emergency action still signs out everyone.
 
 ### Migration, rollback, and restore
 

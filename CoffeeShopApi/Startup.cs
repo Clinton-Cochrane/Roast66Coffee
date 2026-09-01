@@ -17,6 +17,10 @@ using CoffeeShopApi.Services.Sms;
 using CoffeeShopApi.Health;
 using CoffeeShopApi.Middleware;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Identity;
+using CoffeeShopApi.Models;
+using CoffeeShopApi.Security;
+using System.IdentityModel.Tokens.Jwt;
 
 namespace CoffeeShopApi
 {
@@ -51,6 +55,23 @@ namespace CoffeeShopApi
                 services.AddDbContext<ApplicationDbContext>(options =>
                     options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
             }
+
+            services.AddIdentityCore<StaffUser>(options =>
+                {
+                    options.Password.RequiredLength = 12;
+                    options.Password.RequireDigit = true;
+                    options.Password.RequireLowercase = true;
+                    options.Password.RequireUppercase = true;
+                    options.Password.RequireNonAlphanumeric = true;
+                    options.Lockout.AllowedForNewUsers = true;
+                    options.Lockout.MaxFailedAccessAttempts = 5;
+                    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+                    options.User.RequireUniqueEmail = false;
+                })
+                .AddRoles<IdentityRole>()
+                .AddEntityFrameworkStores<ApplicationDbContext>()
+                .AddSignInManager()
+                .AddDefaultTokenProviders();
 
             services.AddScoped<MenuService>();
             services.AddSingleton<IDefaultMenuProvider, DefaultMenuProvider>();
@@ -91,6 +112,9 @@ namespace CoffeeShopApi
             services.AddScoped<PaymentService>();
             services.AddScoped<IPaymentGateway, StripePaymentGateway>();
             services.AddScoped<SupportEmailService>();
+            services.AddScoped<StaffTokenService>();
+            services.AddScoped<AuditEventFactory>();
+            services.AddScoped<StaffAccountService>();
             services.AddSingleton<KeepAliveStateStore>();
             services.AddHostedService<ConnectionWarmupService>();
             services.AddHostedService<NotificationRetentionWorker>();
@@ -206,6 +230,7 @@ namespace CoffeeShopApi
             })
             .AddJwtBearer(options =>
             {
+                options.MapInboundClaims = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
@@ -217,8 +242,46 @@ namespace CoffeeShopApi
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
                         Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Jwt:Key is not configured."))),
                     // Map JWT role/name claims so [Authorize(Roles = "Admin")] and IsInRole work with handler defaults.
-                    RoleClaimType = ClaimTypes.Role,
-                    NameClaimType = ClaimTypes.Name
+                    RoleClaimType = StaffClaimTypes.Role,
+                    NameClaimType = JwtRegisteredClaimNames.Name
+                };
+                options.Events = new JwtBearerEvents
+                {
+                    OnTokenValidated = async context =>
+                    {
+                        var principal = context.Principal;
+                        if (principal == null)
+                        {
+                            context.Fail("Staff principal is missing.");
+                            return;
+                        }
+
+                        if (principal.HasClaim(StaffClaimTypes.LegacyShared, "true"))
+                        {
+                            if (!Configuration.GetValue("Authentication:LegacySharedLoginEnabled", false))
+                            {
+                                context.Fail("Legacy staff authentication is disabled.");
+                            }
+                            return;
+                        }
+
+                        var userId = principal.FindFirstValue(JwtRegisteredClaimNames.Sub);
+                        var tokenStamp = principal.FindFirstValue(StaffClaimTypes.SecurityStamp);
+                        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(tokenStamp))
+                        {
+                            context.Fail("Staff identity claims are incomplete.");
+                            return;
+                        }
+
+                        var userManager = context.HttpContext.RequestServices
+                            .GetRequiredService<UserManager<StaffUser>>();
+                        var user = await userManager.FindByIdAsync(userId);
+                        if (user == null || !user.IsActive ||
+                            !string.Equals(user.SecurityStamp, tokenStamp, StringComparison.Ordinal))
+                        {
+                            context.Fail("Staff session has been revoked.");
+                        }
+                    }
                 };
             });
         }

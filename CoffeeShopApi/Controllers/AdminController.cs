@@ -6,14 +6,12 @@ using CoffeeShopApi.Models;
 using CoffeeShopApi.Services;
 using Microsoft.EntityFrameworkCore;
 using CoffeeShopApi.Data;
-using System.Security.Claims;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Linq;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Identity;
+using CoffeeShopApi.Security;
 
 namespace CoffeeShopApi.Controllers
 {
@@ -36,6 +34,9 @@ namespace CoffeeShopApi.Controllers
         private readonly IWebHostEnvironment _environment;
         private readonly ILogger<AdminController> _logger;
         private readonly IDefaultMenuProvider _defaultMenuProvider;
+        private readonly UserManager<StaffUser> _userManager;
+        private readonly SignInManager<StaffUser> _signInManager;
+        private readonly StaffTokenService _staffTokenService;
 
         public const string DefaultMenuResetConfirmation = "RESET DEFAULT MENU";
 
@@ -50,7 +51,10 @@ namespace CoffeeShopApi.Controllers
             NotificationRetentionService notificationRetentionService,
             IWebHostEnvironment environment,
             ILogger<AdminController> logger,
-            IDefaultMenuProvider defaultMenuProvider)
+            IDefaultMenuProvider defaultMenuProvider,
+            UserManager<StaffUser> userManager,
+            SignInManager<StaffUser> signInManager,
+            StaffTokenService staffTokenService)
         {
             _orderService = orderService;
             _menuService = menuService;
@@ -62,20 +66,35 @@ namespace CoffeeShopApi.Controllers
             _environment = environment;
             _logger = logger;
             _defaultMenuProvider = defaultMenuProvider;
+            _userManager = userManager;
+            _signInManager = signInManager;
+            _staffTokenService = staffTokenService;
         }
 
         [AllowAnonymous]
         [HttpPost("login")]
         [EnableRateLimiting("Login")]
-        public IActionResult Login([FromBody] LoginModel login)
+        public async Task<IActionResult> Login([FromBody] LoginModel login)
         {
-            var adminUser = _configuration["Admin:Username"];
-            var adminPassword = _configuration["Admin:Password"];
-            if (string.Equals(login.Username, adminUser, StringComparison.Ordinal) &&
-                string.Equals(login.Password, adminPassword, StringComparison.Ordinal))
+            var user = await _userManager.FindByNameAsync(login.Username.Trim());
+            if (user != null && user.IsActive)
             {
-                var token = GenerateToken();
-                return Ok(new { token });
+                var signIn = await _signInManager.CheckPasswordSignInAsync(
+                    user,
+                    login.Password,
+                    lockoutOnFailure: true);
+                if (signIn.Succeeded)
+                {
+                    var roles = await _userManager.GetRolesAsync(user);
+                    return Ok(new { token = _staffTokenService.Create(user, roles) });
+                }
+            }
+
+            if (_configuration.GetValue("Authentication:LegacySharedLoginEnabled", false) &&
+                string.Equals(login.Username, _configuration["Admin:Username"], StringComparison.Ordinal) &&
+                string.Equals(login.Password, _configuration["Admin:Password"], StringComparison.Ordinal))
+            {
+                return Ok(new { token = _staffTokenService.CreateLegacy() });
             }
 
             return Unauthorized();
@@ -109,6 +128,10 @@ namespace CoffeeShopApi.Controllers
         [HttpGet("credential-settings")]
         public ActionResult<CredentialSettingsInfo> GetCredentialSettingsInfo()
         {
+            if (!_configuration.GetValue("Authentication:LegacySharedLoginEnabled", false))
+            {
+                return NotFound();
+            }
             return Ok(new CredentialSettingsInfo
             {
                 Username = _configuration["Admin:Username"] ?? string.Empty,
@@ -116,36 +139,6 @@ namespace CoffeeShopApi.Controllers
                 PasswordEnvKey = "Admin__Password",
                 UpdateInstructions = "Update these environment variables in your deployment provider and redeploy the API service."
             });
-        }
-
-
-        private string GenerateToken()
-        {
-            var jwtKey = _configuration["Jwt:Key"];
-            if (string.IsNullOrEmpty(jwtKey) || jwtKey.Length < 32)
-            {
-                throw new InvalidOperationException("JWT key is invalid or too short. It must be at least 32 characters long.");
-            }
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
-            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-            var claims = new[]
-            {
-                new Claim(ClaimTypes.Name, "admin"),
-                new Claim(ClaimTypes.Role, "Admin")
-            };
-            var tokenExpiry = int.TryParse(_configuration["Jwt:TokenExpiryInHours"], out var parsedHours) && parsedHours > 0
-                ? parsedHours
-                : 1;
-
-            var token = new JwtSecurityToken(
-                JwtTokenSettings.GetIssuer(_configuration),
-                JwtTokenSettings.GetAudience(_configuration),
-                claims,
-                expires: DateTime.Now.AddHours(tokenExpiry),
-                signingCredentials: credentials);
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
         }
 
 
@@ -174,7 +167,7 @@ namespace CoffeeShopApi.Controllers
         [HttpPost("menu")]
         public async Task<ActionResult<MenuItem>> PostMenuItem(MenuItem menuItem)
         {
-            var createdItem = await _menuService.CreateMenuItemAsync(menuItem);
+            var createdItem = await _menuService.CreateMenuItemAsync(menuItem, StaffActor.FromPrincipal(User));
             return CreatedAtAction(nameof(GetMenuItems), new { id = createdItem.Id }, createdItem);
         }
 
@@ -188,7 +181,7 @@ namespace CoffeeShopApi.Controllers
                 return BadRequest();
             }
 
-            var updated = await _menuService.UpdateMenuItemAsync(menuItem);
+            var updated = await _menuService.UpdateMenuItemAsync(menuItem, StaffActor.FromPrincipal(User));
             if (!updated) return NotFound();
 
             return NoContent();
@@ -207,7 +200,8 @@ namespace CoffeeShopApi.Controllers
             var result = await _menuService.SetHomepageSpecialAsync(
                 id,
                 request.IsSelected,
-                HttpContext.RequestAborted);
+                HttpContext.RequestAborted,
+                StaffActor.FromPrincipal(User));
             return result switch
             {
                 HomepageSpecialSelectionResult.Updated => NoContent(),
@@ -227,13 +221,13 @@ namespace CoffeeShopApi.Controllers
         [Authorize(Roles = "Admin")]
         [HttpPut("menu/{id}/menu-special")]
         public async Task<IActionResult> SetMenuSpecial(int id, [FromBody] MenuSpecialSelectionRequest request) =>
-            await _menuService.SetMenuSpecialAsync(id, request.IsSelected) ? NoContent() : NotFound();
+            await _menuService.SetMenuSpecialAsync(id, request.IsSelected, StaffActor.FromPrincipal(User)) ? NoContent() : NotFound();
 
         [Authorize(Roles = "Admin")]
         [HttpPut("menu/{id}/promotion")]
         public async Task<IActionResult> SetPromotion(int id, [FromBody] PromotionUpdateRequest request)
         {
-            var result = await _menuService.SetPromotionAsync(id, request.Promotion);
+            var result = await _menuService.SetPromotionAsync(id, request.Promotion, StaffActor.FromPrincipal(User));
             return result switch
             {
                 MenuItemUpdateResult.Updated => NoContent(),
@@ -248,18 +242,18 @@ namespace CoffeeShopApi.Controllers
         [HttpDelete("menu/{id}")]
         public async Task<IActionResult> DeleteMenuItem(int id)
         {
-            return await _menuService.DeleteMenuItemAsync(id) ? NoContent() : NotFound();
+            return await _menuService.DeleteMenuItemAsync(id, StaffActor.FromPrincipal(User)) ? NoContent() : NotFound();
         }
 
         [Authorize(Roles = "Admin")]
         [HttpPut("menu/{id}/archive")]
         public async Task<IActionResult> ArchiveMenuItem(int id) =>
-            await _menuService.ArchiveMenuItemAsync(id) ? NoContent() : NotFound();
+            await _menuService.ArchiveMenuItemAsync(id, StaffActor.FromPrincipal(User)) ? NoContent() : NotFound();
 
         [Authorize(Roles = "Admin")]
         [HttpPut("menu/{id}/restore")]
         public async Task<IActionResult> RestoreMenuItem(int id) =>
-            await _menuService.RestoreMenuItemAsync(id) ? NoContent() : NotFound();
+            await _menuService.RestoreMenuItemAsync(id, StaffActor.FromPrincipal(User)) ? NoContent() : NotFound();
 
         [Authorize(Roles = "Admin")]
         // Get the bounded operational order history.
@@ -311,7 +305,10 @@ namespace CoffeeShopApi.Controllers
                 TrailerEmail = model.TrailerEmail,
                 SmsFromAddress = model.SmsFromAddress
             };
-            await _notificationSettingsService.SaveNotificationSettingsAsync(settings, cancellationToken);
+            await _notificationSettingsService.SaveNotificationSettingsAsync(
+                settings,
+                cancellationToken,
+                StaffActor.FromPrincipal(User));
             return Ok();
         }
 
@@ -342,6 +339,7 @@ namespace CoffeeShopApi.Controllers
             var result = await _orderService.AdvanceStatusAsync(
                 id,
                 request.ExpectedStatus!.Value,
+                StaffActor.FromPrincipal(User),
                 cancellationToken);
             if (result.Outcome == OrderStatusAdvanceOutcome.NotFound)
             {
@@ -413,7 +411,8 @@ namespace CoffeeShopApi.Controllers
         {
             await _notificationRetentionService.PurgeNotificationsOlderThanAsync(
                 DateTime.UtcNow.AddDays(-NotificationRetentionService.RetentionDays),
-                cancellationToken);
+                cancellationToken,
+                StaffActor.FromPrincipal(User));
 
             return NoContent();
         }
@@ -440,7 +439,10 @@ namespace CoffeeShopApi.Controllers
             {
                 return BadRequest("Menu must contain at least one item.");
             }
-            await _menuService.BulkReplaceAsync(menuItems, HttpContext.RequestAborted);
+            await _menuService.BulkReplaceAsync(
+                menuItems,
+                HttpContext.RequestAborted,
+                StaffActor.FromPrincipal(User));
             return Ok(new { message = "Menu imported successfully.", count = menuItems.Count });
         }
 
@@ -487,7 +489,9 @@ namespace CoffeeShopApi.Controllers
             {
                 var summary = await _menuService.BulkReplaceAsync(
                     _defaultMenuProvider.GetMenuItems(),
-                    cancellationToken);
+                    cancellationToken,
+                    StaffActor.FromPrincipal(User),
+                    "menu.reset_to_defaults");
                 return Ok(new
                 {
                     message = "Default menu reset completed.",

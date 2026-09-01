@@ -3,6 +3,7 @@ using CoffeeShopApi.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using WebPush;
+using CoffeeShopApi.Security;
 
 namespace CoffeeShopApi.Services;
 
@@ -18,19 +19,22 @@ public class StaffPushNotificationService
     private readonly IStaffPushSender _sender;
     private readonly StaffPushOptions _options;
     private readonly ILogger<StaffPushNotificationService> _logger;
+    private readonly AuditEventFactory? _auditEvents;
 
     public StaffPushNotificationService(
         ApplicationDbContext context,
         IConfiguration configuration,
         IStaffPushSender sender,
         IOptions<StaffPushOptions> options,
-        ILogger<StaffPushNotificationService> logger)
+        ILogger<StaffPushNotificationService> logger,
+        AuditEventFactory? auditEvents = null)
     {
         _context = context;
         _configuration = configuration;
         _sender = sender;
         _options = options.Value;
         _logger = logger;
+        _auditEvents = auditEvents;
     }
 
     public bool IsConfigured() =>
@@ -44,48 +48,78 @@ public class StaffPushNotificationService
         string endpoint,
         string p256dh,
         string auth,
+        string? staffUserId,
         string? userIdentifier,
         string? userAgent,
+        StaffActor? actor = null,
         CancellationToken cancellationToken = default)
     {
         var existing = await _context.StaffPushSubscriptions
             .FirstOrDefaultAsync(x => x.Endpoint == endpoint, cancellationToken);
 
+        StaffPushSubscription subscription;
         if (existing == null)
         {
-            _context.StaffPushSubscriptions.Add(new StaffPushSubscription
+            subscription = new StaffPushSubscription
             {
                 Endpoint = endpoint,
                 P256Dh = p256dh,
                 Auth = auth,
+                StaffUserId = staffUserId,
                 UserIdentifier = userIdentifier,
                 UserAgent = userAgent,
                 CreatedUtc = DateTime.UtcNow,
                 UpdatedUtc = DateTime.UtcNow
-            });
+            };
+            _context.StaffPushSubscriptions.Add(subscription);
         }
         else
         {
+            subscription = existing;
             existing.P256Dh = p256dh;
             existing.Auth = auth;
+            existing.StaffUserId = staffUserId;
             existing.UserIdentifier = userIdentifier;
             existing.UserAgent = userAgent;
             existing.UpdatedUtc = DateTime.UtcNow;
         }
 
+        if (actor != null && _auditEvents != null)
+        {
+            _auditEvents.Add(
+                actor,
+                "staff.push_subscription.saved",
+                "staff_push_subscription",
+                subscription.Id.ToString());
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
     }
 
-    public async Task RemoveSubscriptionAsync(string endpoint, CancellationToken cancellationToken = default)
+    public async Task RemoveSubscriptionAsync(
+        string endpoint,
+        string? staffUserId,
+        StaffActor? actor = null,
+        CancellationToken cancellationToken = default)
     {
         var existing = await _context.StaffPushSubscriptions
-            .FirstOrDefaultAsync(x => x.Endpoint == endpoint, cancellationToken);
+            .FirstOrDefaultAsync(
+                x => x.Endpoint == endpoint && x.StaffUserId == staffUserId,
+                cancellationToken);
         if (existing == null)
         {
             return;
         }
 
         _context.StaffPushSubscriptions.Remove(existing);
+        if (actor != null && _auditEvents != null)
+        {
+            _auditEvents.Add(
+                actor,
+                "staff.push_subscription.removed",
+                "staff_push_subscription",
+                existing.Id.ToString());
+        }
         await _context.SaveChangesAsync(cancellationToken);
     }
 
@@ -98,6 +132,10 @@ public class StaffPushNotificationService
 
         var subscriptions = await _context.StaffPushSubscriptions
             .AsNoTracking()
+            .Where(subscription =>
+                subscription.StaffUserId != null &&
+                subscription.StaffUser != null &&
+                subscription.StaffUser.IsActive)
             .ToListAsync(cancellationToken);
         if (subscriptions.Count == 0)
         {

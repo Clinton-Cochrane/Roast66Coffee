@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.AspNetCore.Identity;
+using CoffeeShopApi.Security;
 
 namespace CoffeeShopApi.Tests.Integration;
 
@@ -45,6 +47,25 @@ public class WebAppFactory : WebApplicationFactory<Program>
             });
             context.SaveChanges();
         }
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        foreach (var roleName in new[] { StaffRoles.Admin, StaffRoles.Owner })
+        {
+            if (!roleManager.RoleExistsAsync(roleName).GetAwaiter().GetResult())
+            {
+                roleManager.CreateAsync(new IdentityRole(roleName)).GetAwaiter().GetResult();
+            }
+        }
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<StaffUser>>();
+        EnsureStaffUser(
+            userManager,
+            "integration-owner",
+            "Integration Owner",
+            [StaffRoles.Admin, StaffRoles.Owner]);
+        EnsureStaffUser(
+            userManager,
+            "integration-admin",
+            "Integration Admin",
+            [StaffRoles.Admin]);
         return host;
     }
 
@@ -58,9 +79,13 @@ public class WebAppFactory : WebApplicationFactory<Program>
             var settings = new Dictionary<string, string?>
             {
                 ["AllowedOrigins"] = "http://localhost",
+                ["Admin:Username"] = "admin",
+                ["Admin:Password"] = "password",
                 ["Jwt:Key"] = "IntegrationTestSigningKey_NotForProduction_Min32Chars___",
                 ["Jwt:Issuer"] = "Roast66Coffee",
                 ["Jwt:Audience"] = "Roast66Coffee",
+                ["Jwt:TokenExpiryInHours"] = "8",
+                ["Authentication:LegacySharedLoginEnabled"] = "true",
                 ["Testing:DatabaseName"] = _databaseName
             };
             if (_loginPermitLimit.HasValue)
@@ -75,5 +100,31 @@ public class WebAppFactory : WebApplicationFactory<Program>
             }
             config.AddInMemoryCollection(settings);
         });
+    }
+
+    private static void EnsureStaffUser(
+        UserManager<StaffUser> userManager,
+        string username,
+        string displayName,
+        string[] roles)
+    {
+        var existing = userManager.FindByNameAsync(username).GetAwaiter().GetResult();
+        if (existing != null) return;
+        var user = new StaffUser
+        {
+            UserName = username,
+            DisplayName = displayName,
+            IsActive = true
+        };
+        var created = userManager.CreateAsync(user, "IntegrationPassword1!").GetAwaiter().GetResult();
+        if (!created.Succeeded)
+        {
+            throw new InvalidOperationException(string.Join(" ", created.Errors.Select(error => error.Description)));
+        }
+        var assigned = userManager.AddToRolesAsync(user, roles).GetAwaiter().GetResult();
+        if (!assigned.Succeeded)
+        {
+            throw new InvalidOperationException(string.Join(" ", assigned.Errors.Select(error => error.Description)));
+        }
     }
 }

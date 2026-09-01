@@ -10,7 +10,7 @@ public class SecurityConfigurationTests
     [InlineData(null, "strong-password", "01234567890123456789012345678901", "Admin:Username")]
     [InlineData("owner", null, "01234567890123456789012345678901", "Admin:Password")]
     [InlineData("owner", "strong-password", null, "Jwt:Key")]
-    [InlineData("owner", "password", "01234567890123456789012345678901", "development default")]
+    [InlineData("owner", "Development1!", "01234567890123456789012345678901", "development default")]
     [InlineData("owner", "strong-password", "too-short", "at least 32")]
     public void ProductionRejectsMissingOrUnsafeAuthenticationSettings(
         string? username,
@@ -36,6 +36,19 @@ public class SecurityConfigurationTests
     }
 
     [Fact]
+    public void ProductionWithoutLegacyFallback_DoesNotRequireSharedCredentials()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(
+            new Dictionary<string, string?>
+            {
+                ["Jwt:Key"] = "01234567890123456789012345678901",
+                ["Authentication:LegacySharedLoginEnabled"] = "false"
+            }).Build();
+
+        SecurityConfiguration.Validate(configuration, Environment("Production"));
+    }
+
+    [Fact]
     public void DevelopmentDoesNotRequireProductionSecrets()
     {
         SecurityConfiguration.Validate(new ConfigurationBuilder().Build(), Environment("Development"));
@@ -46,7 +59,8 @@ public class SecurityConfigurationTests
         {
             ["Admin:Username"] = username,
             ["Admin:Password"] = password,
-            ["Jwt:Key"] = jwtKey
+            ["Jwt:Key"] = jwtKey,
+            ["Authentication:LegacySharedLoginEnabled"] = "true"
         }).Build();
 
     private static IHostEnvironment Environment(string name) => new TestEnvironment(name);

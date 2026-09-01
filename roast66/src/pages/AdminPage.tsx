@@ -5,30 +5,39 @@ import MenuBulkOperations from "../components/Admin/MenuBulkOperations";
 import ViewOrders from "../components/Admin/ViewOrders";
 import Header from "../components/layout/Header";
 import NotificationSettings from "../components/Admin/NotificationSettings";
+import StaffManagement from "../components/Admin/StaffManagement";
+import AccountSecurity from "../components/Admin/AccountSecurity";
 import StaffDevicePrompt from "../components/Admin/StaffDevicePrompt";
 import Loading from "../components/common/Loading";
 import Button from "../components/common/Button";
 import useKeepAliveHeartbeat from "../hooks/useKeepAliveHeartbeat";
 import { useI18n } from "../i18n/LanguageContext";
 import { clearAdminSession, getAdminToken } from "../authSession";
+import axiosInstance from "../axiosConfig";
+import type { StaffAccountDto } from "../types/api";
 
 const ADMIN_TAB_IDS = {
   ORDERS: "orders",
   MENU: "menu",
   SETTINGS: "settings",
+  ACCOUNT: "account",
+  STAFF: "staff",
 } as const;
 
 function AdminPage() {
   const { t } = useI18n();
-  const adminTabs = useMemo(
-    () =>
-      [
+  const [currentStaff, setCurrentStaff] = useState<StaffAccountDto | null>(null);
+  const isOwner = currentStaff?.roles.includes("Owner") ?? false;
+  const adminTabs = useMemo(() => {
+      const tabs: Array<{ id: string; label: string }> = [
         { id: ADMIN_TAB_IDS.ORDERS, label: t("admin.tabOrders") },
         { id: ADMIN_TAB_IDS.MENU, label: t("admin.tabMenu") },
         { id: ADMIN_TAB_IDS.SETTINGS, label: t("admin.tabSettings") },
-      ] as const,
-    [t]
-  );
+        { id: ADMIN_TAB_IDS.ACCOUNT, label: t("admin.tabAccount") },
+      ];
+      if (isOwner) tabs.push({ id: ADMIN_TAB_IDS.STAFF, label: t("admin.tabStaff") });
+      return tabs;
+    }, [isOwner, t]);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [menuRefreshKey, setMenuRefreshKey] = useState(0);
@@ -41,6 +50,10 @@ function AdminPage() {
       navigate("/admin-login");
     } else {
       setIsLoading(false);
+      axiosInstance
+        .get<StaffAccountDto>("/admin/me")
+        .then((response) => setCurrentStaff(response.data))
+        .catch(() => setCurrentStaff(null));
     }
   }, [navigate]);
 
@@ -130,6 +143,26 @@ function AdminPage() {
                 aria-labelledby={`admin-tab-${ADMIN_TAB_IDS.SETTINGS}`}
               >
                 <NotificationSettings />
+              </div>
+            ) : null}
+
+            {activeTab === ADMIN_TAB_IDS.STAFF && isOwner && currentStaff ? (
+              <div
+                id={`admin-panel-${ADMIN_TAB_IDS.STAFF}`}
+                role="tabpanel"
+                aria-labelledby={`admin-tab-${ADMIN_TAB_IDS.STAFF}`}
+              >
+                <StaffManagement currentUserId={currentStaff.id} />
+              </div>
+            ) : null}
+
+            {activeTab === ADMIN_TAB_IDS.ACCOUNT && currentStaff ? (
+              <div
+                id={`admin-panel-${ADMIN_TAB_IDS.ACCOUNT}`}
+                role="tabpanel"
+                aria-labelledby={`admin-tab-${ADMIN_TAB_IDS.ACCOUNT}`}
+              >
+                <AccountSecurity account={currentStaff} />
               </div>
             ) : null}
           </div>

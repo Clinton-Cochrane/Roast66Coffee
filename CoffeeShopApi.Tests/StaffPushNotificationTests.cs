@@ -15,6 +15,7 @@ public class StaffPushNotificationTests
     public async Task SendNewOrderAlertAsync_TimesOutAndStopsAtConfiguredAttemptLimit()
     {
         await using var context = CreateContext();
+        AddActiveStaff(context);
         context.StaffPushSubscriptions.Add(CreateSubscription());
         await context.SaveChangesAsync();
 
@@ -39,6 +40,7 @@ public class StaffPushNotificationTests
     public async Task SendNewOrderAlertAsync_ContinuesAfterPartialFailureAndRecoversOnRetry()
     {
         await using var context = CreateContext();
+        AddActiveStaff(context);
         var failingSubscription = CreateSubscription();
         var recoveringSubscription = CreateSubscription();
         context.StaffPushSubscriptions.AddRange(failingSubscription, recoveringSubscription);
@@ -77,6 +79,7 @@ public class StaffPushNotificationTests
     public async Task SendNewOrderAlertAsync_LogsRepeatedFailuresWithoutSecretsOrPii()
     {
         await using var context = CreateContext();
+        AddActiveStaff(context);
         var subscription = CreateSubscription();
         context.StaffPushSubscriptions.Add(subscription);
         await context.SaveChangesAsync();
@@ -172,8 +175,19 @@ public class StaffPushNotificationTests
         {
             Endpoint = $"https://push.example.com/{Guid.NewGuid():N}",
             P256Dh = "test-p256dh",
-            Auth = "test-auth"
+            Auth = "test-auth",
+            StaffUserId = "active-staff"
         };
+
+    private static void AddActiveStaff(ApplicationDbContext context) =>
+        context.Users.Add(new StaffUser
+        {
+            Id = "active-staff",
+            UserName = "active-staff",
+            NormalizedUserName = "ACTIVE-STAFF",
+            DisplayName = "Active Staff",
+            IsActive = true
+        });
 
     private sealed class RecordingSender(
         Func<StaffPushSubscription, string, CancellationToken, Task> send) : IStaffPushSender

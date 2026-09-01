@@ -9,6 +9,10 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
+using Microsoft.AspNetCore.Identity;
+using CoffeeShopApi.Models;
+using CoffeeShopApi.Security;
+using CoffeeShopApi.Services;
 
 namespace CoffeeShopApi
 {
@@ -36,6 +40,17 @@ namespace CoffeeShopApi
                 if (args.Length == 1 && string.Equals(args[0], "initialize-local", StringComparison.OrdinalIgnoreCase))
                 {
                     ApplyMigrations(host, seedMenuIfEmpty: true);
+                    InitializeOwner(host, allowDevelopmentDefaults: true, recover: false);
+                    return;
+                }
+                if (args.Length == 1 && string.Equals(args[0], "initialize-owner", StringComparison.OrdinalIgnoreCase))
+                {
+                    InitializeOwner(host, allowDevelopmentDefaults: false, recover: false);
+                    return;
+                }
+                if (args.Length == 1 && string.Equals(args[0], "recover-owner", StringComparison.OrdinalIgnoreCase))
+                {
+                    InitializeOwner(host, allowDevelopmentDefaults: false, recover: true);
                     return;
                 }
 
@@ -50,6 +65,96 @@ namespace CoffeeShopApi
             {
                 Log.CloseAndFlush();
             }
+        }
+
+        private static void InitializeOwner(IHost host, bool allowDevelopmentDefaults, bool recover)
+        {
+            using var scope = host.Services.CreateScope();
+            var services = scope.ServiceProvider;
+            var configuration = services.GetRequiredService<IConfiguration>();
+            var environment = services.GetRequiredService<IWebHostEnvironment>();
+            var username = configuration["Bootstrap:Username"];
+            var displayName = configuration["Bootstrap:DisplayName"];
+            var password = configuration["Bootstrap:Password"];
+            if (allowDevelopmentDefaults && environment.IsDevelopment())
+            {
+                username ??= configuration["Admin:Username"];
+                displayName ??= "Local Owner";
+                password ??= configuration["Admin:Password"];
+            }
+            if (string.IsNullOrWhiteSpace(username) ||
+                string.IsNullOrWhiteSpace(displayName) ||
+                string.IsNullOrWhiteSpace(password))
+            {
+                throw new InvalidOperationException(
+                    "Set Bootstrap__Username, Bootstrap__DisplayName, and Bootstrap__Password.");
+            }
+
+            var context = services.GetRequiredService<ApplicationDbContext>();
+            using var transaction = context.Database.IsRelational()
+                ? context.Database.BeginTransaction()
+                : null;
+            var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+            foreach (var roleName in new[] { StaffRoles.Admin, StaffRoles.Owner })
+            {
+                if (!roleManager.RoleExistsAsync(roleName).GetAwaiter().GetResult())
+                {
+                    EnsureIdentitySuccess(
+                        roleManager.CreateAsync(new IdentityRole(roleName)).GetAwaiter().GetResult());
+                }
+            }
+
+            var userManager = services.GetRequiredService<UserManager<StaffUser>>();
+            var user = userManager.FindByNameAsync(username.Trim()).GetAwaiter().GetResult();
+            if (user == null)
+            {
+                if (recover)
+                {
+                    throw new InvalidOperationException("The requested Owner account does not exist.");
+                }
+                user = new StaffUser
+                {
+                    UserName = username.Trim(),
+                    DisplayName = displayName.Trim(),
+                    IsActive = true
+                };
+                EnsureIdentitySuccess(userManager.CreateAsync(user, password).GetAwaiter().GetResult());
+            }
+            else if (recover)
+            {
+                user.DisplayName = displayName.Trim();
+                user.IsActive = true;
+                var resetToken = userManager.GeneratePasswordResetTokenAsync(user).GetAwaiter().GetResult();
+                EnsureIdentitySuccess(
+                    userManager.ResetPasswordAsync(user, resetToken, password).GetAwaiter().GetResult());
+            }
+
+            foreach (var roleName in new[] { StaffRoles.Admin, StaffRoles.Owner })
+            {
+                if (!userManager.IsInRoleAsync(user, roleName).GetAwaiter().GetResult())
+                {
+                    EnsureIdentitySuccess(
+                        userManager.AddToRoleAsync(user, roleName).GetAwaiter().GetResult());
+                }
+            }
+            EnsureIdentitySuccess(userManager.UpdateSecurityStampAsync(user).GetAwaiter().GetResult());
+            services.GetRequiredService<AuditEventFactory>().Add(
+                new StaffActor(null, recover ? "System owner recovery" : "System owner initialization"),
+                recover ? "staff.owner_recovered" : "staff.owner_initialized",
+                "staff",
+                user.Id,
+                new { user.DisplayName, Username = user.UserName });
+            context.SaveChanges();
+            transaction?.Commit();
+            Console.WriteLine(recover ? "Owner recovery successful." : "Owner initialization successful.");
+        }
+
+        private static void EnsureIdentitySuccess(IdentityResult result)
+        {
+            if (result.Succeeded) return;
+            throw new InvalidOperationException(
+                "Identity operation failed: " +
+                string.Join(" ", result.Errors.Select(error => error.Description)));
         }
 
         private static void ApplyMigrations(IHost host, bool seedMenuIfEmpty = false)

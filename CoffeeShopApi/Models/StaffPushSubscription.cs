@@ -31,6 +31,12 @@ public class StaffPushSubscription
     [Column("useridentifier")]
     public string? UserIdentifier { get; set; }
 
+    [StringLength(450)]
+    [Column("staffuserid")]
+    public string? StaffUserId { get; set; }
+
+    public StaffUser? StaffUser { get; set; }
+
     [StringLength(512)]
     [Column("useragent")]
     public string? UserAgent { get; set; }

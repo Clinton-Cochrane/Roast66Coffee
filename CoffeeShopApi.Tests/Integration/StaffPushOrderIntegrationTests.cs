@@ -64,11 +64,16 @@ public class StaffPushOrderIntegrationTests
     {
         await using var scope = services.CreateAsyncScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var staffUserId = await context.Users
+            .Where(user => user.IsActive)
+            .Select(user => user.Id)
+            .FirstAsync();
         context.StaffPushSubscriptions.Add(new StaffPushSubscription
         {
             Endpoint = $"https://push.example.com/{Guid.NewGuid():N}",
             P256Dh = "test-p256dh",
-            Auth = "test-auth"
+            Auth = "test-auth",
+            StaffUserId = staffUserId
         });
         await context.SaveChangesAsync();
     }

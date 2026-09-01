@@ -65,6 +65,7 @@ public class SupportEmailService
             $"Time (UTC): {DateTime.UtcNow:O}\n" +
             $"Source IP: {sourceIp}\n" +
             $"Note: {safeNote}\n\n" +
-            "Action: Update Admin__Password in Render and share the new password with staff.";
+            "Action: An Owner should reset the named staff account password in Admin > Staff. " +
+            "Use the documented owner-recovery command only if no Owner can sign in.";
     }
 }
