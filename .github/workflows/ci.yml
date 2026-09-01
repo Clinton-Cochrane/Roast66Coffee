@@ -62,7 +62,7 @@ jobs:
 
       - name: Upload backend coverage report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: backend-coverage
           path: TestResults/backend/**/coverage.cobertura.xml
@@ -133,7 +133,7 @@ jobs:
 
       - name: Upload browser traces on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: render-release-contract-browser-traces
           path: candidate/roast66/test-results
