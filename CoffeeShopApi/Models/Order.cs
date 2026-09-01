@@ -55,6 +55,11 @@ namespace CoffeeShopApi.Models
         [Column("orderstatus")]
         public OrderStatus OrderStatus { get; set; } = OrderStatus.Received;
 
+        [ConcurrencyCheck]
+        [Column("statusconcurrencytoken")]
+        [JsonIgnore]
+        public Guid StatusConcurrencyToken { get; set; } = Guid.NewGuid();
+
         /// <summary>When this order most recently transitioned to Completed.</summary>
         [Column("completedutc")]
         public DateTime? CompletedUtc { get; set; }

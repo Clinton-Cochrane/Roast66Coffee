@@ -340,17 +340,87 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
         Assert.NotNull(created);
 
-        var firstUpdate = await _client.PutAsync($"/api/admin/updateOrderStatus/{created!.Id}/status", null);
+        var firstUpdate = await _client.PutAsJsonAsync(
+            $"/api/admin/updateOrderStatus/{created!.Id}/status",
+            new { expectedStatus = OrderStatus.Received });
         firstUpdate.EnsureSuccessStatusCode();
-        var secondUpdate = await _client.PutAsync($"/api/admin/updateOrderStatus/{created.Id}/status", null);
+        var secondUpdate = await _client.PutAsJsonAsync(
+            $"/api/admin/updateOrderStatus/{created.Id}/status",
+            new { expectedStatus = OrderStatus.Preparing });
         secondUpdate.EnsureSuccessStatusCode();
+
+        var replay = await _client.PutAsJsonAsync(
+            $"/api/admin/updateOrderStatus/{created.Id}/status",
+            new { expectedStatus = OrderStatus.Preparing });
+        replay.EnsureSuccessStatusCode();
 
         var notificationsResponse = await _client.GetAsync($"/api/admin/orders/{created.Id}/notifications");
         notificationsResponse.EnsureSuccessStatusCode();
         var notifications = await notificationsResponse.Content.ReadFromJsonAsync<List<NotificationLogResponse>>(JsonOptions);
 
         Assert.NotNull(notifications);
-        Assert.Contains(notifications!, n => n.EventType == "order.ready_for_pickup" && n.RecipientRole == "customer");
+        Assert.Single(
+            notifications!,
+            n => n.EventType == "order.ready_for_pickup" && n.RecipientRole == "customer");
+    }
+
+    [Fact]
+    public async Task UpdateOrderStatus_RejectsUndefinedAndConflictingExpectedStatuses()
+    {
+        var token = await GetAdminToken();
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var post = await _client.PostOrderAsync(CreateValidOrder(), options: JsonOptions);
+        post.EnsureSuccessStatusCode();
+        var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
+        Assert.NotNull(created);
+
+        var undefined = await _client.PutAsJsonAsync(
+            $"/api/admin/updateOrderStatus/{created!.Id}/status",
+            new { expectedStatus = 99 });
+        Assert.Equal(HttpStatusCode.BadRequest, undefined.StatusCode);
+
+        var conflict = await _client.PutAsJsonAsync(
+            $"/api/admin/updateOrderStatus/{created.Id}/status",
+            new { expectedStatus = OrderStatus.Preparing });
+        Assert.Equal(HttpStatusCode.Conflict, conflict.StatusCode);
+        Assert.Contains("refresh", await conflict.Content.ReadAsStringAsync(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task UpdateOrderStatus_CompletedOrderIsTerminalAndIdempotent()
+    {
+        var token = await GetAdminToken();
+        _client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var post = await _client.PostOrderAsync(CreateValidOrder(), options: JsonOptions);
+        post.EnsureSuccessStatusCode();
+        var created = await post.Content.ReadFromJsonAsync<Order>(JsonOptions);
+        Assert.NotNull(created);
+
+        foreach (var expected in new[]
+                 {
+                     OrderStatus.Received,
+                     OrderStatus.Preparing,
+                     OrderStatus.ReadyForPickup
+                 })
+        {
+            var advance = await _client.PutAsJsonAsync(
+                $"/api/admin/updateOrderStatus/{created!.Id}/status",
+                new { expectedStatus = expected });
+            advance.EnsureSuccessStatusCode();
+        }
+
+        var repeated = await _client.PutAsJsonAsync(
+            $"/api/admin/updateOrderStatus/{created!.Id}/status",
+            new { expectedStatus = OrderStatus.Completed });
+        repeated.EnsureSuccessStatusCode();
+        var body = await repeated.Content.ReadAsStringAsync();
+        Assert.Contains("\"newStatus\":\"Completed\"", body);
+        Assert.Contains("\"changed\":false", body);
+        Assert.Contains("\"terminal\":true", body);
     }
 
     [Fact]

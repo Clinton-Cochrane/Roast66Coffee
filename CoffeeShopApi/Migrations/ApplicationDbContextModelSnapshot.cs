@@ -335,6 +335,11 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("character varying(64)")
                         .HasColumnName("requestfingerprint");
 
+                    b.Property<Guid>("StatusConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("statusconcurrencytoken");
+
                     b.Property<string>("TrackingToken")
                         .IsRequired()
                         .HasMaxLength(43)

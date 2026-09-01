@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import Card from "../common/Card";
 import Button from "../common/Button";
 import { ORDER_STATUS, type OrderStatusValue } from "../../constants/orderStatus";
-import { getOrderStatusFromDto } from "../../constants/orderStatusParse";
+import { tryGetOrderStatusFromDto } from "../../constants/orderStatusParse";
 import { useI18n } from "../../i18n/LanguageContext";
 import type {
   AdminOrderHistoryResponse,
@@ -41,8 +41,8 @@ const EMPTY_PAGE: AdminOrderHistoryResponse = {
   hasNextPage: false,
 };
 
-function orderStatusValue(order: OrderDto): OrderStatusValue {
-  return getOrderStatusFromDto(order);
+function orderStatusValue(order: OrderDto): OrderStatusValue | null {
+  return tryGetOrderStatusFromDto(order);
 }
 
 function orderId(order: OrderDto): number {
@@ -72,6 +72,7 @@ function ViewOrders() {
   const [loadingNotificationsByOrderId, setLoadingNotificationsByOrderId] = useState<
     Record<number, boolean>
   >({});
+  const [advancingOrderIds, setAdvancingOrderIds] = useState<Record<number, boolean>>({});
 
   const statusLabelKeys = useMemo(
     () =>
@@ -183,9 +184,12 @@ function ViewOrders() {
     setPage(1);
   };
 
-  const advanceStatus = (id: number) => {
+  const advanceStatus = (id: number, expectedStatus: OrderStatusValue) => {
+    setAdvancingOrderIds((current) => ({ ...current, [id]: true }));
     axiosInstance
-      .put<{ newStatus?: string }>(`/admin/updateOrderStatus/${id}/status`)
+      .put<{ newStatus?: string }>(`/admin/updateOrderStatus/${id}/status`, {
+        expectedStatus,
+      })
       .then((res) => {
         const next = res.data?.newStatus;
         if (next === "Completed") {
@@ -206,7 +210,13 @@ function ViewOrders() {
                 ? err.response?.statusText
                 : undefined;
         toast.error(message || t("adminOrders.failedUpdateStatus"));
-      });
+        if (axios.isAxiosError(err) && err.response?.status === 409) {
+          fetchOrders();
+        }
+      })
+      .finally(() =>
+        setAdvancingOrderIds((current) => ({ ...current, [id]: false }))
+      );
   };
 
   const fetchOrderNotifications = useCallback(
@@ -230,7 +240,8 @@ function ViewOrders() {
     [t]
   );
 
-  const getStatusLabel = (status: number) => {
+  const getStatusLabel = (status: number | null) => {
+    if (status == null) return t("adminOrders.statusUnknown");
     const key = statusLabelKeys[status as OrderStatusValue];
     return key ? t(key) : t("adminOrders.statusUnknown");
   };
@@ -336,6 +347,8 @@ function ViewOrders() {
             const id = orderId(order);
             const status = orderStatusValue(order);
             const isComplete = status === ORDER_STATUS.Completed;
+            const canAdvance = status != null && !isComplete;
+            const isAdvancing = Boolean(advancingOrderIds[id]);
             const advanceLabel =
               status === ORDER_STATUS.ReadyForPickup
                 ? t("adminOrders.advanceMarkComplete")
@@ -370,11 +383,15 @@ function ViewOrders() {
                     <span className="text-sm font-medium text-green-800">
                       {t("adminOrders.completedNoAction")}
                     </span>
-                  ) : (
-                    <Button onClick={() => advanceStatus(id)} color="green">
+                  ) : canAdvance ? (
+                    <Button
+                      onClick={() => advanceStatus(id, status)}
+                      color="green"
+                      disabled={isAdvancing}
+                    >
                       {advanceLabel}
                     </Button>
-                  )}
+                  ) : null}
                   <Button onClick={() => fetchOrderNotifications(id)} color="gray">
                     {loadingNotifications ? t("adminOrders.loading") : t("adminOrders.refreshNotifications")}
                   </Button>
