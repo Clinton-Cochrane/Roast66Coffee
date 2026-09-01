@@ -394,7 +394,26 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
 
     public async Task<bool> UpdateOrderAsync(Order order)
     {
+        var persistedStatus = await _context.Orders
+            .AsNoTracking()
+            .Where(existing => existing.Id == order.Id)
+            .Select(existing => new
+            {
+                existing.OrderStatus,
+                existing.CompletedUtc,
+                existing.StatusConcurrencyToken
+            })
+            .SingleOrDefaultAsync();
+        if (persistedStatus == null)
+        {
+            return false;
+        }
+
+        order.OrderStatus = persistedStatus.OrderStatus;
+        order.CompletedUtc = persistedStatus.CompletedUtc;
+        order.StatusConcurrencyToken = persistedStatus.StatusConcurrencyToken;
         _context.Entry(order).State = EntityState.Modified;
+        _context.Entry(order).Property(existing => existing.StatusConcurrencyToken).IsModified = false;
         try
         {
             await _context.SaveChangesAsync();
@@ -418,25 +437,85 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         return _context.Orders.Any(e => e.Id == id);
     }
 
-    internal Task UpdateStatus(Order order, CancellationToken cancellationToken = default) =>
-        UpdateStatus(order, DateTime.UtcNow, cancellationToken);
+    internal Task<OrderStatusAdvanceResult> AdvanceStatusAsync(
+        int orderId,
+        OrderStatus expectedStatus,
+        CancellationToken cancellationToken = default) =>
+        AdvanceStatusAsync(orderId, expectedStatus, DateTime.UtcNow, cancellationToken);
 
-    internal async Task UpdateStatus(
-        Order order,
+    internal async Task<OrderStatusAdvanceResult> AdvanceStatusAsync(
+        int orderId,
+        OrderStatus expectedStatus,
         DateTime nowUtc,
         CancellationToken cancellationToken = default)
     {
-        order.OrderStatus = order.OrderStatus switch
+        if (!Enum.IsDefined(expectedStatus))
         {
-            OrderStatus.Received => OrderStatus.Preparing,
-            OrderStatus.Preparing => OrderStatus.ReadyForPickup,
-            OrderStatus.ReadyForPickup => OrderStatus.Completed,
-            OrderStatus.Completed => OrderStatus.Received,
-            _ => OrderStatus.Received
-        };
-        order.CompletedUtc = order.OrderStatus == OrderStatus.Completed ? AsUtc(nowUtc) : null;
-        _context.Orders.Update(order);
-        await _context.SaveChangesAsync(cancellationToken);
+            return OrderStatusAdvanceResult.InvalidExpected(expectedStatus);
+        }
+
+        var order = await _context.Orders
+            .SingleOrDefaultAsync(candidate => candidate.Id == orderId, cancellationToken);
+        if (order == null)
+        {
+            return OrderStatusAdvanceResult.NotFound(orderId);
+        }
+
+        if (!Enum.IsDefined(order.OrderStatus))
+        {
+            return OrderStatusAdvanceResult.InvalidCurrent(order, expectedStatus);
+        }
+
+        if (order.OrderStatus == OrderStatus.Completed && expectedStatus == OrderStatus.Completed)
+        {
+            return OrderStatusAdvanceResult.Terminal(order);
+        }
+
+        if (order.OrderStatus != expectedStatus)
+        {
+            if (OrderStatusStateMachine.TryGetNext(expectedStatus, out var replayedStatus) &&
+                replayedStatus == order.OrderStatus)
+            {
+                return OrderStatusAdvanceResult.Replayed(order, expectedStatus);
+            }
+
+            return OrderStatusAdvanceResult.Conflict(order, expectedStatus);
+        }
+
+        if (!OrderStatusStateMachine.TryGetNext(order.OrderStatus, out var nextStatus))
+        {
+            return OrderStatusAdvanceResult.Terminal(order);
+        }
+
+        var previousStatus = order.OrderStatus;
+        order.OrderStatus = nextStatus;
+        if (nextStatus == OrderStatus.Completed)
+        {
+            order.CompletedUtc = AsUtc(nowUtc);
+        }
+        order.StatusConcurrencyToken = Guid.NewGuid();
+
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+            return OrderStatusAdvanceResult.Advanced(order, previousStatus);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            _context.ChangeTracker.Clear();
+            var current = await _context.Orders
+                .AsNoTracking()
+                .SingleOrDefaultAsync(candidate => candidate.Id == orderId, cancellationToken);
+            if (current == null)
+            {
+                return OrderStatusAdvanceResult.NotFound(orderId);
+            }
+            if (current.OrderStatus == nextStatus)
+            {
+                return OrderStatusAdvanceResult.Replayed(current, expectedStatus);
+            }
+            return OrderStatusAdvanceResult.Conflict(current, expectedStatus);
+        }
     }
 
     /// <summary>

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { ORDER_STATUS } from "./orderStatus";
-import { getOrderStatusFromDto } from "./orderStatusParse";
+import { getOrderStatusFromDto, tryGetOrderStatusFromDto } from "./orderStatusParse";
 import type { OrderDto } from "../types/api";
 
 describe("getOrderStatusFromDto", () => {
@@ -27,5 +27,10 @@ describe("getOrderStatusFromDto", () => {
     expect(getOrderStatusFromDto({ orderStatus: "ReadyForPickup" } as unknown as OrderDto)).toBe(
       ORDER_STATUS.ReadyForPickup
     );
+  });
+
+  it("does not coerce undefined status values to a valid admin action", () => {
+    expect(tryGetOrderStatusFromDto({ orderStatus: 99 } as OrderDto)).toBeNull();
+    expect(tryGetOrderStatusFromDto({ orderStatus: "Unknown" } as unknown as OrderDto)).toBeNull();
   });
 });

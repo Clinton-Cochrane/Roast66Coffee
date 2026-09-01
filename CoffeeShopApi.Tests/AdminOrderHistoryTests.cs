@@ -136,7 +136,7 @@ public class AdminOrderHistoryTests
     }
 
     [Fact]
-    public async Task UpdateStatus_SetsCompletionTimeAndClearsItWhenReopened()
+    public async Task AdvanceStatus_CompletesOnceAndTreatsRepeatAsReplay()
     {
         await using var context = CreateContext();
         var order = CreateOrder(1, OrderStatus.ReadyForPickup, NowUtc.AddHours(-1));
@@ -144,15 +144,23 @@ public class AdminOrderHistoryTests
         await context.SaveChangesAsync();
         var service = CreateService(context);
 
-        await service.UpdateStatus(order, NowUtc);
+        var advanced = await service.AdvanceStatusAsync(
+            order.Id,
+            OrderStatus.ReadyForPickup,
+            NowUtc);
 
+        Assert.Equal(OrderStatusAdvanceOutcome.Advanced, advanced.Outcome);
         Assert.Equal(OrderStatus.Completed, order.OrderStatus);
         Assert.Equal(NowUtc, order.CompletedUtc);
 
-        await service.UpdateStatus(order, NowUtc.AddMinutes(1));
+        var replayed = await service.AdvanceStatusAsync(
+            order.Id,
+            OrderStatus.ReadyForPickup,
+            NowUtc.AddMinutes(1));
 
-        Assert.Equal(OrderStatus.Received, order.OrderStatus);
-        Assert.Null(order.CompletedUtc);
+        Assert.Equal(OrderStatusAdvanceOutcome.Replayed, replayed.Outcome);
+        Assert.Equal(OrderStatus.Completed, order.OrderStatus);
+        Assert.Equal(NowUtc, order.CompletedUtc);
     }
 
     private static async Task AssertSearchReturns(OrderService service, string search, int expectedOrderId)

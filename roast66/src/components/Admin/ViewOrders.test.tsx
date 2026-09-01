@@ -6,11 +6,12 @@ import { LanguageProvider } from "../../i18n/LanguageContext";
 import type { OrderDto } from "../../types/api";
 
 const mockGet = vi.fn();
+const mockPut = vi.fn();
 
 vi.mock("../../axiosConfig", () => ({
   default: {
     get: (...args: unknown[]) => mockGet(...args),
-    put: vi.fn(),
+    put: (...args: unknown[]) => mockPut(...args),
   },
 }));
 
@@ -52,7 +53,9 @@ const pageResponse = (items: OrderDto[], page = 1, totalItems = items.length) =>
 describe("ViewOrders", () => {
   beforeEach(() => {
     mockGet.mockReset();
+    mockPut.mockReset();
     mockGet.mockResolvedValue({ data: pageResponse([completedOrder]) });
+    mockPut.mockResolvedValue({ data: { newStatus: "Preparing", changed: true } });
   });
 
   it("mutes completed order copy while leaving completed status and buttons outside it", async () => {
@@ -149,6 +152,54 @@ describe("ViewOrders", () => {
     await screen.findByRole("heading", { name: "Order #66" });
 
     expect(screen.queryByRole("button", { name: /delete/i })).not.toBeInTheDocument();
+  });
+
+  it("sends the displayed status and blocks duplicate clicks while advancing", async () => {
+    let resolveUpdate!: (value: { data: { newStatus: string; changed: boolean } }) => void;
+    mockGet.mockResolvedValue({
+      data: pageResponse([{ ...completedOrder, orderStatus: 1 }]),
+    });
+    mockPut.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveUpdate = resolve;
+        })
+    );
+
+    render(
+      <LanguageProvider>
+        <ViewOrders />
+      </LanguageProvider>
+    );
+
+    const advance = await screen.findByRole("button", { name: "Advance status" });
+    fireEvent.click(advance);
+
+    expect(mockPut).toHaveBeenCalledWith("/admin/updateOrderStatus/66/status", {
+      expectedStatus: 1,
+    });
+    expect(advance).toBeDisabled();
+    fireEvent.click(advance);
+    expect(mockPut).toHaveBeenCalledTimes(1);
+
+    resolveUpdate({ data: { newStatus: "ReadyForPickup", changed: true } });
+    await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(2));
+  });
+
+  it("shows no advance action for completed or unknown statuses", async () => {
+    mockGet.mockResolvedValue({
+      data: pageResponse([completedOrder, { ...completedOrder, id: 67, orderStatus: 99 }]),
+    });
+
+    render(
+      <LanguageProvider>
+        <ViewOrders />
+      </LanguageProvider>
+    );
+
+    await screen.findByRole("heading", { name: "Order #67" });
+    expect(screen.queryByRole("button", { name: /advance status|mark complete/i })).not.toBeInTheDocument();
+    expect(screen.getByText("Unknown")).toBeInTheDocument();
   });
 
   it("submits status and drink-name search filters and resets to page one", async () => {

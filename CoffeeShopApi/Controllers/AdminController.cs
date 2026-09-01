@@ -379,24 +379,49 @@ namespace CoffeeShopApi.Controllers
 
         [Authorize(Roles = "Admin")]
         [HttpPut("updateOrderStatus/{id}/status")]
-        public async Task<IActionResult> UpdateOrderStatus(int id, CancellationToken cancellationToken)
+        public async Task<IActionResult> UpdateOrderStatus(
+            int id,
+            [FromBody] AdvanceOrderStatusRequest request,
+            CancellationToken cancellationToken)
         {
-            var order = await _orderService.GetOrderByIdAsync(id, cancellationToken);
-            if (order == null)
+            var result = await _orderService.AdvanceStatusAsync(
+                id,
+                request.ExpectedStatus!.Value,
+                cancellationToken);
+            if (result.Outcome == OrderStatusAdvanceOutcome.NotFound)
             {
-                return NotFound("Order not found.");
+                return NotFound(new { code = "order_not_found", message = result.Message });
+            }
+            if (result.Outcome == OrderStatusAdvanceOutcome.InvalidExpectedStatus)
+            {
+                return BadRequest(new { code = "invalid_order_status", message = result.Message });
+            }
+            if (result.Outcome is OrderStatusAdvanceOutcome.Conflict or
+                OrderStatusAdvanceOutcome.InvalidCurrentStatus)
+            {
+                return Conflict(new
+                {
+                    code = "order_status_conflict",
+                    message = result.Message,
+                    orderId = result.OrderId,
+                    expectedStatus = result.ExpectedStatus.ToString(),
+                    currentStatus = result.Order?.OrderStatus.ToString()
+                });
             }
 
-            await _orderService.UpdateStatus(order, cancellationToken);
-            if (order.OrderStatus == OrderStatus.ReadyForPickup)
+            var order = result.Order!;
+            if (result.Changed && order.OrderStatus == OrderStatus.ReadyForPickup)
             {
                 await _notificationService.SendReadyForPickupNotificationAsync(order, cancellationToken);
             }
             return Ok(new
             {
-                message = "Order status updated successfully.",
+                message = result.Message,
                 orderId = order.Id,
-                newStatus = order.OrderStatus.ToString()
+                newStatus = order.OrderStatus.ToString(),
+                changed = result.Changed,
+                replayed = result.Outcome == OrderStatusAdvanceOutcome.Replayed,
+                terminal = result.Outcome == OrderStatusAdvanceOutcome.Terminal
             });
         }
 
