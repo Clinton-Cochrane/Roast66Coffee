@@ -122,5 +122,24 @@ namespace CoffeeShopApi.Data
                 throw new InvalidOperationException("Audit events are append-only.");
             }
         }
+
+        internal async Task<int> DeleteExpiredAuditEventsAsync(
+            IReadOnlyCollection<long> ids,
+            CancellationToken cancellationToken)
+        {
+            var stale = await AuditEvents
+                .Where(auditEvent => ids.Contains(auditEvent.Id))
+                .ToListAsync(cancellationToken);
+            AuditEvents.RemoveRange(stale);
+            if (stale.Count > 0)
+            {
+                // Retention is the only controlled exception to append-only audit
+                // writes. Calling the base implementation keeps ordinary callers
+                // behind the mutation guard above.
+                await base.SaveChangesAsync(true, cancellationToken);
+            }
+
+            return stale.Count;
+        }
     }
 }

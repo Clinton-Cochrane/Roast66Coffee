@@ -46,7 +46,7 @@ supabase db dump \
   -f "/tmp/roast66-production-${BACKUP_DATE}-public-data.sql"
 ```
 
-Record the project ref, PostgreSQL version, UTC completion times, byte sizes, and SHA-256 checksums in a dated drill record. Supabase free-tier recovery depends on exports retained outside Supabase, so copy the verified files to approved encrypted backup storage before deleting the temporary copies.
+Record the project ref, PostgreSQL version, UTC completion times, byte sizes, and SHA-256 checksums in a dated drill record. Supabase free-tier recovery depends on exports retained outside Supabase, so copy the verified files to approved encrypted backup storage before deleting the temporary copies. A full backup contains raw customer/order data and must be deleted before it reaches 30 hours old. Create and verify its replacement before deleting the previous backup. Do not enable provider-managed snapshots or a point-in-time recovery window longer than 30 hours while those stores contain customer/order data.
 
 ## Restore into vanilla PostgreSQL staging
 
@@ -84,6 +84,10 @@ Run application migrations once against staging:
 ConnectionStrings__DefaultConnection="$STAGING_DATABASE_URL" \
   dotnet CoffeeShopApi.dll migrate
 ```
+
+Before the restored API receives traffic, invoke the authenticated
+`POST /api/admin/retention/purge` operation and run the count-only verification
+queries in `logging-and-data-retention.md`. All expired counts must be zero.
 
 Verify migration history, table row counts, menu reads, admin login, private order tracking, payment identifiers when present, and `GET /api/health/ready`.
 
@@ -135,7 +139,8 @@ After the drill is accepted:
 3. Securely delete temporary SQL dumps, filtered copies, logs, and response files under `/tmp`.
 4. Remove `/tmp/roast66-supabase-workdir` and the temporary CLI installation if it is no longer needed.
 5. Keep the checksum record, but never the production data, in Git.
-6. Run `supabase logout` only if the workstation should no longer retain Supabase access.
-7. Rotate the Supabase database password or access token if it was pasted into chat, written to an unprotected file, exposed in logs, or used on an untrusted machine. Routine CLI use through protected credential storage does not by itself require rotation.
+6. Delete every full backup before it reaches 30 hours old and record the deletion time.
+7. Run `supabase logout` only if the workstation should no longer retain Supabase access.
+8. Rotate the Supabase database password or access token if it was pasted into chat, written to an unprotected file, exposed in logs, or used on an untrusted machine. Routine CLI use through protected credential storage does not by itself require rotation.
 
 Record every removed target and whether an encrypted off-site backup remains available.

@@ -30,7 +30,7 @@ namespace CoffeeShopApi.Controllers
         private readonly IConfiguration _configuration;
         private readonly NotificationSettingsService _notificationSettingsService;
         private readonly SupportEmailService _supportEmailService;
-        private readonly NotificationRetentionService _notificationRetentionService;
+        private readonly DataRetentionService _dataRetentionService;
         private readonly IWebHostEnvironment _environment;
         private readonly ILogger<AdminController> _logger;
         private readonly IDefaultMenuProvider _defaultMenuProvider;
@@ -48,7 +48,7 @@ namespace CoffeeShopApi.Controllers
             IConfiguration configuration,
             NotificationSettingsService notificationSettingsService,
             SupportEmailService supportEmailService,
-            NotificationRetentionService notificationRetentionService,
+            DataRetentionService dataRetentionService,
             IWebHostEnvironment environment,
             ILogger<AdminController> logger,
             IDefaultMenuProvider defaultMenuProvider,
@@ -62,7 +62,7 @@ namespace CoffeeShopApi.Controllers
             _configuration = configuration;
             _notificationSettingsService = notificationSettingsService;
             _supportEmailService = supportEmailService;
-            _notificationRetentionService = notificationRetentionService;
+            _dataRetentionService = dataRetentionService;
             _environment = environment;
             _logger = logger;
             _defaultMenuProvider = defaultMenuProvider;
@@ -390,8 +390,6 @@ namespace CoffeeShopApi.Controllers
                 n.Channel,
                 n.Provider,
                 n.RecipientRole,
-                n.RecipientPhone,
-                n.RecipientEmail,
                 n.TemplateKey,
                 n.Status,
                 n.AttemptCount,
@@ -405,16 +403,16 @@ namespace CoffeeShopApi.Controllers
         }
 
         [Authorize(Roles = "Admin")]
+        [HttpPost("retention/purge")]
         [HttpPost("notifications/purge-logs")]
         [HttpPost("notifications/purge-email-logs")]
-        public async Task<IActionResult> PurgeNotificationLogs(CancellationToken cancellationToken)
+        public async Task<IActionResult> PurgeExpiredData(CancellationToken cancellationToken)
         {
-            await _notificationRetentionService.PurgeNotificationsOlderThanAsync(
-                DateTime.UtcNow.AddDays(-NotificationRetentionService.RetentionDays),
+            var result = await _dataRetentionService.PurgeExpiredDataAsync(
                 cancellationToken,
                 StaffActor.FromPrincipal(User));
 
-            return NoContent();
+            return Ok(result);
         }
 
         /// <summary>

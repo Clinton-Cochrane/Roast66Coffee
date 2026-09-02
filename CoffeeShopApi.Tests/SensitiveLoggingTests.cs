@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using CoffeeShopApi.Controllers;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Middleware;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Routing.Patterns;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace CoffeeShopApi.Tests;
 
@@ -215,13 +217,56 @@ public class SensitiveLoggingTests
         await service.SendReadyForPickupNotificationAsync(order);
 
         var audit = Assert.Single(await context.NotificationMessages.ToListAsync());
+        var persistedLog = JsonSerializer.Serialize(audit);
         Assert.Contains("166", audit.PayloadJson, StringComparison.Ordinal);
-        Assert.DoesNotContain(order.CustomerName, audit.PayloadJson, StringComparison.Ordinal);
-        Assert.DoesNotContain(order.CustomerPhone!, audit.PayloadJson, StringComparison.Ordinal);
-        Assert.DoesNotContain("5558675309", audit.PayloadJson, StringComparison.Ordinal);
+        Assert.DoesNotContain(order.CustomerName, persistedLog, StringComparison.Ordinal);
+        Assert.DoesNotContain(order.CustomerPhone!, persistedLog, StringComparison.Ordinal);
+        Assert.DoesNotContain("5558675309", persistedLog, StringComparison.Ordinal);
         Assert.DoesNotContain(ProviderSecret, audit.LastError ?? string.Empty, StringComparison.Ordinal);
         Assert.DoesNotContain("connection-secret", audit.LastError ?? string.Empty, StringComparison.Ordinal);
         Assert.Contains(nameof(InvalidOperationException), audit.LastError ?? string.Empty, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task EmailNotification_DeliversWithoutPersistingCustomerDestination()
+    {
+        await using var context = CreateContext();
+        var configuration = BuildConfiguration(new Dictionary<string, string?>
+        {
+            ["Resend:ApiKey"] = "test-api-key",
+            ["Resend:From"] = "orders@example.test"
+        });
+        var order = new Order
+        {
+            Id = 167,
+            CustomerName = "Email Retention Customer",
+            CustomerEmail = "private-customer@example.test",
+            CustomerNotificationOptIn = true,
+            TrackingToken = "email-retention-token-0000000000000000000000",
+            OrderStatus = OrderStatus.ReadyForPickup,
+            OrderItems = []
+        };
+        context.Orders.Add(order);
+        await context.SaveChangesAsync();
+        var service = new NotificationService(
+            configuration,
+            context,
+            new NotificationSettingsService(context),
+            new DisabledSmsSender(),
+            new OrderEmailNotificationService(
+                configuration,
+                new StubHttpClientFactory(new HttpClient(new StubHttpHandler(
+                    new HttpResponseMessage(HttpStatusCode.OK)))),
+                new RecordingLogger<OrderEmailNotificationService>()));
+
+        await service.SendReadyForPickupNotificationAsync(order);
+
+        var audit = Assert.Single(await context.NotificationMessages.ToListAsync());
+        Assert.Equal("email", audit.Channel);
+        Assert.Equal("sent", audit.Status);
+        var persistedLog = JsonSerializer.Serialize(audit);
+        Assert.DoesNotContain(order.CustomerName, persistedLog, StringComparison.Ordinal);
+        Assert.DoesNotContain(order.CustomerEmail!, persistedLog, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -257,17 +302,19 @@ public class SensitiveLoggingTests
     public async Task RetentionPurge_RemovesOldNotificationRecordsAcrossChannels()
     {
         await using var context = CreateContext();
-        var cutoff = DateTime.UtcNow.AddDays(-30);
-        var oldEmail = CreateNotification("email", cutoff.AddMinutes(-1));
-        var oldSms = CreateNotification("sms", cutoff.AddMinutes(-1));
-        var recentSms = CreateNotification("sms", cutoff.AddMinutes(1));
+        var oldEmail = CreateNotification("email", DateTime.UtcNow.AddDays(-91));
+        var oldSms = CreateNotification("sms", DateTime.UtcNow.AddDays(-91));
+        var recentSms = CreateNotification("sms", DateTime.UtcNow.AddDays(-89));
         context.NotificationMessages.AddRange(oldEmail, oldSms, recentSms);
         await context.SaveChangesAsync();
-        var service = new NotificationRetentionService(context);
+        var service = new DataRetentionService(
+            context,
+            Options.Create(new DataRetentionOptions()),
+            TimeProvider.System);
 
-        var deleted = await service.PurgeNotificationsOlderThanAsync(cutoff);
+        var result = await service.PurgeExpiredDataAsync();
 
-        Assert.Equal(2, deleted);
+        Assert.Equal(2, result.NotificationLogsDeleted);
         Assert.Null(await context.NotificationMessages.FindAsync(oldEmail.Id));
         Assert.Null(await context.NotificationMessages.FindAsync(oldSms.Id));
         Assert.NotNull(await context.NotificationMessages.FindAsync(recentSms.Id));

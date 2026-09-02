@@ -35,8 +35,9 @@ order clears `CompletedUtc`; completing it again records a new timestamp.
 
 The migration backfills pre-existing completed orders with
 `CompletedUtc = OrderDate`. This prevents old completed orders from all
-reappearing for 30 hours after deployment. This is visibility retention only;
-issue 167 does not delete or anonymize business data.
+reappearing for 30 hours after deployment. The retention worker deletes the raw
+order and its dependent payment/notification records when this window expires;
+this supersedes the earlier visibility-only retention behavior from issue 167.
 
 ## Filters and search
 

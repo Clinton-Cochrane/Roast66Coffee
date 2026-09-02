@@ -140,7 +140,6 @@ public class OrderController : ControllerBase
 
         var notifications = await _notificationService.GetCustomerNotificationsForOrderAsync(
             order.Id,
-            order.CustomerPhone ?? string.Empty,
             cancellationToken);
         var result = notifications.Select(n => new
         {

@@ -60,6 +60,16 @@ services:
         sync: false
       - key: Notifications__SmsEnabled
         value: "false"
+      - key: DataRetention__CompletedOrderHours
+        value: "30"
+      - key: DataRetention__OperationalLogDays
+        value: "90"
+      - key: DataRetention__BatchSize
+        value: "100"
+      - key: DataRetention__CheckIntervalMinutes
+        value: "60"
+      - key: DataRetention__RetryDelayMinutes
+        value: "5"
       - key: Push__Subject
         value: "mailto:support@example.com"
       - key: Push__VapidPublicKey

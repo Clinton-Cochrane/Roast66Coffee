@@ -26,18 +26,15 @@ public class OrderService(
     /// </summary>
     public const int AdminOrderHistoryPageSize = 50;
 
-    /// <summary>
-    /// Completed orders remain visible to staff for a bounded operational window;
-    /// this does not delete the underlying business record.
-    /// </summary>
-    public const int CompletedOrderRetentionHours = 30;
-
     private readonly ApplicationDbContext _context = context;
     private readonly IConfiguration _configuration = configuration;
     private readonly AuditEventFactory? _auditEvents = auditEvents;
 
     private int DuplicateDetectionWindowMinutes =>
         _configuration.GetValue("Order:DuplicateDetectionWindowMinutes", 2);
+
+    private int CompletedOrderRetentionHours =>
+        _configuration.GetValue("DataRetention:CompletedOrderHours", 30);
 
     public async Task<IEnumerable<Order>> GetOrdersAsync()
     {

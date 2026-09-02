@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
+using CoffeeShopApi.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -448,7 +449,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task PurgeNotificationLogs_RemovesOldRows()
+    public async Task PurgeDataRetention_RemovesExpiredLogsAcrossChannels()
     {
         var order = CreateValidOrder(
             $"Purge-{Guid.NewGuid():N}",
@@ -471,39 +472,40 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
                 Id = emailNotificationId,
                 EventType = "retention.test",
                 RecipientRole = "customer",
-                RecipientEmail = "customer@example.com",
                 Channel = "email",
                 TemplateKey = "retention_test",
                 OrderId = created!.Id,
                 DedupKey = $"retention-{emailNotificationId:N}",
                 Status = "sent",
-                CreatedUtc = DateTime.UtcNow.AddDays(-40),
-                UpdatedUtc = DateTime.UtcNow.AddDays(-40)
+                CreatedUtc = DateTime.UtcNow.AddDays(-91),
+                UpdatedUtc = DateTime.UtcNow.AddDays(-91)
             });
             db.NotificationMessages.Add(new NotificationMessage
             {
                 Id = smsNotificationId,
                 EventType = "retention.test",
                 RecipientRole = "customer",
-                RecipientPhone = "+15558675309",
                 Channel = "sms",
                 TemplateKey = "retention_test",
                 OrderId = created.Id,
                 DedupKey = $"retention-{smsNotificationId:N}",
                 Status = "sent",
-                CreatedUtc = DateTime.UtcNow.AddDays(-40),
-                UpdatedUtc = DateTime.UtcNow.AddDays(-40)
+                CreatedUtc = DateTime.UtcNow.AddDays(-91),
+                UpdatedUtc = DateTime.UtcNow.AddDays(-91)
             });
             await db.SaveChangesAsync();
         }
 
         var token = await GetAdminToken();
-        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/notifications/purge-logs");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/retention/purge");
         request.Headers.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
 
         var response = await _client.SendAsync(request);
-        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<DataRetentionResult>(JsonOptions);
+        Assert.NotNull(result);
+        Assert.Equal(2, result!.NotificationLogsDeleted);
 
         using var verificationScope = _factory.Services.CreateScope();
         var verificationDb = verificationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
