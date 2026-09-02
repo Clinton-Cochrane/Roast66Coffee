@@ -12,7 +12,7 @@ namespace CoffeeShopApi.Tests;
 [Collection(PostgresIntegrationCollection.Name)]
 public class MenuHistoryPostgresTests
 {
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task MigrationAndMenuMaintenance_PreserveHistoryAndRollback()
     {

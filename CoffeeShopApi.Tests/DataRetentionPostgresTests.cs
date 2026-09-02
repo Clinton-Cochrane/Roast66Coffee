@@ -16,7 +16,7 @@ public class DataRetentionPostgresTests
 {
     private static readonly DateTime NowUtc = new(2026, 9, 2, 18, 0, 0, DateTimeKind.Utc);
 
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task Migration_RemovesDestinationColumnsAndRedactsExistingNotificationLogs()
     {
@@ -71,7 +71,7 @@ public class DataRetentionPostgresTests
         Assert.DoesNotContain("192.0.2.10", retainedText, StringComparison.Ordinal);
     }
 
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task PurgeExpiredData_DeletesPhysicalOrderGraphPaymentsAndLogs()
     {
@@ -115,7 +115,7 @@ public class DataRetentionPostgresTests
         Assert.Empty(await verification.AuditEvents.ToListAsync());
     }
 
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task PurgeExpiredData_ConcurrentRunsDeleteEachOrderOnce()
     {
@@ -145,7 +145,7 @@ public class DataRetentionPostgresTests
         Assert.Empty(await verification.Orders.ToListAsync());
     }
 
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task PurgeExpiredData_FailedLaterBatchKeepsEarlierCommitAndRetryCompletes()
     {

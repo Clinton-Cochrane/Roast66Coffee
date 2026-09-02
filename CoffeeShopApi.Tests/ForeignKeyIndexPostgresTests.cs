@@ -14,7 +14,7 @@ public class ForeignKeyIndexPostgresTests
     private const string PreviousMigration = "20260901153615_AddStaffIdentityAndAudit";
     private const string CorrectiveMigration = "20260902000000_RestoreMenuForeignKeyIndexes";
 
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task LatestMigration_MenuForeignKeyIndexesMatchTheEfModel()
     {
@@ -33,7 +33,7 @@ public class ForeignKeyIndexPostgresTests
         Assert.Equal(expected, actual);
     }
 
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task CorrectiveMigration_HandlesExistingIndexesAndRestoresMissingIndexes()
     {

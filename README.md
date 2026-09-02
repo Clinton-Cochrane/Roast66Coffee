@@ -320,18 +320,19 @@ dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
 
 Run the backend exactly as CI does, including migration, physical-schema,
 data-access, RLS, retention, readiness, and migration-lock contracts. The
-connection must be an administrative connection to a disposable local
-PostgreSQL server because the suite creates and drops isolated databases:
+wrapper starts and removes its own PostgreSQL 17 container and the suite creates
+and drops isolated databases inside it:
 
 ```bash
-REQUIRE_POSTGRES_INTEGRATION_TESTS=true \
-POSTGRES_INTEGRATION_CONNECTION_STRING="Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres" \
-dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
+scripts/ci/with-postgres.sh \
+  dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
 ```
 
-Do not point this command at staging or production. Setting
-`REQUIRE_POSTGRES_INTEGRATION_TESTS=true` turns a missing connection into a test
-failure, preventing CI from silently skipping database release contracts.
+The harness rejects non-loopback hosts and any database or user other than the
+dedicated disposable test identities, then verifies the container's unique run
+identity before creating a database. The wrapper also requires every
+PostgreSQL contract to execute, preventing CI from silently omitting database
+release coverage.
 
 Collect meaningful backend coverage locally:
 
@@ -378,8 +379,10 @@ The full smoke runs the coverage reporter tests; all backend tests with required
 PostgreSQL contracts and coverage gates; frontend tests, lint, build, and audit;
 then the Render release contracts. The release portion builds the production
 backend image, upgrades representative baseline data, proves migration failure
-prevents startup, verifies migration ordering and idempotence, calls readiness
-and menu endpoints, and renders the built frontend in Chromium.
+prevents startup, verifies migration ordering and idempotence, proves the
+representative order graph and price/name snapshots survive the upgrade and
+restart, calls readiness and menu endpoints, and renders the built frontend in
+Chromium.
 
 The production frontend build performs TypeScript checks before Vite bundles the application.
 The complete critical-scenario matrix, CI gate ownership, coverage policy, and

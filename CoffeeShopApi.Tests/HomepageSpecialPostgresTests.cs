@@ -9,7 +9,7 @@ namespace CoffeeShopApi.Tests;
 [Collection(PostgresIntegrationCollection.Name)]
 public class HomepageSpecialPostgresTests
 {
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task SelectionLimitAndReplacement_AreEnforcedAgainstPostgres()
     {
@@ -59,7 +59,7 @@ public class HomepageSpecialPostgresTests
         await AssertSelectedIdsAsync(database, [itemIds[1], itemIds[2], itemIds[3]]);
     }
 
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task BulkReplacementAndSeed_PreserveTheSameLimitAgainstPostgres()
     {
@@ -107,7 +107,7 @@ public class HomepageSpecialPostgresTests
         }
     }
 
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task ConcurrentWriters_CannotBothClaimTheFinalSlot()
     {

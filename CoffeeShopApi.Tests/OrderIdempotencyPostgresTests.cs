@@ -16,7 +16,7 @@ namespace CoffeeShopApi.Tests;
 [Collection(PostgresIntegrationCollection.Name)]
 public class OrderIdempotencyPostgresTests
 {
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task ConcurrentHttpRetries_CreateOneDurableOrderAndEnqueueOneNotification()
     {

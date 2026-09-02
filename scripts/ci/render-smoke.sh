@@ -93,6 +93,12 @@ assert_menu_api() {
   grep -Fq '"isArchived":false' "$menu_response"
 }
 
+assert_database_fixture() {
+  docker exec -i "$database_name" \
+    psql -v ON_ERROR_STOP=1 -U roast66 -d coffeedb \
+    <"$candidate_context/docker/postgres/render-smoke-assertions.sql"
+}
+
 echo "Building the base backend image from $base_context"
 docker build -f "$base_context/Dockerfile.backend" -t "$base_image" "$base_context"
 
@@ -133,6 +139,7 @@ echo "Starting the candidate image through its production entrypoint"
 start_candidate_api
 wait_for_api
 assert_menu_api
+assert_database_fixture
 
 docker logs "$api_name" >"$api_log" 2>&1
 migration_line=$(grep -n -m1 'Database initialization successful.' "$api_log" | cut -d: -f1)
@@ -142,7 +149,8 @@ test -n "$listening_line"
 test "$migration_line" -lt "$listening_line"
 
 echo "Building and serving the frontend with the candidate API URL"
-if [ ! -d "$candidate_context/roast66/node_modules" ]; then
+if [ ! -x "$candidate_context/roast66/node_modules/.bin/tsc" ] ||
+   [ ! -x "$candidate_context/roast66/node_modules/.bin/vite" ]; then
   npm --prefix "$candidate_context/roast66" ci
 fi
 VITE_API_URL="http://127.0.0.1:$api_port/api" \
@@ -177,5 +185,6 @@ docker rm -f "$api_name" >/dev/null
 start_candidate_api
 wait_for_api
 assert_menu_api
+assert_database_fixture
 
 echo "Render release smoke passed."
