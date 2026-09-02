@@ -1,18 +1,21 @@
 using System.Collections.Generic;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
+using CoffeeShopApi.Security;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Microsoft.AspNetCore.Identity;
-using CoffeeShopApi.Security;
 
 namespace CoffeeShopApi.Tests.Integration;
 
 /// <summary>
-/// Test web application factory. Uses in-memory database when ASPNETCORE_ENVIRONMENT=Testing.
+/// Test web application factory. Replaces production persistence with an in-memory database.
 /// </summary>
 public class WebAppFactory : WebApplicationFactory<Program>
 {
@@ -85,8 +88,7 @@ public class WebAppFactory : WebApplicationFactory<Program>
                 ["Jwt:Issuer"] = "Roast66Coffee",
                 ["Jwt:Audience"] = "Roast66Coffee",
                 ["Jwt:TokenExpiryInHours"] = "8",
-                ["Authentication:LegacySharedLoginEnabled"] = "true",
-                ["Testing:DatabaseName"] = _databaseName
+                ["Authentication:LegacySharedLoginEnabled"] = "true"
             };
             if (_loginPermitLimit.HasValue)
             {
@@ -99,6 +101,13 @@ public class WebAppFactory : WebApplicationFactory<Program>
                     _orderPermitLimit.Value.ToString();
             }
             config.AddInMemoryCollection(settings);
+        });
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<ApplicationDbContext>();
+            services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseInMemoryDatabase(_databaseName));
         });
     }
 
