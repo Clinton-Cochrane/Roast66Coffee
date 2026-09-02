@@ -1,3 +1,5 @@
+using CoffeeShopApi.Data;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 
 namespace CoffeeShopApi.Tests;
@@ -5,56 +7,63 @@ namespace CoffeeShopApi.Tests;
 [Collection(PostgresIntegrationCollection.Name)]
 public class PostgresMigrationLockTests
 {
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
-    public async Task MigrationLock_BlocksAConcurrentMigrationConnection()
+    public async Task MigrationRunner_WaitsForTheAdvisoryLockBeforeApplyingMigrations()
     {
-        var connectionString = Environment.GetEnvironmentVariable(
-            "POSTGRES_INTEGRATION_CONNECTION_STRING");
-
-        if (string.IsNullOrWhiteSpace(connectionString))
+        await using var database = await PostgresTestDatabase.CreateAsync("roast66_migration_lock");
+        if (database == null)
         {
-            Assert.False(
-                string.Equals(
-                    Environment.GetEnvironmentVariable("REQUIRE_POSTGRES_INTEGRATION_TESTS"),
-                    "true",
-                    StringComparison.OrdinalIgnoreCase),
-                "POSTGRES_INTEGRATION_CONNECTION_STRING is required for this test run.");
             return;
         }
 
-        await using var holder = new NpgsqlConnection(connectionString);
+        await using var holder = new NpgsqlConnection(database.ConnectionString);
         await holder.OpenAsync();
         await ExecuteLockCommand(holder, "pg_advisory_lock");
 
-        var waiterAcquiredLock = new TaskCompletionSource(
-            TaskCreationOptions.RunContinuationsAsynchronously);
-
-        var waiter = Task.Run(async () =>
-        {
-            await using var connection = new NpgsqlConnection(connectionString);
-            await connection.OpenAsync();
-            await ExecuteLockCommand(connection, "pg_advisory_lock");
-            waiterAcquiredLock.SetResult();
-            await ExecuteLockCommand(connection, "pg_advisory_unlock");
-        });
+        await using var migrationContext = database.CreateContext();
+        var migration = Task.Run(() =>
+            new DatabaseMigrationRunner(migrationContext).Run(seedMenuIfEmpty: false));
 
         try
         {
-            await Task.Delay(TimeSpan.FromMilliseconds(500));
-            Assert.False(waiterAcquiredLock.Task.IsCompleted);
+            await WaitForAdvisoryLockWaiterAsync(database.ConnectionString);
+            Assert.False(migration.IsCompleted);
 
             await ExecuteLockCommand(holder, "pg_advisory_unlock");
-            await waiterAcquiredLock.Task.WaitAsync(TimeSpan.FromSeconds(5));
-            await waiter;
+            await migration.WaitAsync(TimeSpan.FromSeconds(15));
         }
         finally
         {
-            if (!waiterAcquiredLock.Task.IsCompleted)
+            if (!migration.IsCompleted)
             {
                 await ExecuteLockCommand(holder, "pg_advisory_unlock");
             }
         }
+
+        await using var verification = database.CreateContext();
+        Assert.Empty(await verification.Database.GetPendingMigrationsAsync());
+    }
+
+    private static async Task WaitForAdvisoryLockWaiterAsync(string connectionString)
+    {
+        await using var observer = new NpgsqlConnection(connectionString);
+        await observer.OpenAsync();
+        await using var command = observer.CreateCommand();
+        command.CommandText =
+            "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND NOT granted";
+
+        var deadline = DateTime.UtcNow.AddSeconds(5);
+        while (DateTime.UtcNow < deadline)
+        {
+            if ((long)(await command.ExecuteScalarAsync())! > 0)
+            {
+                return;
+            }
+            await Task.Delay(TimeSpan.FromMilliseconds(50));
+        }
+
+        Assert.Fail("The application migration runner did not wait on the advisory lock.");
     }
 
     private static async Task ExecuteLockCommand(
@@ -62,7 +71,8 @@ public class PostgresMigrationLockTests
         string functionName)
     {
         await using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT {functionName}({Program.MigrationLockKey})";
+        command.CommandText =
+            $"SELECT {functionName}({DatabaseMigrationRunner.MigrationLockKey})";
         await command.ExecuteNonQueryAsync();
     }
 }

@@ -9,7 +9,7 @@ namespace CoffeeShopApi.Tests;
 [Collection(PostgresIntegrationCollection.Name)]
 public class OrderStatusPostgresTests
 {
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task ConcurrentDuplicateAdvances_MoveExactlyOneStage()
     {

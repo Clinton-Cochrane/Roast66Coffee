@@ -19,8 +19,6 @@ namespace CoffeeShopApi
     /// <summary>Entry point. Exposed for integration testing via WebApplicationFactory.</summary>
     public class Program
     {
-        internal const long MigrationLockKey = 7266677001;
-
         public static void Main(string[] args)
         {
             Log.Logger = new LoggerConfiguration()
@@ -173,30 +171,7 @@ namespace CoffeeShopApi
                     throw new InvalidOperationException(
                         "The initialize-local command can only run in Development.");
 
-                Console.WriteLine("Acquiring the database migration lock...");
-                context.Database.OpenConnection();
-                context.Database.ExecuteSqlRaw($"SELECT pg_advisory_lock({MigrationLockKey})");
-                try
-                {
-                    Console.WriteLine("Applying database migrations...");
-                    context.Database.Migrate();
-                    if (seedMenuIfEmpty)
-                    {
-                        Console.WriteLine("Ensuring the local menu snapshot is seeded...");
-                        var seeded = SeedMenuItems.SeedIfEmptyAsync(context)
-                            .GetAwaiter()
-                            .GetResult();
-                        Console.WriteLine(
-                            seeded
-                                ? "Local menu snapshot seeded."
-                                : "Local menu already exists; leaving it unchanged.");
-                    }
-                }
-                finally
-                {
-                    context.Database.ExecuteSqlRaw($"SELECT pg_advisory_unlock({MigrationLockKey})");
-                    context.Database.CloseConnection();
-                }
+                new DatabaseMigrationRunner(context).Run(seedMenuIfEmpty);
 
                 Console.WriteLine("Database initialization successful.");
             }

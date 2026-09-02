@@ -30,15 +30,15 @@ that merely repeat a type, method, or statement name.
 
 | Critical path | Executable scenarios | Primary coverage |
 | --- | --- | --- |
-| Order validation | Missing/invalid customer and items are rejected; unavailable items fail; retries replay only equivalent payloads; conflicting keys return conflict. | `Integration/ValidationApiTests.cs`, `OrderIdempotencyTests.cs`, `OrderIdempotencyPostgresTests.cs`, `OrderSnapshotTests.cs` |
+| Order validation | Missing/invalid customer and items are rejected; PostgreSQL rejects nonexistent menu references without a partial order graph; unavailable items fail; retries replay only equivalent payloads; conflicting keys return conflict. | `Integration/ValidationApiTests.cs`, `RelationalConstraintPostgresTests.cs`, `OrderIdempotencyTests.cs`, `OrderIdempotencyPostgresTests.cs`, `OrderSnapshotTests.cs` |
 | Authentication and authorization | Valid login returns a usable JWT; invalid credentials fail; admin routes reject anonymous callers; production refuses missing/default secrets. | `Integration/ApiIntegrationTests.cs`, `Integration/MenuLifecycleApiTests.cs`, `SecurityConfigurationTests.cs`, `JwtTokenSettingsTests.cs` |
 | Rate limiting | Login and public order requests succeed below their window and return `429` after a deliberately small Testing-only window is exhausted. | `Integration/RateLimitTests.cs` |
 | Menu history | Archived/deleted menu changes preserve historical order names and prices; the migration and rollback preserve representative orders. | `MenuHistoryPostgresTests.cs`, `MenuMigrationTests.cs`, `OrderSnapshotTests.cs` |
-| Migrations and physical schema | EF model matches the latest snapshot; every migration applies; every mapped table/column and required foreign-key index exists; fresh and upgraded schemas agree; applying twice is safe; concurrent migration locking works. | `DatabaseModelContractTests.cs`, `DatabaseReleasePostgresTests.cs`, `ForeignKeyIndexPostgresTests.cs`, `PostgresMigrationLockTests.cs`, `scripts/ci/render-smoke.sh` |
+| Migrations and physical schema | EF model matches the latest snapshot; every migration applies; every mapped table/column and required foreign-key index exists; fresh and upgraded schemas agree; representative order snapshots survive upgrade and restart; applying twice is safe; the real application migration runner waits on its advisory lock. | `DatabaseModelContractTests.cs`, `DatabaseReleasePostgresTests.cs`, `ForeignKeyIndexPostgresTests.cs`, `PostgresMigrationLockTests.cs`, `scripts/ci/render-smoke.sh` |
 | Retention | Completed order graphs and payments are purged at 30 hours; redacted notification/audit logs are purged at 90 days across channels/statuses; incomplete orders remain; concurrent and partially failed runs are retryable. | `DataRetentionServiceTests.cs`, `DataRetentionPostgresTests.cs`, `SensitiveLoggingTests.cs`, `DatabaseReleasePostgresTests.cs`, `Integration/ApiIntegrationTests.cs` |
 | Readiness | Database connection failure or pending migrations is unhealthy; optional providers do not gate readiness; the production API is not considered ready before migration. | `DatabaseReadinessHealthCheckTests.cs`, `Integration/ApiIntegrationTests.cs`, `scripts/ci/render-smoke.sh` |
 | Notification failure | Provider failures are retried within bounds, partial push failure does not block other devices, and logs/audit rows omit secrets and customer payloads. | `StaffPushNotificationTests.cs`, `SensitiveLoggingTests.cs`, `Integration/StaffPushOrderIntegrationTests.cs` |
-| Row-level security | After the real migration chain, explicitly granted `anon` and `authenticated` roles still see no order rows because the deny policy is active. | `DatabaseReleasePostgresTests.RowLevelSecurity_HidesOrdersFromSupabaseClientRoles` |
+| Row-level security | In disposable local PostgreSQL, after the real migration chain, explicitly granted `anon` and `authenticated` roles still see no order rows because the deny policy is active. Supabase/PostgREST-specific checks remain a separate deferred suite. | `DatabaseReleasePostgresTests.RowLevelSecurity_HidesOrdersFromSupabaseClientRoles` |
 
 PostgreSQL scenarios are marked with the `PostgreSQLIntegration` trait. They
 return without execution during the fast suite when no integration connection
@@ -89,17 +89,18 @@ Fast backend suite (PostgreSQL contracts do not execute):
 dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
 ```
 
-Complete backend suite against a dedicated local PostgreSQL server:
+Complete backend suite against a disposable local PostgreSQL 17 container:
 
 ```bash
-REQUIRE_POSTGRES_INTEGRATION_TESTS=true \
-POSTGRES_INTEGRATION_CONNECTION_STRING="Host=localhost;Port=5432;Database=postgres;Username=postgres;Password=postgres" \
-dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
+scripts/ci/with-postgres.sh \
+  dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
 ```
 
-Never use a shared staging or production connection. The test harness creates
-and force-drops uniquely named databases and creates inert `anon` and
-`authenticated` roles when missing.
+The wrapper creates the inert `anon` and `authenticated` roles, and the test
+harness creates and force-drops uniquely named databases. Before creating one,
+the harness verifies the container's unique run identity and rejects
+non-loopback hosts or anything other than its dedicated test database and user,
+so shared staging and production connections cannot be used.
 
 Frontend gate:
 
@@ -140,9 +141,10 @@ revision:
 scripts/ci/full-local-smoke.sh /path/to/baseline-checkout
 ```
 
-The script starts and removes its own PostgreSQL container, creates disposable
-test databases, and leaves coverage XML in the printed `/tmp` directory. The
-release-smoke portion uses uniquely named Docker networks, containers, and
+The script uses `scripts/ci/with-postgres.sh` to start and remove PostgreSQL,
+creates disposable test databases, and leaves coverage XML in the printed
+`/tmp` directory. The release-smoke portion uses uniquely named Docker
+networks, containers, and
 images and removes them on exit. It runs `npm ci`, so uncommitted edits inside
 `roast66/node_modules` are not preserved.
 

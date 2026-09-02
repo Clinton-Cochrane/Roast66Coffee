@@ -4,8 +4,6 @@ set -Eeuo pipefail
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 candidate_context=$(cd "$script_dir/../.." && pwd)
 base_context=$(realpath "${1:-$candidate_context}")
-suffix="local-$$"
-database_name="roast66-full-smoke-db-$suffix"
 coverage_directory=$(mktemp -d /tmp/roast66-full-smoke-coverage.XXXXXX)
 
 cleanup() {
@@ -14,13 +12,8 @@ cleanup() {
   if [ "$status" -eq 0 ]; then
     echo "Full local smoke passed. Coverage report: $coverage_directory"
   else
-    if docker inspect "$database_name" >/dev/null 2>&1; then
-      echo "Disposable PostgreSQL log:" >&2
-      docker logs "$database_name" >&2 2>/dev/null
-    fi
     echo "Full local smoke failed. Coverage artifacts remain at $coverage_directory" >&2
   fi
-  docker rm -f "$database_name" >/dev/null 2>&1
   exit "$status"
 }
 trap cleanup EXIT
@@ -37,25 +30,6 @@ if [ ! -f "$base_context/Dockerfile.backend" ]; then
   exit 1
 fi
 
-echo "Starting disposable PostgreSQL 17 for backend release contracts"
-docker run --rm -d \
-  --name "$database_name" \
-  -p "127.0.0.1::5432" \
-  -e POSTGRES_DB=postgres \
-  -e POSTGRES_USER=postgres \
-  -e POSTGRES_PASSWORD=postgres \
-  postgres:17 >/dev/null
-
-for _ in $(seq 1 30); do
-  if docker exec "$database_name" pg_isready -U postgres -d postgres >/dev/null 2>&1; then
-    break
-  fi
-  sleep 1
-done
-docker exec "$database_name" pg_isready -U postgres -d postgres >/dev/null
-database_port=$(docker inspect "$database_name" \
-  --format '{{(index (index .NetworkSettings.Ports "5432/tcp") 0).HostPort}}')
-
 echo "Running coverage reporter tests"
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
   -s "$candidate_context/scripts/ci/tests" -p 'test_*.py' -v
@@ -68,8 +42,7 @@ dotnet restore "$candidate_context/Roast66.sln" \
 dotnet list "$candidate_context/Roast66.sln" package \
   --vulnerable \
   --include-transitive
-REQUIRE_POSTGRES_INTEGRATION_TESTS=true \
-POSTGRES_INTEGRATION_CONNECTION_STRING="Host=127.0.0.1;Port=$database_port;Database=postgres;Username=postgres;Password=postgres" \
+"$candidate_context/scripts/ci/with-postgres.sh" \
   dotnet test "$candidate_context/Roast66.sln" \
     --no-restore \
     --configuration Release \

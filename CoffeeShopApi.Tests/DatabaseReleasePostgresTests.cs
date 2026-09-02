@@ -12,7 +12,7 @@ namespace CoffeeShopApi.Tests;
 [Collection(PostgresIntegrationCollection.Name)]
 public class DatabaseReleasePostgresTests
 {
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task MigrationsProduceEveryEfMappedTableAndColumn()
     {
@@ -54,7 +54,7 @@ public class DatabaseReleasePostgresTests
         }
     }
 
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task EfBackedReadAndWritePaths_ExecuteAgainstPostgres()
     {
@@ -183,7 +183,7 @@ public class DatabaseReleasePostgresTests
         Assert.Equal(1, await context.Payments.CountAsync());
     }
 
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task RowLevelSecurity_HidesOrdersFromSupabaseClientRoles()
     {

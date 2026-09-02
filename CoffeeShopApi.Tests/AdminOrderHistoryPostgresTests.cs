@@ -14,7 +14,7 @@ namespace CoffeeShopApi.Tests;
 [Collection(PostgresIntegrationCollection.Name)]
 public class AdminOrderHistoryPostgresTests
 {
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task Migration_BackfillsCompletionTimeAndCreatesHistoryIndex()
     {
@@ -61,7 +61,7 @@ public class AdminOrderHistoryPostgresTests
         Assert.Equal(1L, await indexCommand.ExecuteScalarAsync());
     }
 
-    [Fact]
+    [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task RealisticDrinkSearch_UsesTwoQueriesAndReturnsAtMostFiftyDtos()
     {
