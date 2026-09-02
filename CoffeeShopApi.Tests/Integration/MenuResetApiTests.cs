@@ -275,6 +275,7 @@ public class MenuResetApiTests : IClassFixture<WebAppFactory>
                 {
                     ["Admin:Username"] = "admin",
                     ["Admin:Password"] = AdminPassword,
+                    ["Authentication:LegacySharedLoginEnabled"] = "true",
                     ["Jwt:Key"] = "ProductionMenuResetTestSigningKey_Minimum32Chars___",
                     ["Jwt:Issuer"] = "Roast66Coffee",
                     ["Jwt:Audience"] = "Roast66Coffee",

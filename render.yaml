@@ -24,6 +24,9 @@ services:
         sync: false
       - key: Admin__Password
         sync: false
+      # Release A compatibility only. Set false after named Owner verification.
+      - key: Authentication__LegacySharedLoginEnabled
+        value: "true"
       - key: Jwt__Key
         sync: false
       - key: Jwt__Issuer

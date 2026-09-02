@@ -4,6 +4,7 @@ using CoffeeShopApi.Data;
 using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using CoffeeShopApi.Security;
 
 namespace CoffeeShopApi.Services
 {
@@ -24,7 +25,7 @@ namespace CoffeeShopApi.Services
     /// depend on current menu values because <see cref="OrderService"/> snapshots them
     /// at submission time.
     /// </summary>
-    public class MenuService(ApplicationDbContext context)
+    public class MenuService(ApplicationDbContext context, AuditEventFactory? auditEvents = null)
     {
         public const int MaxHomepageSpecials = 3;
         // The limit spans rows, so row locks cannot prevent another writer from
@@ -32,6 +33,7 @@ namespace CoffeeShopApi.Services
         private const string HomepageSpecialLockSql =
             "LOCK TABLE menuitems IN SHARE ROW EXCLUSIVE MODE";
         private readonly ApplicationDbContext _context = context;
+        private readonly AuditEventFactory? _auditEvents = auditEvents;
 
         public async Task<IEnumerable<MenuItem>> GetMenuItemsAsync()
         {
@@ -50,16 +52,29 @@ namespace CoffeeShopApi.Services
             return await _context.MenuItems.FindAsync(id);
         }
 
-        public async Task<MenuItem> CreateMenuItemAsync(MenuItem menuItem)
+        public async Task<MenuItem> CreateMenuItemAsync(MenuItem menuItem, StaffActor? actor = null)
         {
             menuItem.IsFeaturedOnHome = false;
             menuItem.IsArchived = false;
+            await using var transaction =
+                actor != null && _auditEvents != null && _context.Database.IsRelational()
+                    ? await _context.Database.BeginTransactionAsync()
+                    : null;
             _context.MenuItems.Add(menuItem);
             await _context.SaveChangesAsync();
+            AddAudit(actor, "menu.created", menuItem.Id, new { menuItem.Name });
+            if (actor != null && _auditEvents != null)
+            {
+                await _context.SaveChangesAsync();
+            }
+            if (transaction != null)
+            {
+                await transaction.CommitAsync();
+            }
             return menuItem;
         }
 
-        public async Task<bool> UpdateMenuItemAsync(MenuItem menuItem)
+        public async Task<bool> UpdateMenuItemAsync(MenuItem menuItem, StaffActor? actor = null)
         {
             var existingItem = await _context.MenuItems.FindAsync(menuItem.Id);
             if (existingItem == null)
@@ -71,6 +86,7 @@ namespace CoffeeShopApi.Services
             existingItem.Price = menuItem.Price;
             existingItem.Description = menuItem.Description;
             existingItem.CategoryType = menuItem.CategoryType;
+            AddAudit(actor, "menu.updated", existingItem.Id, new { existingItem.Name });
 
             try
             {
@@ -98,7 +114,8 @@ namespace CoffeeShopApi.Services
         public async Task<HomepageSpecialSelectionResult> SetHomepageSpecialAsync(
             int id,
             bool isSelected,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            StaffActor? actor = null)
         {
             IDbContextTransaction? ownedTransaction = null;
             try
@@ -138,6 +155,7 @@ namespace CoffeeShopApi.Services
                 else
                 {
                     menuItem.IsFeaturedOnHome = isSelected;
+                    AddAudit(actor, "menu.homepage_special.changed", id, new { IsSelected = isSelected });
                     await _context.SaveChangesAsync(cancellationToken);
                     result = HomepageSpecialSelectionResult.Updated;
                 }
@@ -167,16 +185,19 @@ namespace CoffeeShopApi.Services
             }
         }
 
-        public async Task<bool> SetMenuSpecialAsync(int id, bool isSelected)
+        public async Task<bool> SetMenuSpecialAsync(int id, bool isSelected, StaffActor? actor = null)
         {
             var item = await _context.MenuItems.FindAsync(id);
             if (item == null) return false;
-            item.CategoryType = isSelected ? CategoryType.SPECIALS : CategoryType.DRINKS;
+            var nextCategory = isSelected ? CategoryType.SPECIALS : CategoryType.DRINKS;
+            if (item.CategoryType == nextCategory) return true;
+            item.CategoryType = nextCategory;
+            AddAudit(actor, "menu.menu_special.changed", id, new { IsSelected = isSelected });
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<MenuItemUpdateResult> SetPromotionAsync(int id, string? promotion)
+        public async Task<MenuItemUpdateResult> SetPromotionAsync(int id, string? promotion, StaffActor? actor = null)
         {
             var item = await _context.MenuItems.FindAsync(id);
             if (item == null) return MenuItemUpdateResult.NotFound;
@@ -194,6 +215,7 @@ namespace CoffeeShopApi.Services
                 item.PromotionType = type;
                 item.PromotionValue = value;
             }
+            AddAudit(actor, "menu.promotion.changed", id, new { Promotion = promotion?.Trim() });
             await _context.SaveChangesAsync();
             return MenuItemUpdateResult.Updated;
         }
@@ -218,7 +240,7 @@ namespace CoffeeShopApi.Services
             return MenuItem.CalculateEffectivePrice(price, type, value) >= 0.01m;
         }
 
-        public async Task<bool> DeleteMenuItemAsync(int id)
+        public async Task<bool> DeleteMenuItemAsync(int id, StaffActor? actor = null)
         {
             var menuItem = await _context.MenuItems.FindAsync(id);
             if (menuItem == null)
@@ -227,11 +249,12 @@ namespace CoffeeShopApi.Services
             }
 
             _context.MenuItems.Remove(menuItem);
+            AddAudit(actor, "menu.deleted", id, new { menuItem.Name });
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> ArchiveMenuItemAsync(int id)
+        public async Task<bool> ArchiveMenuItemAsync(int id, StaffActor? actor = null)
         {
             var menuItem = await _context.MenuItems.FindAsync(id);
             if (menuItem == null)
@@ -241,11 +264,12 @@ namespace CoffeeShopApi.Services
 
             menuItem.IsArchived = true;
             menuItem.IsFeaturedOnHome = false;
+            AddAudit(actor, "menu.archived", id, new { menuItem.Name });
             await _context.SaveChangesAsync();
             return true;
         }
 
-        public async Task<bool> RestoreMenuItemAsync(int id)
+        public async Task<bool> RestoreMenuItemAsync(int id, StaffActor? actor = null)
         {
             var menuItem = await _context.MenuItems.FindAsync(id);
             if (menuItem == null)
@@ -254,6 +278,7 @@ namespace CoffeeShopApi.Services
             }
 
             menuItem.IsArchived = false;
+            AddAudit(actor, "menu.restored", id, new { menuItem.Name });
             await _context.SaveChangesAsync();
             return true;
         }
@@ -270,7 +295,9 @@ namespace CoffeeShopApi.Services
         /// </summary>
         public async Task<MenuReplacementSummary> BulkReplaceAsync(
             IEnumerable<MenuItem> menuItems,
-            CancellationToken cancellationToken = default)
+            CancellationToken cancellationToken = default,
+            StaffActor? actor = null,
+            string auditAction = "menu.imported")
         {
             var items = menuItems.Select(m =>
             {
@@ -311,6 +338,15 @@ namespace CoffeeShopApi.Services
                 var existingItems = await _context.MenuItems.ToListAsync(cancellationToken);
                 _context.MenuItems.RemoveRange(existingItems);
                 await _context.MenuItems.AddRangeAsync(items, cancellationToken);
+                if (actor != null && _auditEvents != null)
+                {
+                    _auditEvents.Add(
+                        actor,
+                        auditAction,
+                        "menu",
+                        "all",
+                        new { PreviousItemCount = existingItems.Count, NewItemCount = items.Count });
+                }
                 await _context.SaveChangesAsync(cancellationToken);
                 if (ownedTransaction != null)
                 {
@@ -391,6 +427,17 @@ namespace CoffeeShopApi.Services
             {
                 throw new ValidationException(string.Join(" ", errors.Distinct()));
             }
+        }
+
+        private void AddAudit(StaffActor? actor, string action, int id, object details)
+        {
+            if (actor == null || _auditEvents == null) return;
+            _auditEvents.Add(
+                actor,
+                action,
+                "menu_item",
+                id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                details);
         }
     }
 }

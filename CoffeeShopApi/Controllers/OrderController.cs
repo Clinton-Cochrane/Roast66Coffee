@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Services;
+using CoffeeShopApi.Security;
 
 
 namespace CoffeeShopApi.Controllers;
@@ -215,7 +216,7 @@ public class OrderController : ControllerBase
             return BadRequest();
         }
 
-        var result = await _orderService.UpdateOrderAsync(order);
+        var result = await _orderService.UpdateOrderAsync(order, StaffActor.FromPrincipal(User));
         if (!result)
         {
             return NotFound();

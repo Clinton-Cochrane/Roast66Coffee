@@ -6,7 +6,7 @@ namespace CoffeeShopApi;
 public static class SecurityConfiguration
 {
     public const string DevelopmentUsername = "admin";
-    public const string DevelopmentPassword = "password";
+    public const string DevelopmentPassword = "Development1!";
     public const string DevelopmentJwtKey = "DevelopmentOnlyJwtSigningKey_ChangeMe_32Chars";
 
     public static void ApplyDevelopmentDefaults(
@@ -26,6 +26,7 @@ public static class SecurityConfiguration
         AddDefault(defaults, current, "Jwt:Key", DevelopmentJwtKey);
         AddDefault(defaults, current, "Jwt:Issuer", "Roast66Coffee");
         AddDefault(defaults, current, "Jwt:Audience", "Roast66Coffee");
+        AddDefault(defaults, current, "Authentication:LegacySharedLoginEnabled", "false");
         (current as IDisposable)?.Dispose();
         configuration.AddInMemoryCollection(defaults);
     }
@@ -37,14 +38,17 @@ public static class SecurityConfiguration
             return;
         }
 
-        Require(configuration, "Admin:Username", "Admin__Username");
-        var password = Require(configuration, "Admin:Password", "Admin__Password");
         var jwtKey = Require(configuration, "Jwt:Key", "Jwt__Key");
 
-        if (string.Equals(password, DevelopmentPassword, StringComparison.Ordinal))
+        if (configuration.GetValue("Authentication:LegacySharedLoginEnabled", false))
         {
-            throw new InvalidOperationException(
-                "Admin:Password cannot use the development default in Production. Set Admin__Password.");
+            Require(configuration, "Admin:Username", "Admin__Username");
+            var password = Require(configuration, "Admin:Password", "Admin__Password");
+            if (string.Equals(password, DevelopmentPassword, StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    "Admin:Password cannot use the development default in Production. Set Admin__Password.");
+            }
         }
 
         if (jwtKey.Length < 32)

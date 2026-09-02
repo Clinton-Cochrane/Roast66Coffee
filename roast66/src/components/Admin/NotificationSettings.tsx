@@ -6,24 +6,14 @@ import { useI18n } from "../../i18n/LanguageContext";
 const controlClasses = "mx-auto my-2.5 block w-4/5 max-w-[400px] p-2.5";
 const helperTextClasses = "mx-auto my-2 w-4/5 max-w-[400px] text-[0.95rem] text-gray-600";
 
-type CredentialInfo = {
-  username?: string;
-  usernameEnvKey?: string;
-  passwordEnvKey?: string;
-};
-
 function NotificationSettings() {
   const { t } = useI18n();
   const [adminEmail, setAdminEmail] = useState("");
   const [baristaEmail, setBaristaEmail] = useState("");
   const [trailerEmail, setTrailerEmail] = useState("");
-  const [credentialInfo, setCredentialInfo] = useState<CredentialInfo | null>(null);
-  const [credentialRequestMessage, setCredentialRequestMessage] = useState("");
-  const [isSubmittingCredentialRequest, setIsSubmittingCredentialRequest] = useState(false);
 
   useEffect(() => {
     fetchNotificationSettings();
-    fetchCredentialSettingsInfo();
   }, []);
 
   const fetchNotificationSettings = () => {
@@ -34,15 +24,6 @@ function NotificationSettings() {
         setAdminEmail(data.adminEmail ?? "");
         setBaristaEmail(data.baristaEmail ?? "");
         setTrailerEmail(data.trailerEmail ?? "");
-      })
-      .catch((error: unknown) => console.error(error));
-  };
-
-  const fetchCredentialSettingsInfo = () => {
-    axios
-      .get("/admin/credential-settings")
-      .then((response) => {
-        setCredentialInfo((response.data as CredentialInfo) ?? null);
       })
       .catch((error: unknown) => console.error(error));
   };
@@ -58,24 +39,6 @@ function NotificationSettings() {
       .then(() => toast.success(t("notificationSettings.settingsSaved")))
       .catch((error: unknown) => console.error(error));
   };
-
-  const handleCredentialRequest = (e: FormEvent) => {
-    e.preventDefault();
-    setIsSubmittingCredentialRequest(true);
-    axios
-      .post("/admin/forgot-password", {
-        message: credentialRequestMessage.trim(),
-      })
-      .then(() => {
-        toast.success(t("notificationSettings.credentialRequestSent"));
-        setCredentialRequestMessage("");
-      })
-      .catch((error: unknown) => console.error(error))
-      .finally(() => setIsSubmittingCredentialRequest(false));
-  };
-
-  const usernameKey = credentialInfo?.usernameEnvKey ?? t("notificationSettings.defaultUsernameKey");
-  const passwordKey = credentialInfo?.passwordEnvKey ?? t("notificationSettings.defaultPasswordKey");
 
   return (
     <div className="p-5">
@@ -107,35 +70,6 @@ function NotificationSettings() {
           {t("notificationSettings.saveButton")}
         </button>
       </form>
-      <section className="mt-6 border-t border-gray-200 pt-3">
-        <h2>{t("notificationSettings.credentialsTitle")}</h2>
-        <p className={helperTextClasses}>{t("notificationSettings.credentialsHelper")}</p>
-        <p className={helperTextClasses}>
-          {t("notificationSettings.currentUsername")}{" "}
-          <strong>{credentialInfo?.username ?? t("notificationSettings.unavailable")}</strong>
-        </p>
-        <p className={helperTextClasses}>
-          {t("notificationSettings.updateEnvVars", { usernameKey, passwordKey })}
-        </p>
-        <form onSubmit={handleCredentialRequest}>
-          <textarea
-            placeholder={t("notificationSettings.credentialMessagePlaceholder")}
-            value={credentialRequestMessage}
-            onChange={(e) => setCredentialRequestMessage(e.target.value)}
-            rows={3}
-            className={controlClasses}
-          />
-          <button
-            type="submit"
-            disabled={isSubmittingCredentialRequest}
-            className={controlClasses}
-          >
-            {isSubmittingCredentialRequest
-              ? t("notificationSettings.sending")
-              : t("notificationSettings.requestCredentialUpdate")}
-          </button>
-        </form>
-      </section>
     </div>
   );
 }

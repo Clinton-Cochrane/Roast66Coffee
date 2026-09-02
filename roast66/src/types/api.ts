@@ -60,6 +60,18 @@ export type OrderDto = {
   PaymentProvider?: string | null;
   completedUtc?: string | null;
   CompletedUtc?: string | null;
+  lastStatusChangedBy?: string | null;
+  LastStatusChangedBy?: string | null;
+  lastStatusChangedUtc?: string | null;
+  LastStatusChangedUtc?: string | null;
+};
+
+export type StaffAccountDto = {
+  id: string;
+  displayName: string;
+  username: string;
+  isActive: boolean;
+  roles: string[];
 };
 
 export type AdminOrderHistoryResponse = {

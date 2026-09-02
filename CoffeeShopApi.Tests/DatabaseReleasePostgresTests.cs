@@ -200,6 +200,24 @@ public class DatabaseReleasePostgresTests
             TrackingToken = $"rls-{Guid.NewGuid():N}",
             OrderItems = []
         });
+        context.Users.Add(new StaffUser
+        {
+            Id = "rls-staff-user",
+            UserName = "rls-staff-user",
+            NormalizedUserName = "RLS-STAFF-USER",
+            DisplayName = "RLS Staff User",
+            IsActive = true
+        });
+        context.AuditEvents.Add(new AuditEvent
+        {
+            OccurredUtc = DateTime.UtcNow,
+            ActorUserId = "rls-staff-user",
+            ActorDisplayName = "RLS Staff User",
+            Action = "rls.contract",
+            EntityType = "contract",
+            EntityId = "1",
+            DetailsJson = "{}"
+        });
         await context.SaveChangesAsync();
 
         await using var connection = new NpgsqlConnection(database.ConnectionString);
@@ -207,7 +225,7 @@ public class DatabaseReleasePostgresTests
         await using var command = connection.CreateCommand();
         command.CommandText =
             "GRANT USAGE ON SCHEMA public TO anon, authenticated; " +
-            "GRANT SELECT ON public.orders TO anon, authenticated;";
+            "GRANT SELECT ON public.orders, public.staffusers, public.auditevents TO anon, authenticated;";
         await command.ExecuteNonQueryAsync();
 
         // The grants isolate RLS from ordinary table-permission denial: each role
@@ -217,6 +235,10 @@ public class DatabaseReleasePostgresTests
             command.CommandText = $"SET ROLE {role}";
             await command.ExecuteNonQueryAsync();
             command.CommandText = "SELECT count(*) FROM public.orders";
+            Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
+            command.CommandText = "SELECT count(*) FROM public.staffusers";
+            Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
+            command.CommandText = "SELECT count(*) FROM public.auditevents";
             Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
             command.CommandText = "RESET ROLE";
             await command.ExecuteNonQueryAsync();

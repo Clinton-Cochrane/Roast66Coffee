@@ -151,7 +151,11 @@ def _markdown(rows: Sequence[tuple[str, Coverage]]) -> str:
 
 def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("report", type=Path, help="Cobertura XML report")
+    parser.add_argument(
+        "report",
+        type=Path,
+        help="Cobertura XML report or results directory containing one report",
+    )
     parser.add_argument("--minimum-line", type=float, default=70.0)
     parser.add_argument("--minimum-branch", type=float, default=50.0)
     parser.add_argument(
@@ -165,10 +169,24 @@ def _parse_args(argv: Sequence[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _resolve_report(path: Path) -> Path:
+    if path.is_file():
+        return path
+    if not path.is_dir():
+        raise ValueError(f"Coverage path does not exist: {path}")
+
+    reports = sorted(path.rglob("coverage.cobertura.xml"))
+    if not reports:
+        raise ValueError(f"No coverage.cobertura.xml found below: {path}")
+    if len(reports) > 1:
+        raise ValueError(f"Multiple coverage.cobertura.xml reports found below: {path}")
+    return reports[0]
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = _parse_args(argv or sys.argv[1:])
     try:
-        rows = _scope_rows(ET.parse(args.report).getroot())
+        rows = _scope_rows(ET.parse(_resolve_report(args.report)).getroot())
     except (ET.ParseError, OSError, ValueError) as error:
         print(f"Coverage report error: {error}", file=sys.stderr)
         return 2

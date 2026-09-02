@@ -3,6 +3,7 @@ using CoffeeShopApi.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json.Serialization;
+using CoffeeShopApi.Security;
 
 namespace CoffeeShopApi.Controllers;
 
@@ -46,12 +47,15 @@ public class PushNotificationsController : ControllerBase
             });
         }
 
+        var actor = StaffActor.FromPrincipal(User);
         await _staffPushNotificationService.UpsertSubscriptionAsync(
             endpoint: request.Endpoint.Trim(),
             p256dh: request.Keys.P256Dh.Trim(),
             auth: request.Keys.Auth.Trim(),
-            userIdentifier: User.Identity?.Name,
+            staffUserId: User.HasClaim(StaffClaimTypes.LegacyShared, "true") ? null : actor.UserId,
+            userIdentifier: actor.DisplayName,
             userAgent: Request.Headers.UserAgent.ToString(),
+            actor: actor,
             cancellationToken: cancellationToken);
 
         return Ok(new { message = "Subscription saved." });
@@ -62,7 +66,12 @@ public class PushNotificationsController : ControllerBase
         [FromBody] RemovePushSubscriptionRequest request,
         CancellationToken cancellationToken)
     {
-        await _staffPushNotificationService.RemoveSubscriptionAsync(request.Endpoint.Trim(), cancellationToken);
+        var actor = StaffActor.FromPrincipal(User);
+        await _staffPushNotificationService.RemoveSubscriptionAsync(
+            request.Endpoint.Trim(),
+            actor.UserId,
+            actor,
+            cancellationToken);
         return NoContent();
     }
 }

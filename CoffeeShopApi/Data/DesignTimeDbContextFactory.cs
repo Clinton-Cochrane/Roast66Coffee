@@ -11,12 +11,14 @@ namespace CoffeeShopApi.Data
         {
             IConfigurationRoot configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
-                .AddJsonFile("appsettings.json")
+                .AddJsonFile("appsettings.json", optional: true)
                 .AddEnvironmentVariables()
                 .Build();
 
             var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
-            optionsBuilder.UseNpgsql(configuration.GetConnectionString("DefaultConnection"));
+            optionsBuilder.UseNpgsql(
+                configuration.GetConnectionString("DefaultConnection") ??
+                "Host=localhost;Database=coffeedb;Username=unused;Password=unused");
 
             return new ApplicationDbContext(optionsBuilder.Options);
         }

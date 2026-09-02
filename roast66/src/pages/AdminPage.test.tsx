@@ -6,6 +6,13 @@ import AdminPage from "./AdminPage";
 import { LanguageProvider } from "../i18n/LanguageContext";
 
 const mockNavigate = vi.fn();
+const mockGet = vi.fn();
+
+vi.mock("../axiosConfig", () => ({
+  default: {
+    get: (...args: unknown[]) => mockGet(...args),
+  },
+}));
 
 vi.mock("react-router-dom", async () => {
   const actual = await vi.importActual<typeof import("react-router-dom")>("react-router-dom");
@@ -43,6 +50,18 @@ vi.mock("../components/Admin/NotificationSettings", () => ({
   },
 }));
 
+vi.mock("../components/Admin/StaffManagement", () => ({
+  default: function MockStaffManagement() {
+    return <div data-testid="mock-staff-management">Staff content</div>;
+  },
+}));
+
+vi.mock("../components/Admin/AccountSecurity", () => ({
+  default: function MockAccountSecurity() {
+    return <div data-testid="mock-account-security">Account content</div>;
+  },
+}));
+
 vi.mock("../components/layout/Header", () => ({
   default: function MockHeader({ title }: { title: string }) {
     return <header data-testid="admin-header">{title}</header>;
@@ -66,6 +85,10 @@ function renderAdminPage() {
 describe("AdminPage", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
+    mockGet.mockReset();
+    mockGet.mockResolvedValue({
+      data: { id: "admin-1", displayName: "Admin", username: "admin", isActive: true, roles: ["Admin"] },
+    });
     localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
   });
 
@@ -96,6 +119,22 @@ describe("AdminPage", () => {
     expect(screen.queryByTestId("mock-view-orders")).not.toBeInTheDocument();
   });
 
+  it("shows staff management only for an Owner", async () => {
+    mockGet.mockResolvedValueOnce({
+      data: { id: "owner-1", displayName: "Owner", username: "owner", isActive: true, roles: ["Admin", "Owner"] },
+    });
+    renderAdminPage();
+    fireEvent.click(await screen.findByRole("tab", { name: /^staff$/i }));
+    expect(screen.getByTestId("mock-staff-management")).toBeInTheDocument();
+  });
+
+  it("shows account security for a normal Admin", async () => {
+    renderAdminPage();
+    fireEvent.click(await screen.findByRole("tab", { name: /^account$/i }));
+    expect(screen.getByTestId("mock-account-security")).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: /^staff$/i })).not.toBeInTheDocument();
+  });
+
   it("logs out and routes back to /admin", () => {
     renderAdminPage();
     fireEvent.click(screen.getByRole("button", { name: /log out/i }));
@@ -107,6 +146,10 @@ describe("AdminPage", () => {
 describe("AdminPage (es-MX locale)", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
+    mockGet.mockReset();
+    mockGet.mockResolvedValue({
+      data: { id: "admin-1", displayName: "Admin", username: "admin", isActive: true, roles: ["Admin"] },
+    });
     localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
     localStorage.setItem("roast66_locale", "es");
   });

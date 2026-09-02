@@ -5,6 +5,7 @@ using Npgsql;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using CoffeeShopApi.Security;
 
 namespace CoffeeShopApi.Services;
 
@@ -14,7 +15,10 @@ namespace CoffeeShopApi.Services;
 /// status transitions. Controllers should delegate these rules instead of updating
 /// order graphs directly.
 /// </summary>
-public class OrderService(ApplicationDbContext context, IConfiguration configuration)
+public class OrderService(
+    ApplicationDbContext context,
+    IConfiguration configuration,
+    AuditEventFactory? auditEvents = null)
 {
     /// <summary>
     /// The operational order history deliberately uses a fixed page size. Revisit this
@@ -30,6 +34,7 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
 
     private readonly ApplicationDbContext _context = context;
     private readonly IConfiguration _configuration = configuration;
+    private readonly AuditEventFactory? _auditEvents = auditEvents;
 
     private int DuplicateDetectionWindowMinutes =>
         _configuration.GetValue("Order:DuplicateDetectionWindowMinutes", 2);
@@ -126,6 +131,20 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
                 CompletedUtc = order.CompletedUtc,
                 PaidUtc = order.PaidUtc,
                 PaymentProvider = order.PaymentProvider,
+                LastStatusChangedBy = _context.AuditEvents
+                    .Where(audit => audit.Action == "order.status.changed" &&
+                                    audit.EntityType == "order" &&
+                                    audit.EntityId == order.Id.ToString())
+                    .OrderByDescending(audit => audit.OccurredUtc)
+                    .Select(audit => audit.ActorDisplayName)
+                    .FirstOrDefault(),
+                LastStatusChangedUtc = _context.AuditEvents
+                    .Where(audit => audit.Action == "order.status.changed" &&
+                                    audit.EntityType == "order" &&
+                                    audit.EntityId == order.Id.ToString())
+                    .OrderByDescending(audit => audit.OccurredUtc)
+                    .Select(audit => (DateTime?)audit.OccurredUtc)
+                    .FirstOrDefault(),
                 OrderItems = order.OrderItems
                     .Select(item => new AdminOrderLineItemDto
                     {
@@ -433,7 +452,7 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
     /// Status changes must go through <see cref="AdvanceStatusAsync(int, OrderStatus, CancellationToken)"/>
     /// so clients cannot bypass the state machine or its concurrency token.
     /// </summary>
-    public async Task<bool> UpdateOrderAsync(Order order)
+    public async Task<bool> UpdateOrderAsync(Order order, StaffActor? actor = null)
     {
         var persistedStatus = await _context.Orders
             .AsNoTracking()
@@ -455,6 +474,14 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         order.StatusConcurrencyToken = persistedStatus.StatusConcurrencyToken;
         _context.Entry(order).State = EntityState.Modified;
         _context.Entry(order).Property(existing => existing.StatusConcurrencyToken).IsModified = false;
+        if (actor != null && _auditEvents != null)
+        {
+            _auditEvents.Add(
+                actor,
+                "order.updated",
+                "order",
+                order.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
         try
         {
             await _context.SaveChangesAsync();
@@ -487,11 +514,26 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
         int orderId,
         OrderStatus expectedStatus,
         CancellationToken cancellationToken = default) =>
-        AdvanceStatusAsync(orderId, expectedStatus, DateTime.UtcNow, cancellationToken);
+        AdvanceStatusAsync(orderId, expectedStatus, null, DateTime.UtcNow, cancellationToken);
+
+    internal Task<OrderStatusAdvanceResult> AdvanceStatusAsync(
+        int orderId,
+        OrderStatus expectedStatus,
+        StaffActor actor,
+        CancellationToken cancellationToken = default) =>
+        AdvanceStatusAsync(orderId, expectedStatus, actor, DateTime.UtcNow, cancellationToken);
+
+    internal Task<OrderStatusAdvanceResult> AdvanceStatusAsync(
+        int orderId,
+        OrderStatus expectedStatus,
+        DateTime nowUtc,
+        CancellationToken cancellationToken = default) =>
+        AdvanceStatusAsync(orderId, expectedStatus, null, nowUtc, cancellationToken);
 
     internal async Task<OrderStatusAdvanceResult> AdvanceStatusAsync(
         int orderId,
         OrderStatus expectedStatus,
+        StaffActor? actor,
         DateTime nowUtc,
         CancellationToken cancellationToken = default)
     {
@@ -540,6 +582,16 @@ public class OrderService(ApplicationDbContext context, IConfiguration configura
             order.CompletedUtc = AsUtc(nowUtc);
         }
         order.StatusConcurrencyToken = Guid.NewGuid();
+        if (actor != null && _auditEvents != null)
+        {
+            _auditEvents.Add(
+                actor,
+                "order.status.changed",
+                "order",
+                order.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                new { From = previousStatus.ToString(), To = nextStatus.ToString() },
+                AsUtc(nowUtc));
+        }
 
         try
         {

@@ -365,6 +365,8 @@ function ViewOrders() {
             const loadingNotifications = Boolean(loadingNotificationsByOrderId[id]);
             const lineItems: OrderLineItemDto[] = order.orderItems || order.OrderItems || [];
             const isPaid = Boolean(order.paidUtc ?? order.PaidUtc);
+            const lastChangedBy = order.lastStatusChangedBy ?? order.LastStatusChangedBy;
+            const lastChangedUtc = order.lastStatusChangedUtc ?? order.LastStatusChangedUtc;
 
             return (
               <Card
@@ -405,6 +407,17 @@ function ViewOrders() {
                   </Button>
                 </div>
                 <div className={isComplete ? "r66-admin-completed-copy" : undefined}>
+                  {lastChangedBy && lastChangedUtc ? (
+                    <p className="mb-3 text-sm text-gray-600">
+                      {t("adminOrders.lastChangedBy", {
+                        name: lastChangedBy,
+                        time: new Date(lastChangedUtc).toLocaleTimeString([], {
+                          hour: "numeric",
+                          minute: "2-digit",
+                        }),
+                      })}
+                    </p>
+                  ) : null}
                   <p className="mb-1">
                     <strong>{t("adminOrders.customerLabel")}</strong>{" "}
                     {order.customerName ?? order.CustomerName}
