@@ -61,10 +61,17 @@ PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
   -s "$candidate_context/scripts/ci/tests" -p 'test_*.py' -v
 
 echo "Running the complete backend suite with PostgreSQL and coverage"
-dotnet restore "$candidate_context/Roast66.sln"
+dotnet restore "$candidate_context/Roast66.sln" \
+  -p:NuGetAudit=true \
+  -p:NuGetAuditMode=all \
+  '-warnaserror:NU1901;NU1902;NU1903;NU1904'
+dotnet list "$candidate_context/Roast66.sln" package \
+  --vulnerable \
+  --include-transitive
 REQUIRE_POSTGRES_INTEGRATION_TESTS=true \
 POSTGRES_INTEGRATION_CONNECTION_STRING="Host=127.0.0.1;Port=$database_port;Database=postgres;Username=postgres;Password=postgres" \
   dotnet test "$candidate_context/Roast66.sln" \
+    --no-restore \
     --configuration Release \
     --verbosity minimal \
     --settings "$candidate_context/coverlet.runsettings" \

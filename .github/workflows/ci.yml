@@ -45,10 +45,17 @@ jobs:
       - name: Verify coverage reporting
         run: python3 -m unittest discover -s scripts/ci/tests -p 'test_*.py' -v
 
-      - name: Restore and test with application coverage
+      - name: Restore, audit, and test with application coverage
         run: |
-          dotnet restore Roast66.sln
+          dotnet restore Roast66.sln \
+            -p:NuGetAudit=true \
+            -p:NuGetAuditMode=all \
+            '-warnaserror:NU1901;NU1902;NU1903;NU1904'
+          dotnet list "$GITHUB_WORKSPACE/Roast66.sln" package \
+            --vulnerable \
+            --include-transitive
           dotnet test Roast66.sln \
+            --no-restore \
             --configuration Release \
             --verbosity minimal \
             --settings coverlet.runsettings \

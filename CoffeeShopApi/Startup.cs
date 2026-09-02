@@ -44,17 +44,8 @@ namespace CoffeeShopApi
         public void ConfigureServices(IServiceCollection services)
         {
             SecurityConfiguration.Validate(Configuration, _env);
-            if (_env.IsEnvironment("Testing"))
-            {
-                var databaseName = Configuration["Testing:DatabaseName"] ?? "IntegrationTestDb";
-                services.AddDbContext<ApplicationDbContext>(options =>
-                    options.UseInMemoryDatabase(databaseName));
-            }
-            else
-            {
-                services.AddDbContext<ApplicationDbContext>(options =>
-                    options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
-            }
+            services.AddDbContext<ApplicationDbContext>(options =>
+                options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
 
             services.AddIdentityCore<StaffUser>(options =>
                 {
