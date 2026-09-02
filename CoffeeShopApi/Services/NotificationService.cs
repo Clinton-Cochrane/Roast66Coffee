@@ -9,10 +9,10 @@ using Microsoft.EntityFrameworkCore;
 namespace CoffeeShopApi.Services;
 
 /// <summary>
-/// Creates a durable, deduplicated audit record before attempting customer delivery.
+/// Creates a redacted, deduplicated audit record before attempting customer delivery.
 /// Delivery failures are recorded with safe classifications only: provider response
-/// bodies, exception messages, and customer message content must not enter logs or
-/// <see cref="NotificationMessage.PayloadJson"/>.
+/// bodies, exception messages, destinations, and customer message content must not
+/// enter the persisted audit row.
 /// </summary>
 public class NotificationService
 {
@@ -86,12 +86,10 @@ public class NotificationService
 
     public async Task<IReadOnlyList<NotificationMessage>> GetCustomerNotificationsForOrderAsync(
         int orderId,
-        string phone,
         CancellationToken cancellationToken = default)
     {
-        var normalizedPhone = NormalizePhone(phone);
         return await _context.NotificationMessages
-            .Where(x => x.OrderId == orderId && x.RecipientRole == "customer" && x.RecipientPhone == normalizedPhone)
+            .Where(x => x.OrderId == orderId && x.RecipientRole == "customer")
             .OrderByDescending(x => x.CreatedUtc)
             .ToListAsync(cancellationToken);
     }
@@ -158,7 +156,7 @@ public class NotificationService
             return;
         }
 
-        var dedupKey = BuildDedupKey(eventType, recipientRole, destination, templateKey, orderId);
+        var dedupKey = BuildDedupKey(channel, eventType, recipientRole, templateKey, orderId);
         var existing = await _context.NotificationMessages
             .FirstOrDefaultAsync(x => x.DedupKey == dedupKey, cancellationToken);
         if (existing != null)
@@ -170,8 +168,6 @@ public class NotificationService
         {
             EventType = eventType,
             RecipientRole = recipientRole,
-            RecipientPhone = normalizedPhone,
-            RecipientEmail = normalizedEmail,
             Channel = channel,
             Provider = channel == "sms" ? _smsSender.ProviderName : null,
             TemplateKey = templateKey,
@@ -301,12 +297,17 @@ public class NotificationService
     }
 
     /// <summary>
-    /// Hashes the delivery identity so uniqueness does not require storing a readable
-    /// composite key containing the customer destination.
+    /// Uses only non-PII delivery attributes for durable deduplication. A single
+    /// recipient role receives each order event at most once per channel/template.
     /// </summary>
-    private static string BuildDedupKey(string eventType, string role, string phone, string templateKey, int orderId)
+    private static string BuildDedupKey(
+        string channel,
+        string eventType,
+        string role,
+        string templateKey,
+        int orderId)
     {
-        var raw = $"{eventType}|{role}|{phone}|{templateKey}|{orderId}";
+        var raw = $"{channel}|{eventType}|{role}|{templateKey}|{orderId}";
         var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(raw));
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }

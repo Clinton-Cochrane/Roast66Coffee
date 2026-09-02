@@ -71,7 +71,12 @@ namespace CoffeeShopApi
             services.AddScoped<NotificationSettingsService>();
             services.AddScoped<ISmsSender, DisabledSmsSender>();
             services.AddScoped<OrderEmailNotificationService>();
-            services.AddScoped<NotificationRetentionService>();
+            services.AddOptions<DataRetentionOptions>()
+                .Bind(Configuration.GetSection(DataRetentionOptions.SectionName))
+                .ValidateDataAnnotations()
+                .ValidateOnStart();
+            services.AddSingleton(TimeProvider.System);
+            services.AddScoped<DataRetentionService>();
             services.AddScoped<StaffPushNotificationService>();
             services.AddOptions<StaffPushOptions>()
                 .Bind(Configuration.GetSection(StaffPushOptions.SectionName))
@@ -108,7 +113,7 @@ namespace CoffeeShopApi
             services.AddScoped<StaffAccountService>();
             services.AddSingleton<KeepAliveStateStore>();
             services.AddHostedService<ConnectionWarmupService>();
-            services.AddHostedService<NotificationRetentionWorker>();
+            services.AddHostedService<DataRetentionWorker>();
             services.AddHttpClient();
             services.AddScoped<IDatabaseReadinessProbe, EfCoreDatabaseReadinessProbe>();
             services.AddHealthChecks()

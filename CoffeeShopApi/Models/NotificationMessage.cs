@@ -23,15 +23,6 @@ public class NotificationMessage
     public string RecipientRole { get; set; } = string.Empty;
 
     [Required]
-    [StringLength(32)]
-    [Column("recipientphone")]
-    public string RecipientPhone { get; set; } = string.Empty;
-
-    [StringLength(320)]
-    [Column("recipientemail")]
-    public string? RecipientEmail { get; set; }
-
-    [Required]
     [StringLength(16)]
     [Column("channel")]
     public string Channel { get; set; } = "sms";

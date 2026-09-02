@@ -4,6 +4,7 @@ using CoffeeShopApi.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace CoffeeShopApi.Tests;
@@ -144,13 +145,11 @@ public class DatabaseReleasePostgresTests
         {
             EventType = "database-contract",
             RecipientRole = "admin",
-            RecipientPhone = string.Empty,
-            RecipientEmail = "admin@example.test",
             Channel = "email",
             TemplateKey = "database-contract",
             DedupKey = $"database-contract-{Guid.NewGuid():N}",
-            CreatedUtc = DateTime.UtcNow.AddDays(-2),
-            UpdatedUtc = DateTime.UtcNow.AddDays(-2)
+            CreatedUtc = DateTime.UtcNow.AddDays(-91),
+            UpdatedUtc = DateTime.UtcNow.AddDays(-91)
         });
         context.StaffPushSubscriptions.Add(new StaffPushSubscription
         {
@@ -173,11 +172,13 @@ public class DatabaseReleasePostgresTests
         });
         await context.SaveChangesAsync();
 
-        var retentionService = new NotificationRetentionService(context);
+        var retentionService = new DataRetentionService(
+            context,
+            Options.Create(new DataRetentionOptions()),
+            TimeProvider.System);
         Assert.Equal(
             1,
-            await retentionService.PurgeNotificationsOlderThanAsync(
-                DateTime.UtcNow.AddDays(-1)));
+            (await retentionService.PurgeExpiredDataAsync()).NotificationLogsDeleted);
         Assert.Equal(1, await context.StaffPushSubscriptions.CountAsync());
         Assert.Equal(1, await context.Payments.CountAsync());
     }
