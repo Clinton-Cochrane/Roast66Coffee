@@ -7,8 +7,9 @@ namespace CoffeeShopApi.Migrations
     /// <inheritdoc />
     /// <summary>
     /// Supabase: explicit RLS policies for anon/authenticated (tables already had RLS enabled).
-    /// Drops unused FK indexes on menuitemid in the database (performance advisor). The EF model
-    /// still includes those FK indexes so tooling stays aligned; only the physical indexes are removed.
+    /// This historical migration also attempted to remove menu foreign-key indexes based on a
+    /// transient advisor result. RestoreMenuForeignKeyIndexes restores the physical indexes because
+    /// PostgreSQL uses those relationships for menu deletion and the EF model requires them.
     /// </summary>
     public partial class AddRlsPoliciesAndDropUnusedIndexes : Migration
     {
