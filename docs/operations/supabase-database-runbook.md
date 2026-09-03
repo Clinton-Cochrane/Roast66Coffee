@@ -5,6 +5,12 @@ development environment. Its data is mock, disposable, and never authoritative
 for production. Roast66 uses only its PostgreSQL connection; do not add
 Supabase Auth, Realtime, Storage, or SDK dependencies without a separate decision.
 
+The database security contract is provider-neutral. Every API-owned table in
+`public` has PostgreSQL row-level security enabled with no permissive policies.
+Consequently Supabase `anon` and `authenticated` PostgREST roles receive no rows
+and cannot write even if table privileges are granted. The backend connection
+owns the application tables and remains the only application data path.
+
 ## Configuration
 
 The existing developer-owned Render services `roast66-api` and `roast66-web`
@@ -43,3 +49,23 @@ after the test.
 After a dev deployment or reset, verify migrations, readiness, menu reads, staff
 sign-in, order submission, and private tracking. Free-tier latency or cold starts
 are not production incidents.
+
+The PostgreSQL release tests inventory every regular or partitioned `public`
+table owned by the migration role and fail if RLS is disabled. Tables owned by a
+Supabase service or extension role are outside the application's ownership and
+must not be altered by Roast66 migrations. The same inventory and denial tests
+run against stock PostgreSQL, so Render receives the same protection without
+Supabase-specific policies or roles.
+
+When adding a table, enable RLS in the same EF migration. Run the complete
+PostgreSQL contract before deployment:
+
+```bash
+scripts/ci/with-postgres.sh \
+  dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj --no-restore
+```
+
+If PostgreSQL is replaced, these migrations and tests no longer provide the
+boundary. The replacement design must preserve backend-only data access using
+that database's permissions and must add an equivalent automated inventory and
+client-denial contract before deployment.

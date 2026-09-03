@@ -185,7 +185,57 @@ public class DatabaseReleasePostgresTests
 
     [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
-    public async Task RowLevelSecurity_DeniesGrantedNonOwnerRoleWithoutProviderRoles()
+    public async Task EveryApiOwnedPublicTable_HasRowLevelSecurityEnabled()
+    {
+        await using var database = await PostgresTestDatabase.CreateAsync("roast66_rls_inventory");
+        if (database == null)
+        {
+            return;
+        }
+
+        await using var context = database.CreateContext();
+        await context.Database.MigrateAsync();
+
+        await using var connection = new NpgsqlConnection(database.ConnectionString);
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            """
+            SELECT relation.relname, relation.relrowsecurity
+            FROM pg_class AS relation
+            INNER JOIN pg_namespace AS schema
+                ON schema.oid = relation.relnamespace
+            WHERE schema.nspname = 'public'
+              AND relation.relkind IN ('r', 'p')
+              AND pg_get_userbyid(relation.relowner) = current_user
+            ORDER BY relation.relname;
+            """;
+
+        var tables = new Dictionary<string, bool>(StringComparer.Ordinal);
+        await using (var reader = await command.ExecuteReaderAsync())
+        {
+            while (await reader.ReadAsync())
+            {
+                tables.Add(reader.GetString(0), reader.GetBoolean(1));
+            }
+        }
+
+        Assert.Contains("notificationmessages", tables.Keys);
+        Assert.Contains("payments", tables.Keys);
+        Assert.Contains("staffpushsubscriptions", tables.Keys);
+
+        var unprotectedTables = tables
+            .Where(table => !table.Value)
+            .Select(table => table.Key)
+            .ToArray();
+        Assert.True(
+            unprotectedTables.Length == 0,
+            $"API-owned public tables without RLS: {string.Join(", ", unprotectedTables)}");
+    }
+
+    [PostgresIntegrationFact]
+    [Trait("Category", "PostgreSQLIntegration")]
+    public async Task RowLevelSecurity_DeniesGrantedClientRolesWithoutProviderDependencies()
     {
         await using var database = await PostgresTestDatabase.CreateAsync("roast66_rls_contract");
         if (database == null)
@@ -224,29 +274,52 @@ public class DatabaseReleasePostgresTests
         await using var connection = new NpgsqlConnection(database.ConnectionString);
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
-        command.CommandText = "CREATE ROLE roast66_rls_reader NOLOGIN;";
-        await command.ExecuteNonQueryAsync();
+        var roleNames = new[] { "anon", "authenticated" };
+        var identifierQuoter = new NpgsqlCommandBuilder();
 
         try
         {
-            command.CommandText =
-                "GRANT USAGE ON SCHEMA public TO roast66_rls_reader; " +
-                "GRANT SELECT ON public.orders, public.staffusers, public.auditevents " +
-                "TO roast66_rls_reader; " +
-                "SET ROLE roast66_rls_reader;";
-            await command.ExecuteNonQueryAsync();
+            foreach (var roleName in roleNames)
+            {
+                command.CommandText =
+                    $"CREATE ROLE {identifierQuoter.QuoteIdentifier(roleName)} NOLOGIN;";
+                await command.ExecuteNonQueryAsync();
+            }
 
-            // The grants isolate RLS from ordinary table-permission denial. With no
-            // policies, PostgreSQL must hide all rows from any non-owner role.
+            foreach (var roleName in roleNames)
+            {
+                var quotedRole = identifierQuoter.QuoteIdentifier(roleName);
+                command.CommandText =
+                    "GRANT USAGE ON SCHEMA public TO " + quotedRole + "; " +
+                    "GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO " +
+                    quotedRole + "; " +
+                    "GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO " + quotedRole + "; " +
+                    "SET ROLE " + quotedRole + ";";
+                await command.ExecuteNonQueryAsync();
+
+                // These grants isolate RLS from ordinary object-permission denial.
+                command.CommandText = "SELECT count(*) FROM public.orders";
+                Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
+
+                command.CommandText =
+                    "UPDATE public.orders SET customername = 'blocked' RETURNING id;";
+                Assert.Null(await command.ExecuteScalarAsync());
+
+                command.CommandText = "DELETE FROM public.orders RETURNING id;";
+                Assert.Null(await command.ExecuteScalarAsync());
+
+                command.CommandText = "INSERT INTO public.notificationsettings DEFAULT VALUES;";
+                var exception = await Assert.ThrowsAsync<PostgresException>(
+                    async () => await command.ExecuteNonQueryAsync());
+                Assert.Equal(PostgresErrorCodes.InsufficientPrivilege, exception.SqlState);
+
+                command.CommandText = "RESET ROLE;";
+                await command.ExecuteNonQueryAsync();
+            }
+
             command.CommandText = "SELECT count(*) FROM public.orders";
-            Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
-            command.CommandText = "SELECT count(*) FROM public.staffusers";
-            Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
-            command.CommandText = "SELECT count(*) FROM public.auditevents";
-            Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
+            Assert.Equal(1L, (long)(await command.ExecuteScalarAsync())!);
 
-            command.CommandText = "RESET ROLE";
-            await command.ExecuteNonQueryAsync();
             command.CommandText =
                 "SELECT count(*) FROM pg_policies " +
                 "WHERE policyname = 'Deny_supabase_client_access'";
@@ -254,11 +327,16 @@ public class DatabaseReleasePostgresTests
         }
         finally
         {
-            command.CommandText =
-                "RESET ROLE; " +
-                "DROP OWNED BY roast66_rls_reader; " +
-                "DROP ROLE roast66_rls_reader;";
+            command.CommandText = "RESET ROLE;";
             await command.ExecuteNonQueryAsync();
+            foreach (var roleName in roleNames)
+            {
+                var quotedRole = identifierQuoter.QuoteIdentifier(roleName);
+                command.CommandText =
+                    "DROP OWNED BY " + quotedRole + "; " +
+                    "DROP ROLE IF EXISTS " + quotedRole + ";";
+                await command.ExecuteNonQueryAsync();
+            }
         }
     }
 
