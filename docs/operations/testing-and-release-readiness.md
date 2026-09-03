@@ -83,6 +83,14 @@ behavior must have an explicit scenario even when the percentage already passes.
 
 ## Focused local commands
 
+### Frontend dependency and artifact ownership
+
+`roast66/package-lock.json` is committed and controls frontend dependency
+installation. CI, Docker, and Render install those dependencies with `npm ci`.
+`npm run build` generates `roast66/dist/`; CI and hosting or Docker builds
+produce that output, so it is not committed manually. Application-owned static
+assets live in `roast66/public/` and remain committed as build inputs.
+
 Fast backend suite (PostgreSQL contracts do not execute):
 
 ```bash
