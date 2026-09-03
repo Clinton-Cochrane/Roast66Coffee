@@ -2,7 +2,7 @@
 
 Roast 66 Coffee is the ordering and shop-operations application for Roast 66's mobile coffee business. Customers can browse the menu, build drinks, place pickup orders, and follow preparation through a private tracking link. Staff use dedicated admin and cash views to manage the menu, process the order queue, and configure notifications.
 
-The application is a React single-page frontend backed by an ASP.NET Core API and PostgreSQL. It is designed to run locally with Docker Compose and deploy to Render from the included Blueprint.
+The application is a React single-page frontend backed by an ASP.NET Core API and PostgreSQL. It is designed to run locally with Docker Compose and deploy to Render from environment-specific Blueprints.
 
 ## What the Application Does
 
@@ -59,9 +59,9 @@ CoffeeShopApi.Tests/  Backend unit and API integration tests
 roast66/              React frontend and frontend tests
 docs/operations/      Testing, release, deployment, and incident runbooks
 scripts/ci/            Coverage and production-release smoke automation
-scripts/ops/          Health-check and keepalive helpers
+scripts/ops/          Health-check helpers
 coverlet.runsettings   Meaningful backend coverage exclusions
-render.yaml           Render database, API, and static-site Blueprint
+render.*.yaml         Development and production Render Blueprints
 docker-compose.yml    Local frontend, backend, and PostgreSQL stack
 ```
 
@@ -186,7 +186,7 @@ ASP.NET configuration uses double underscores in environment-variable names. For
 
 | Setting | Purpose |
 | --- | --- |
-| `ConnectionStrings__DefaultConnection` | PostgreSQL connection string |
+| `ConnectionStrings__DefaultConnection` | PostgreSQL keyword connection string or `postgresql://` URL; the application enforces Npgsql pooling with a maximum of 20 connections |
 | `Authentication__LegacySharedLoginEnabled` | Temporary shared-login compatibility switch; defaults to `false` |
 | `Admin__Username` | Legacy shared username; required only while the compatibility switch is `true` |
 | `Admin__Password` | Legacy shared password; required only while the compatibility switch is `true` |
@@ -259,7 +259,6 @@ Vite settings are embedded at build time, so changing them requires rebuilding t
 - Web Push/VAPID: staff-device notifications
 - Payments: provider-neutral checkout with Stripe as the included gateway, disabled by default
 - SMS: provider-neutral sender contract with no provider installed, disabled by default
-- Supabase heartbeat: optional free-tier connection warmup
 
 Online payment configuration uses `Payments__DefaultProvider` (currently `stripe`) and
 `Payments__FrontendBaseUrl`. Provider credentials remain isolated under their own prefix,
@@ -391,31 +390,21 @@ focused commands are in
 
 ## Render Deployment
 
-[`render.yaml`](render.yaml) provisions:
+- [`render.dev.yaml`](render.dev.yaml) reuses the developer-owned free API and
+  static frontend with the mock-only Supabase PostgreSQL development database.
+- [`render.prod.yaml`](render.prod.yaml) creates client-owned production resources:
+  a paid always-on Docker API, paid PostgreSQL 17, and a static frontend in the
+  protected Production environment.
 
-- `roast66-db`: PostgreSQL
-- `roast66-api`: Docker-based ASP.NET API
-- `roast66-web`: Vite static frontend
+Render setup must select the appropriate custom Blueprint path. Development
+accepts free-tier cold starts and deploys from `dev`. Production follows `prod`
+with automatic deploys disabled; deployments are manual after branch promotion.
+Populate every `sync: false` value in the owning Render workspace and never put
+credentials in Git or documentation.
 
-Deployment flow:
-
-1. Connect the GitHub repository to Render and create a Blueprint instance.
-2. Populate every `sync: false` secret in the Render dashboard.
-3. Confirm `Jwt__Key`; for the first compatibility release, also confirm `Admin__Username`, `Admin__Password`, and `Authentication__LegacySharedLoginEnabled=true`.
-4. Confirm `AllowedOrigins`, `Payments__FrontendBaseUrl`, and `VITE_API_URL` use the actual Render URLs.
-5. Confirm the API startup logs show a successful migration before the application starts.
-6. Seed the menu explicitly if this is a new database.
-
-Post-deploy verification:
-
-1. `GET /api/health/ready` succeeds, confirming the API can connect to PostgreSQL.
-2. `GET /api/health` succeeds, confirming the API process is responsive.
-3. The menu loads from the public frontend.
-4. Staff can sign in at both `/admin` and `/cash`.
-5. An Owner can open the Staff tab, and a normal Admin receives `403` from `GET /api/admin/staff`.
-6. Disable a disposable test account and confirm its existing token receives `401` while another account remains signed in.
-7. A test order can be placed and retrieved using its private tracking link.
-8. An unauthenticated request to an admin endpoint returns `401`.
+The complete account-creation, fresh production bootstrap, verification,
+release, alerting, and recovery procedure is in
+[`docs/operations/production-hosting-and-recovery.md`](docs/operations/production-hosting-and-recovery.md).
 
 ## Operations Runbook
 
@@ -439,28 +428,22 @@ the signing key itself may be exposed; that emergency action still signs out eve
 
 ### Migration, rollback, and restore
 
-The provider-specific commands and decision criteria are maintained in [`docs/operations/supabase-database-runbook.md`](docs/operations/supabase-database-runbook.md).
-
-1. Confirm a current backup exists before deploying a migration.
-2. Prefer additive expand/migrate/contract changes that remain compatible during deployment.
-3. Verify health, menu reads, admin login, and a known tracking token after migration.
-4. Roll application images back only to versions compatible with the current schema.
-5. Prefer a forward fix for schema problems; run a migration `Down` only when its data safety is proven.
-6. Restore backups into staging first and validate migration history, row counts, tracking, and payment identifiers.
-7. Perform and record a staging restore drill at least quarterly.
+Production recovery, replacement-first restore, catastrophic rebuild, and manual
+release procedures are maintained in
+[`docs/operations/production-hosting-and-recovery.md`](docs/operations/production-hosting-and-recovery.md).
+The [`Supabase runbook`](docs/operations/supabase-database-runbook.md) applies
+only to the disposable shared development database.
 
 ### Monitoring and automation
 
 - Liveness endpoint: `GET /api/health` checks only that the API process can respond.
 - Readiness endpoint: `GET /api/health/ready` checks the required database connection and confirms that no EF migrations are pending; Render uses it for routing.
-- Payment, SMS, email, push, Supabase, and keep-alive targets do not gate readiness.
+- Payment, SMS, email, and push targets do not gate readiness.
 - GitHub Actions run tests and security checks on pushes and pull requests.
 - Dependabot monitors npm and NuGet dependencies.
 - CodeQL scans C# and JavaScript/TypeScript.
-- The optional scheduled health workflow uses `API_HEALTH_CHECK_URL` and `HEALTH_CHECK_URL` repository secrets.
-- `scripts/ops/keepalive-pulse.sh` can keep the API warm using `API_BASE_URL` and `ADMIN_JWT_TOKEN`.
 
-Use an external uptime monitor when alert delivery is required; the scheduled GitHub health ping does not provide a full incident-alerting service.
+Use Render health checks and client-owned alert destinations for production incidents.
 
 ## License
 

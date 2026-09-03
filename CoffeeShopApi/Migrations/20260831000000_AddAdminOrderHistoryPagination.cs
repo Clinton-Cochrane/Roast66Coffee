@@ -20,7 +20,7 @@ public partial class AddAdminOrderHistoryPagination : Migration
             nullable: true);
 
         // Existing rows have no completion event timestamp. OrderDate is the
-        // conservative backfill: old completed orders stay outside the 30-hour
+        // conservative backfill: old completed orders stay outside the configured
         // operational window instead of all reappearing after deployment.
         migrationBuilder.Sql(
             "UPDATE orders SET completedutc = orderdate WHERE orderstatus = 3 AND completedutc IS NULL");

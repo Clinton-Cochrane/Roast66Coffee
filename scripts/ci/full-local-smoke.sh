@@ -30,6 +30,12 @@ if [ ! -f "$base_context/Dockerfile.backend" ]; then
   exit 1
 fi
 
+echo "Verifying hosting configuration contracts"
+(
+  cd "$candidate_context"
+  scripts/ci/verify-hosting-config.sh
+)
+
 echo "Running coverage reporter tests"
 PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover \
   -s "$candidate_context/scripts/ci/tests" -p 'test_*.py' -v

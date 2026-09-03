@@ -338,7 +338,7 @@ export const esMx: Messages = {
     applyFilters: "Aplicar filtros",
     clearFilters: "Borrar filtros",
     retentionNote:
-      "Las páginas contienen 50 pedidos. Los pedidos completados salen de esta vista operativa 30 horas después de completarse.",
+      "Las páginas contienen 50 pedidos. Los pedidos completados salen de esta vista operativa 48 horas después de completarse.",
     loadingOrders: "Cargando pedidos...",
     emptyFilteredState: "Ningún pedido coincide con estos filtros.",
     paginationAria: "Páginas del historial de pedidos",

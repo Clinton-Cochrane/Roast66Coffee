@@ -66,7 +66,6 @@ start_candidate_api() {
     -e Jwt__Key=SmokeJwtSigningKey_NotForProduction_AtLeast32Chars \
     -e Jwt__Issuer=Roast66Coffee \
     -e Jwt__Audience=Roast66Coffee \
-    -e KeepAlive__Enabled=false \
     "$candidate_image" >/dev/null
 }
 
@@ -112,11 +111,15 @@ docker run --rm -d \
   -e POSTGRES_DB=coffeedb \
   -e POSTGRES_USER=roast66 \
   -e POSTGRES_PASSWORD=roast66-test \
-  -v "$candidate_context/docker/postgres/init-local-roles.sql:/docker-entrypoint-initdb.d/10-local-roles.sql:ro" \
   postgres:17 >/dev/null
 wait_for_postgres
 
 echo "Applying the base image migrations and loading representative data"
+# Remote main still contains historical policies for roles supplied by its former
+# provider. Create those roles only long enough to reproduce and upgrade that schema.
+docker exec "$database_name" \
+  psql -v ON_ERROR_STOP=1 -U roast66 -d coffeedb \
+  -c 'CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN;' >/dev/null
 docker run --rm \
   --network "$network_name" \
   -e ASPNETCORE_ENVIRONMENT=Development \
@@ -140,6 +143,12 @@ start_candidate_api
 wait_for_api
 assert_menu_api
 assert_database_fixture
+
+echo "Removing temporary legacy-provider roles before restart"
+docker exec "$database_name" \
+  psql -v ON_ERROR_STOP=1 -U roast66 -d coffeedb \
+  -c 'DROP OWNED BY anon; DROP OWNED BY authenticated; DROP ROLE anon; DROP ROLE authenticated;' \
+  >/dev/null
 
 docker logs "$api_name" >"$api_log" 2>&1
 migration_line=$(grep -n -m1 'Database initialization successful.' "$api_log" | cut -d: -f1)

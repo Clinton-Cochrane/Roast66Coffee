@@ -38,7 +38,6 @@ docker run --rm -d \
   -e "POSTGRES_DB=$admin_database" \
   -e "POSTGRES_USER=$admin_username" \
   -e "POSTGRES_PASSWORD=$admin_password" \
-  -v "$repository_root/docker/postgres/init-local-roles.sql:/docker-entrypoint-initdb.d/10-local-roles.sql:ro" \
   postgres:17 \
   postgres -c "roast66.test_run_id=$suffix" >/dev/null
 

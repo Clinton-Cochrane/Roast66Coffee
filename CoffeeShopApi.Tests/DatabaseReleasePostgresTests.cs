@@ -185,7 +185,7 @@ public class DatabaseReleasePostgresTests
 
     [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
-    public async Task RowLevelSecurity_HidesOrdersFromSupabaseClientRoles()
+    public async Task RowLevelSecurity_DeniesGrantedNonOwnerRoleWithoutProviderRoles()
     {
         await using var database = await PostgresTestDatabase.CreateAsync("roast66_rls_contract");
         if (database == null)
@@ -224,24 +224,40 @@ public class DatabaseReleasePostgresTests
         await using var connection = new NpgsqlConnection(database.ConnectionString);
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
-        command.CommandText =
-            "GRANT USAGE ON SCHEMA public TO anon, authenticated; " +
-            "GRANT SELECT ON public.orders, public.staffusers, public.auditevents TO anon, authenticated;";
+        command.CommandText = "CREATE ROLE roast66_rls_reader NOLOGIN;";
         await command.ExecuteNonQueryAsync();
 
-        // The grants isolate RLS from ordinary table-permission denial: each role
-        // can SELECT the table but the explicit false policy must hide every row.
-        foreach (var role in new[] { "anon", "authenticated" })
+        try
         {
-            command.CommandText = $"SET ROLE {role}";
+            command.CommandText =
+                "GRANT USAGE ON SCHEMA public TO roast66_rls_reader; " +
+                "GRANT SELECT ON public.orders, public.staffusers, public.auditevents " +
+                "TO roast66_rls_reader; " +
+                "SET ROLE roast66_rls_reader;";
             await command.ExecuteNonQueryAsync();
+
+            // The grants isolate RLS from ordinary table-permission denial. With no
+            // policies, PostgreSQL must hide all rows from any non-owner role.
             command.CommandText = "SELECT count(*) FROM public.orders";
             Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
             command.CommandText = "SELECT count(*) FROM public.staffusers";
             Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
             command.CommandText = "SELECT count(*) FROM public.auditevents";
             Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
+
             command.CommandText = "RESET ROLE";
+            await command.ExecuteNonQueryAsync();
+            command.CommandText =
+                "SELECT count(*) FROM pg_policies " +
+                "WHERE policyname = 'Deny_supabase_client_access'";
+            Assert.Equal(0L, (long)(await command.ExecuteScalarAsync())!);
+        }
+        finally
+        {
+            command.CommandText =
+                "RESET ROLE; " +
+                "DROP OWNED BY roast66_rls_reader; " +
+                "DROP ROLE roast66_rls_reader;";
             await command.ExecuteNonQueryAsync();
         }
     }
