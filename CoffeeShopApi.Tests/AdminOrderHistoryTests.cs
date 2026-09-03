@@ -19,7 +19,7 @@ public class AdminOrderHistoryTests
             CreateOrder(2, OrderStatus.Received, NowUtc.AddHours(-4)),
             CreateOrder(3, OrderStatus.Preparing, NowUtc.AddHours(-1)),
             CreateOrder(4, OrderStatus.Completed, NowUtc.AddHours(-2), NowUtc.AddHours(-1)),
-            CreateOrder(5, OrderStatus.Completed, NowUtc.AddHours(-40), NowUtc.AddHours(-31)));
+            CreateOrder(5, OrderStatus.Completed, NowUtc.AddHours(-60), NowUtc.AddHours(-49)));
         await context.SaveChangesAsync();
 
         var result = await CreateService(context).GetOrderHistoryAsync(
@@ -35,16 +35,16 @@ public class AdminOrderHistoryTests
     }
 
     [Fact]
-    public async Task CompletedRetention_IncludesExactThirtyHourBoundaryOnly()
+    public async Task CompletedRetention_IncludesExactFortyEightHourBoundaryOnly()
     {
         await using var context = CreateContext();
         context.Orders.AddRange(
-            CreateOrder(1, OrderStatus.Completed, NowUtc.AddDays(-5), NowUtc.AddHours(-30)),
+            CreateOrder(1, OrderStatus.Completed, NowUtc.AddDays(-5), NowUtc.AddHours(-48)),
             CreateOrder(
                 2,
                 OrderStatus.Completed,
                 NowUtc.AddDays(-5),
-                NowUtc.AddHours(-30).AddTicks(-1)));
+                NowUtc.AddHours(-48).AddTicks(-1)));
         await context.SaveChangesAsync();
 
         var result = await CreateService(context).GetOrderHistoryAsync(
@@ -119,7 +119,7 @@ public class AdminOrderHistoryTests
             CreateOrder(1, OrderStatus.Received, NowUtc.AddDays(-2)),
             CreateOrder(2, OrderStatus.Preparing, NowUtc.AddHours(-2)),
             CreateOrder(3, OrderStatus.Completed, NowUtc.AddHours(-3), NowUtc.AddHours(-1)),
-            CreateOrder(4, OrderStatus.Completed, NowUtc.AddDays(-10), NowUtc.AddHours(-31)));
+            CreateOrder(4, OrderStatus.Completed, NowUtc.AddDays(-10), NowUtc.AddHours(-49)));
         await context.SaveChangesAsync();
 
         var result = await CreateService(context).GetOrderHistoryAsync(

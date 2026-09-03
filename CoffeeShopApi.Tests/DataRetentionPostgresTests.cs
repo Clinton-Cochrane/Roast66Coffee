@@ -87,7 +87,7 @@ public class DataRetentionPostgresTests
         await using (var context = database.CreateContext())
         {
             await context.Database.MigrateAsync();
-            var order = CreateCompletedOrder(NowUtc.AddHours(-30));
+            var order = CreateCompletedOrder(NowUtc.AddHours(-48));
             context.Orders.Add(order);
             await context.SaveChangesAsync();
             orderId = order.Id;
@@ -130,7 +130,7 @@ public class DataRetentionPostgresTests
             await setup.Database.MigrateAsync();
             setup.Orders.AddRange(
                 Enumerable.Range(0, 12)
-                    .Select(index => CreateCompletedOrder(NowUtc.AddHours(-31).AddMinutes(-index))));
+                    .Select(index => CreateCompletedOrder(NowUtc.AddHours(-49).AddMinutes(-index))));
             await setup.SaveChangesAsync();
         }
 
@@ -160,15 +160,15 @@ public class DataRetentionPostgresTests
         await using (var setup = database.CreateContext())
         {
             await setup.Database.MigrateAsync();
-            var firstOrder = CreateCompletedOrder(NowUtc.AddHours(-32));
-            var blockedOrder = CreateCompletedOrder(NowUtc.AddHours(-31));
+            var firstOrder = CreateCompletedOrder(NowUtc.AddHours(-50));
+            var blockedOrder = CreateCompletedOrder(NowUtc.AddHours(-49));
             setup.Orders.AddRange(firstOrder, blockedOrder);
             await setup.SaveChangesAsync();
             firstOrderId = firstOrder.Id;
             blockedOrderId = blockedOrder.Id;
             setup.Payments.AddRange(
-                CreatePayment(firstOrder.Id, NowUtc.AddHours(-32)),
-                CreatePayment(blockedOrder.Id, NowUtc.AddHours(-31), "block-delete"));
+                CreatePayment(firstOrder.Id, NowUtc.AddHours(-50)),
+                CreatePayment(blockedOrder.Id, NowUtc.AddHours(-49), "block-delete"));
             await setup.SaveChangesAsync();
             await setup.Database.ExecuteSqlRawAsync(
                 """
@@ -220,7 +220,7 @@ public class DataRetentionPostgresTests
             context,
             Options.Create(new DataRetentionOptions
             {
-                CompletedOrderHours = 30,
+                CompletedOrderHours = 48,
                 OperationalLogDays = 90,
                 BatchSize = batchSize
             }),

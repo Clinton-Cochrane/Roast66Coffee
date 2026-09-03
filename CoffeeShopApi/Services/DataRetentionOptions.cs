@@ -7,7 +7,7 @@ public sealed class DataRetentionOptions
     public const string SectionName = "DataRetention";
 
     [Range(1, 168)]
-    public int CompletedOrderHours { get; set; } = 30;
+    public int CompletedOrderHours { get; set; } = 48;
 
     [Range(1, 365)]
     public int OperationalLogDays { get; set; } = 90;

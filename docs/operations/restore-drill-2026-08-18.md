@@ -1,4 +1,9 @@
-# Restore drill: 2026-08-18
+# Historical restore drill: 2026-08-18
+
+This record describes the former Supabase production architecture. Issue 151
+superseded that design with client-owned Render PostgreSQL for production and
+developer-owned Supabase PostgreSQL for mock development data. Preserve this
+document as portability evidence; do not use it as the current production runbook.
 
 ## Scope
 
@@ -107,9 +112,9 @@ Problems encountered:
 - Verification API: isolated container `roast66-staging-verification` on `http://localhost:5002`, connected only to `roast66_restore_staging_20260818`.
 - Concurrent migration lock: passed. With a controlled session holding advisory lock `7266677001`, PostgreSQL reported one granted exclusive advisory lock and two ungranted exclusive waiters. After release, both concurrent migration commands acquired the lock in turn and exited `0`.
 - Automated lock coverage: passed. `PostgresMigrationLockTests.MigrationLock_BlocksAConcurrentMigrationConnection` verified against PostgreSQL 17 in required mode (689 ms).
-- Provider runbook: added at `docs/operations/supabase-database-runbook.md` with exact Supabase CLI backup, staging restore, replacement-project recovery, rollback, and cleanup procedures.
+- Provider runbook at the time: later superseded by `production-hosting-and-recovery.md`; the current `supabase-database-runbook.md` is development-only.
 - Cleanup: passed. The staging API container and `roast66_restore_staging_20260818` database were removed; temporary dumps, filtered schema copies, logs, and response files were securely deleted; temporary Supabase CLI/work directories were removed; and the local Supabase access token was deleted with `supabase logout`.
-- Backup retention after drill: no SQL dump was retained locally or in the repository. The checksums and drill evidence remain in this record; a future operational backup should be copied to approved encrypted off-site storage before local cleanup.
+- Backup retention after drill: no SQL dump was retained locally or in the repository. The checksums and drill evidence remain in this historical record. Its former off-site-backup recommendation is superseded by the current production recovery runbook.
 
 ## Results
 

@@ -44,4 +44,12 @@ BEGIN
     ) <> 1 THEN
         RAISE EXCEPTION 'Upgrade regression: expected add-on or snapshot was not preserved';
     END IF;
+
+    IF EXISTS (
+        SELECT 1
+        FROM pg_policies
+        WHERE policyname = 'Deny_supabase_client_access'
+    ) THEN
+        RAISE EXCEPTION 'Upgrade regression: legacy provider-specific RLS policy remains';
+    END IF;
 END $$;

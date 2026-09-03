@@ -593,7 +593,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
-    public async Task KeepAliveHeartbeat_WithAdminToken_ReturnsAccepted()
+    public async Task ObsoleteKeepAliveHeartbeat_IsNotExposed()
     {
         var token = await GetAdminToken();
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/ops/keepalive/heartbeat");
@@ -602,7 +602,7 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
         request.Content = JsonContent.Create(new { source = "integration-test" });
 
         var response = await _client.SendAsync(request);
-        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]

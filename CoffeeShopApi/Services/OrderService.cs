@@ -34,7 +34,7 @@ public class OrderService(
         _configuration.GetValue("Order:DuplicateDetectionWindowMinutes", 2);
 
     private int CompletedOrderRetentionHours =>
-        _configuration.GetValue("DataRetention:CompletedOrderHours", 30);
+        _configuration.GetValue("DataRetention:CompletedOrderHours", 48);
 
     public async Task<IEnumerable<Order>> GetOrdersAsync()
     {

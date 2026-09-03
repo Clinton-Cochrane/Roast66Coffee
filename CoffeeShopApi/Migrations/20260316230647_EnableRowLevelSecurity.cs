@@ -10,9 +10,8 @@ namespace CoffeeShopApi.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Enable Row Level Security on all public tables (Supabase security recommendation).
-            // With RLS enabled and no policies, PostgREST (anon/authenticated) access is blocked.
-            // The .NET API uses a direct connection (typically postgres role) which bypasses RLS.
+            // With RLS enabled and no policies, PostgreSQL denies access to non-owner roles.
+            // The .NET API connects as the table owner and therefore retains direct access.
             migrationBuilder.Sql("ALTER TABLE public.\"__EFMigrationsHistory\" ENABLE ROW LEVEL SECURITY;");
             migrationBuilder.Sql("ALTER TABLE public.notificationsettings ENABLE ROW LEVEL SECURITY;");
             migrationBuilder.Sql("ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;");

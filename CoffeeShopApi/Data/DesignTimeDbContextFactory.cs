@@ -16,9 +16,9 @@ namespace CoffeeShopApi.Data
                 .Build();
 
             var optionsBuilder = new DbContextOptionsBuilder<ApplicationDbContext>();
-            optionsBuilder.UseNpgsql(
+            optionsBuilder.UseNpgsql(PostgresConnectionString.Build(
                 configuration.GetConnectionString("DefaultConnection") ??
-                "Host=localhost;Database=coffeedb;Username=unused;Password=unused");
+                "Host=localhost;Database=coffeedb;Username=unused;Password=unused"));
 
             return new ApplicationDbContext(optionsBuilder.Options);
         }

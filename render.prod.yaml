@@ -1,0 +1,105 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+# Client-owned production Blueprint.
+# Select this custom Blueprint path in the client's Render workspace.
+# Recheck plan IDs and pricing immediately before creating the Blueprint.
+
+projects:
+  - name: roast66
+    environments:
+      - name: Production
+        permissions:
+          protection: enabled
+        databases:
+          - name: roast66-db-prod
+            databaseName: coffeedb
+            user: roast66
+            plan: 0.1c-256mb
+            region: oregon
+            postgresMajorVersion: "17"
+            connectionPool: none
+            diskSizeGB: 15
+            storageAutoscalingEnabled: false
+            ipAllowList: []
+        services:
+          - type: web
+            runtime: docker
+            name: roast66-api-prod
+            plan: 0.5c-512mb
+            region: oregon
+            branch: prod
+            autoDeployTrigger: "off"
+            numInstances: 1
+            dockerfilePath: ./Dockerfile.backend
+            dockerContext: .
+            healthCheckPath: /api/health/ready
+            preDeployCommand: dotnet CoffeeShopApi.dll migrate
+            envVars:
+              - key: ASPNETCORE_ENVIRONMENT
+                value: Production
+              - key: ConnectionStrings__DefaultConnection
+                fromDatabase:
+                  name: roast66-db-prod
+                  property: connectionString
+              - key: Authentication__LegacySharedLoginEnabled
+                value: "false"
+              - key: Jwt__Key
+                sync: false
+              - key: Jwt__Issuer
+                value: Roast66Coffee
+              - key: Jwt__Audience
+                value: Roast66Coffee
+              - key: Jwt__TokenExpiryInHours
+                value: "8"
+              - key: AllowedOrigins
+                sync: false
+              - key: Order__DuplicateDetectionWindowMinutes
+                value: "2"
+              - key: Payments__DefaultProvider
+                value: stripe
+              - key: Payments__FrontendBaseUrl
+                sync: false
+              - key: Stripe__SecretKey
+                sync: false
+              - key: Stripe__WebhookSecret
+                sync: false
+              - key: Notifications__SmsEnabled
+                value: "false"
+              - key: DataRetention__CompletedOrderHours
+                value: "48"
+              - key: DataRetention__OperationalLogDays
+                value: "90"
+              - key: DataRetention__BatchSize
+                value: "100"
+              - key: DataRetention__CheckIntervalMinutes
+                value: "60"
+              - key: DataRetention__RetryDelayMinutes
+                value: "5"
+              - key: Push__Subject
+                value: mailto:support@example.com
+              - key: Push__VapidPublicKey
+                sync: false
+              - key: Push__VapidPrivateKey
+                sync: false
+              - key: Resend__ApiKey
+                sync: false
+              - key: Resend__From
+                sync: false
+              - key: Support__AlertEmail
+                sync: false
+
+          - type: web
+            runtime: static
+            name: roast66-web-prod
+            branch: prod
+            autoDeployTrigger: "off"
+            buildCommand: cd roast66 && npm ci && npm run build
+            staticPublishPath: roast66/dist
+            envVars:
+              - key: VITE_API_URL
+                sync: false
+              - key: VITE_USE_STATIC_MENU
+                value: "false"
+              - key: VITE_ENABLE_ONLINE_PAYMENTS
+                value: "false"
+              - key: VITE_VAPID_PUBLIC_KEY
+                sync: false

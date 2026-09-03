@@ -1,32 +1,26 @@
-# Roast66 Coffee - Render Blueprint
-# Deploy: Connect this repo to Render and apply the Blueprint.
-# Set secret env vars in the Render Dashboard after first deploy.
-
-databases:
-  - name: roast66-db
-    databaseName: coffeedb
-    plan: free
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+# Developer-owned shared development Blueprint.
+# Select this custom Blueprint path in the developer Render workspace.
+# The existing roast66-api and roast66-web services are intentionally reused.
 
 services:
   - type: web
     runtime: docker
     name: roast66-api
+    plan: free
+    region: oregon
+    branch: dev
+    autoDeployTrigger: commit
     dockerfilePath: ./Dockerfile.backend
     dockerContext: .
     healthCheckPath: /api/health/ready
-    preDeployCommand: dotnet CoffeeShopApi.dll migrate
     envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
       - key: ConnectionStrings__DefaultConnection
-        fromDatabase:
-          name: roast66-db
-          property: connectionString
-      - key: Admin__Username
         sync: false
-      - key: Admin__Password
-        sync: false
-      # Release A compatibility only. Set false after named Owner verification.
       - key: Authentication__LegacySharedLoginEnabled
-        value: "true"
+        value: "false"
       - key: Jwt__Key
         sync: false
       - key: Jwt__Issuer
@@ -36,24 +30,13 @@ services:
       - key: Jwt__TokenExpiryInHours
         value: "8"
       - key: AllowedOrigins
-        value: "https://roast66coffee-frontend.onrender.com"
         sync: false
       - key: Order__DuplicateDetectionWindowMinutes
         value: "2"
-      - key: KeepAlive__Enabled
-        value: "true"
-      - key: KeepAlive__ProbeIntervalMinutes
-        value: "4"
-      - key: KeepAlive__ActiveWindowMinutes
-        value: "10"
-      - key: KeepAlive__SupabaseHeartbeatUrl
-        sync: false
-      - key: KeepAlive__SupabaseServiceRoleKey
-        sync: false
       - key: Payments__DefaultProvider
-        value: "stripe"
+        value: stripe
       - key: Payments__FrontendBaseUrl
-        value: "https://roast66coffee-frontend.onrender.com"
+        sync: false
       - key: Stripe__SecretKey
         sync: false
       - key: Stripe__WebhookSecret
@@ -61,7 +44,7 @@ services:
       - key: Notifications__SmsEnabled
         value: "false"
       - key: DataRetention__CompletedOrderHours
-        value: "30"
+        value: "48"
       - key: DataRetention__OperationalLogDays
         value: "90"
       - key: DataRetention__BatchSize
@@ -71,7 +54,7 @@ services:
       - key: DataRetention__RetryDelayMinutes
         value: "5"
       - key: Push__Subject
-        value: "mailto:support@example.com"
+        value: mailto:support@example.com
       - key: Push__VapidPublicKey
         sync: false
       - key: Push__VapidPrivateKey
@@ -84,17 +67,18 @@ services:
         sync: false
 
   - type: web
-    name: roast66-web
     runtime: static
-    buildCommand: cd roast66 && npm install && npm run build
+    name: roast66-web
+    branch: dev
+    autoDeployTrigger: commit
+    buildCommand: cd roast66 && npm ci && npm run build
     staticPublishPath: roast66/dist
     envVars:
       - key: VITE_API_URL
-        value: "https://roast66coffee.onrender.com/api"
         sync: false
-      # Set to "true" to enable the configured payment provider; rebuild the static site after changing.
+      - key: VITE_USE_STATIC_MENU
+        value: "false"
       - key: VITE_ENABLE_ONLINE_PAYMENTS
         value: "false"
-        sync: false
       - key: VITE_VAPID_PUBLIC_KEY
         sync: false

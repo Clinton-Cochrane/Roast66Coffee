@@ -325,7 +325,7 @@ export const en = {
     applyFilters: "Apply filters",
     clearFilters: "Clear filters",
     retentionNote:
-      "Pages contain 50 orders. Completed orders leave this operational view 30 hours after completion.",
+      "Pages contain 50 orders. Completed orders leave this operational view 48 hours after completion.",
     loadingOrders: "Loading orders...",
     emptyFilteredState: "No orders match these filters.",
     paginationAria: "Order history pages",

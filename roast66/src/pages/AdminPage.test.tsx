@@ -22,10 +22,6 @@ vi.mock("react-router-dom", async () => {
   };
 });
 
-vi.mock("../hooks/useKeepAliveHeartbeat", () => ({
-  default: vi.fn(),
-}));
-
 vi.mock("../components/Admin/ViewOrders", () => ({
   default: function MockViewOrders() {
     return <div data-testid="mock-view-orders">Orders content</div>;

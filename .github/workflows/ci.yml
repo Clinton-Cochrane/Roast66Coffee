@@ -107,6 +107,10 @@ jobs:
           cache: npm
           cache-dependency-path: candidate/roast66/package-lock.json
 
+      - name: Verify hosting configuration contracts
+        working-directory: candidate
+        run: scripts/ci/verify-hosting-config.sh
+
       - name: Install frontend and browser dependencies
         working-directory: candidate/roast66
         run: |

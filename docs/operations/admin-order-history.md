@@ -29,13 +29,13 @@ metadata so clients can recover after live data moves or expires.
 
 ## Retention and timestamps
 
-Completed orders remain visible for 30 hours after their transition to
+Completed orders remain visible for 48 hours after their transition to
 `Completed`. `CompletedUtc`, not `OrderDate`, drives this window. Reopening an
 order clears `CompletedUtc`; completing it again records a new timestamp.
 
 The migration backfills pre-existing completed orders with
 `CompletedUtc = OrderDate`. This prevents old completed orders from all
-reappearing for 30 hours after deployment. The retention worker deletes the raw
+reappearing for the full retention window after deployment. The retention worker deletes the raw
 order and its dependent payment/notification records when this window expires;
 this supersedes the earlier visibility-only retention behavior from issue 167.
 
@@ -52,7 +52,7 @@ Supported query parameters are:
 
 Search matches an exact numeric order ID, partial customer name, normalized
 phone number, stored drink snapshot name, or stored add-on/flavor snapshot
-name. Date filters always use `OrderDate`; the 30-hour completed-order window
+name. Date filters always use `OrderDate`; the 48-hour completed-order window
 still applies to every search and filter combination.
 
 Requests such as “all Superman orders in the last 30 days” cannot return old

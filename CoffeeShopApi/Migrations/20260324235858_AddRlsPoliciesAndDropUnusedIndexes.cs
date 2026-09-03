@@ -6,56 +6,25 @@ namespace CoffeeShopApi.Migrations
 {
     /// <inheritdoc />
     /// <summary>
-    /// Supabase: explicit RLS policies for anon/authenticated (tables already had RLS enabled).
-    /// This historical migration also attempted to remove menu foreign-key indexes based on a
-    /// transient advisor result. RestoreMenuForeignKeyIndexes restores the physical indexes because
-    /// PostgreSQL uses those relationships for menu deletion and the EF model requires them.
+    /// This historical migration attempted to remove menu foreign-key indexes based on a transient
+    /// advisor result. RestoreMenuForeignKeyIndexes restores the physical indexes because PostgreSQL
+    /// uses those relationships for menu deletion and the EF model requires them. The historical class
+    /// name is retained because it is part of the applied migration history; provider-specific policies
+    /// are intentionally not created.
     /// </summary>
     public partial class AddRlsPoliciesAndDropUnusedIndexes : Migration
     {
-        private const string DenyPolicyName = "Deny_supabase_client_access";
-
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             // IF EXISTS: safe if indexes were already dropped. Npgsql stores unquoted names as lowercase.
             migrationBuilder.Sql("DROP INDEX IF EXISTS public.ix_addons_menuitemid;");
             migrationBuilder.Sql("DROP INDEX IF EXISTS public.ix_orderitems_menuitemid;");
-
-            // Explicit deny for PostgREST roles; .NET API uses a DB user that bypasses RLS.
-            foreach (var table in new[]
-                     {
-                         "public.\"__EFMigrationsHistory\"",
-                         "public.addons",
-                         "public.menuitems",
-                         "public.notificationsettings",
-                         "public.orderitems",
-                         "public.orders",
-                     })
-            {
-                migrationBuilder.Sql(
-                    "DROP POLICY IF EXISTS \"" + DenyPolicyName + "\" ON " + table + "; "
-                    + "CREATE POLICY \"" + DenyPolicyName + "\" ON " + table
-                    + " FOR ALL TO anon, authenticated USING (false) WITH CHECK (false);");
-            }
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            foreach (var table in new[]
-                     {
-                         "public.\"__EFMigrationsHistory\"",
-                         "public.addons",
-                         "public.menuitems",
-                         "public.notificationsettings",
-                         "public.orderitems",
-                         "public.orders",
-                     })
-            {
-                migrationBuilder.Sql("DROP POLICY IF EXISTS \"" + DenyPolicyName + "\" ON " + table + ";");
-            }
-
             migrationBuilder.CreateIndex(
                 name: "IX_orderitems_menuitemid",
                 table: "orderitems",

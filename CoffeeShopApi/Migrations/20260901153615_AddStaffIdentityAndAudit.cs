@@ -254,18 +254,12 @@ namespace CoffeeShopApi.Migrations
                      })
             {
                 migrationBuilder.Sql($"ALTER TABLE public.{table} ENABLE ROW LEVEL SECURITY;");
-                migrationBuilder.Sql(
-                    $"DROP POLICY IF EXISTS \"Deny_supabase_client_access\" ON public.{table}; " +
-                    $"CREATE POLICY \"Deny_supabase_client_access\" ON public.{table} " +
-                    "FOR ALL TO anon, authenticated USING (false) WITH CHECK (false);");
             }
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.Sql(
-                "DROP POLICY IF EXISTS \"Deny_supabase_client_access\" ON public.staffpushsubscriptions;");
             migrationBuilder.Sql(
                 "ALTER TABLE public.staffpushsubscriptions DISABLE ROW LEVEL SECURITY;");
 

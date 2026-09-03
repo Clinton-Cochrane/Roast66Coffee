@@ -35,10 +35,10 @@ that merely repeat a type, method, or statement name.
 | Rate limiting | Login and public order requests succeed below their window and return `429` after a deliberately small Testing-only window is exhausted. | `Integration/RateLimitTests.cs` |
 | Menu history | Archived/deleted menu changes preserve historical order names and prices; the migration and rollback preserve representative orders. | `MenuHistoryPostgresTests.cs`, `MenuMigrationTests.cs`, `OrderSnapshotTests.cs` |
 | Migrations and physical schema | EF model matches the latest snapshot; every migration applies; every mapped table/column and required foreign-key index exists; fresh and upgraded schemas agree; representative order snapshots survive upgrade and restart; applying twice is safe; the real application migration runner waits on its advisory lock. | `DatabaseModelContractTests.cs`, `DatabaseReleasePostgresTests.cs`, `ForeignKeyIndexPostgresTests.cs`, `PostgresMigrationLockTests.cs`, `scripts/ci/render-smoke.sh` |
-| Retention | Completed order graphs and payments are purged at 30 hours; redacted notification/audit logs are purged at 90 days across channels/statuses; incomplete orders remain; concurrent and partially failed runs are retryable. | `DataRetentionServiceTests.cs`, `DataRetentionPostgresTests.cs`, `SensitiveLoggingTests.cs`, `DatabaseReleasePostgresTests.cs`, `Integration/ApiIntegrationTests.cs` |
+| Retention | Completed order graphs and payments are purged at 48 hours; redacted notification/audit logs are purged at 90 days across channels/statuses; incomplete orders remain; concurrent and partially failed runs are retryable. | `DataRetentionServiceTests.cs`, `DataRetentionPostgresTests.cs`, `SensitiveLoggingTests.cs`, `DatabaseReleasePostgresTests.cs`, `Integration/ApiIntegrationTests.cs` |
 | Readiness | Database connection failure or pending migrations is unhealthy; optional providers do not gate readiness; the production API is not considered ready before migration. | `DatabaseReadinessHealthCheckTests.cs`, `Integration/ApiIntegrationTests.cs`, `scripts/ci/render-smoke.sh` |
 | Notification failure | Provider failures are retried within bounds, partial push failure does not block other devices, and logs/audit rows omit secrets and customer payloads. | `StaffPushNotificationTests.cs`, `SensitiveLoggingTests.cs`, `Integration/StaffPushOrderIntegrationTests.cs` |
-| Row-level security | In disposable local PostgreSQL, after the real migration chain, explicitly granted `anon` and `authenticated` roles still see no order rows because the deny policy is active. Supabase/PostgREST-specific checks remain a separate deferred suite. | `DatabaseReleasePostgresTests.RowLevelSecurity_HidesOrdersFromSupabaseClientRoles` |
+| Row-level security | In stock disposable PostgreSQL, after the real migration chain, an explicitly granted non-owner role still sees no order, staff, or audit rows because RLS has no permissive policies. No provider roles are required. | `DatabaseReleasePostgresTests.RowLevelSecurity_DeniesGrantedNonOwnerRoleWithoutProviderRoles` |
 
 PostgreSQL scenarios are marked with the `PostgreSQLIntegration` trait. They
 return without execution during the fast suite when no integration connection
@@ -96,8 +96,8 @@ scripts/ci/with-postgres.sh \
   dotnet test CoffeeShopApi.Tests/CoffeeShopApi.Tests.csproj
 ```
 
-The wrapper creates the inert `anon` and `authenticated` roles, and the test
-harness creates and force-drops uniquely named databases. Before creating one,
+The wrapper starts an unmodified PostgreSQL 17 image, and the test harness
+creates and force-drops uniquely named databases. Before creating one,
 the harness verifies the container's unique run identity and rejects
 non-loopback hosts or anything other than its dedicated test database and user,
 so shared staging and production connections cannot be used.

@@ -45,7 +45,8 @@ namespace CoffeeShopApi
         {
             SecurityConfiguration.Validate(Configuration, _env);
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseNpgsql(Configuration.GetConnectionString("DefaultConnection")));
+                options.UseNpgsql(PostgresConnectionString.Build(
+                    Configuration.GetConnectionString("DefaultConnection"))));
 
             services.AddIdentityCore<StaffUser>(options =>
                 {
@@ -111,8 +112,6 @@ namespace CoffeeShopApi
             services.AddScoped<StaffTokenService>();
             services.AddScoped<AuditEventFactory>();
             services.AddScoped<StaffAccountService>();
-            services.AddSingleton<KeepAliveStateStore>();
-            services.AddHostedService<ConnectionWarmupService>();
             services.AddHostedService<DataRetentionWorker>();
             services.AddHttpClient();
             services.AddScoped<IDatabaseReadinessProbe, EfCoreDatabaseReadinessProbe>();

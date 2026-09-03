@@ -12,10 +12,16 @@ public class DataRetentionServiceTests
     private static readonly DateTime NowUtc = new(2026, 9, 2, 18, 0, 0, DateTimeKind.Utc);
 
     [Fact]
-    public async Task PurgeExpiredData_DeletesCompletedOrderAndRelatedRecordsAtThirtyHours()
+    public void Options_DefaultCompletedOrderRetentionIsFortyEightHours()
+    {
+        Assert.Equal(48, new DataRetentionOptions().CompletedOrderHours);
+    }
+
+    [Fact]
+    public async Task PurgeExpiredData_DeletesCompletedOrderAndRelatedRecordsAtFortyEightHours()
     {
         await using var context = CreateContext();
-        var expired = CreateOrder(OrderStatus.Completed, NowUtc.AddHours(-30));
+        var expired = CreateOrder(OrderStatus.Completed, NowUtc.AddHours(-48));
         var active = CreateOrder(OrderStatus.ReadyForPickup, null, NowUtc.AddDays(-10));
         context.Orders.AddRange(expired, active);
         await context.SaveChangesAsync();
@@ -87,9 +93,9 @@ public class DataRetentionServiceTests
     {
         await using var context = CreateContext();
         context.Payments.AddRange(
-            CreatePayment(null, NowUtc.AddHours(-31)),
-            CreatePayment(null, NowUtc.AddHours(-30)),
-            CreatePayment(null, NowUtc.AddHours(-29)));
+            CreatePayment(null, NowUtc.AddHours(-49)),
+            CreatePayment(null, NowUtc.AddHours(-48)),
+            CreatePayment(null, NowUtc.AddHours(-47)));
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
 
@@ -107,7 +113,7 @@ public class DataRetentionServiceTests
             context,
             Options.Create(new DataRetentionOptions
             {
-                CompletedOrderHours = 30,
+                CompletedOrderHours = 48,
                 OperationalLogDays = 90,
                 BatchSize = batchSize
             }),

@@ -10,7 +10,6 @@ import AccountSecurity from "../components/Admin/AccountSecurity";
 import StaffDevicePrompt from "../components/Admin/StaffDevicePrompt";
 import Loading from "../components/common/Loading";
 import Button from "../components/common/Button";
-import useKeepAliveHeartbeat from "../hooks/useKeepAliveHeartbeat";
 import { useI18n } from "../i18n/LanguageContext";
 import { clearAdminSession, getAdminToken } from "../authSession";
 import axiosInstance from "../axiosConfig";
@@ -42,8 +41,6 @@ function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [menuRefreshKey, setMenuRefreshKey] = useState(0);
   const [activeTab, setActiveTab] = useState<string>(ADMIN_TAB_IDS.ORDERS);
-  useKeepAliveHeartbeat(true);
-
   useEffect(() => {
     const token = getAdminToken();
     if (!token) {
