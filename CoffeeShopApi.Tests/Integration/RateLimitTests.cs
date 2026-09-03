@@ -76,4 +76,49 @@ public class RateLimitTests : IClassFixture<WebAppFactory>
 
         Assert.Equal(HttpStatusCode.TooManyRequests, rejected.StatusCode);
     }
+
+    [Fact]
+    public async Task LoginEndpoint_UsesTrustedForwardedClientIpForSeparatePartitions()
+    {
+        await using var factory = new WebAppFactory(loginPermitLimit: 1);
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await client.SendAsync(LoginRequest("127.0.0.1", "203.0.113.10"))).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests,
+            (await client.SendAsync(LoginRequest("127.0.0.1", "203.0.113.10"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await client.SendAsync(LoginRequest("127.0.0.1", "203.0.113.11"))).StatusCode);
+    }
+
+    [Fact]
+    public async Task LoginEndpoint_IgnoresForwardedClientIpFromUntrustedPeer()
+    {
+        await using var factory = new WebAppFactory(loginPermitLimit: 1);
+        using var client = factory.CreateClient();
+
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await client.SendAsync(LoginRequest("192.0.2.20", "203.0.113.10", "198.51.100.10"))).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests,
+            (await client.SendAsync(LoginRequest("192.0.2.20", "203.0.113.11", "198.51.100.11"))).StatusCode);
+    }
+
+    private static HttpRequestMessage LoginRequest(
+        string transportIp,
+        string forwardedClientIp,
+        string? spoofedXForwardedFor = null)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/api/admin/login")
+        {
+            Content = JsonContent.Create(new { username = "wrong", password = "wrong" })
+        };
+        request.Headers.Add("X-Test-Transport-IP", transportIp);
+        request.Headers.Add("CF-Connecting-IP", forwardedClientIp);
+        if (spoofedXForwardedFor != null)
+        {
+            request.Headers.Add("X-Forwarded-For", spoofedXForwardedFor);
+        }
+
+        return request;
+    }
 }

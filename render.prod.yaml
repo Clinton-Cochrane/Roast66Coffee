@@ -52,6 +52,16 @@ projects:
                 value: "8"
               - key: AllowedOrigins
                 sync: false
+              - key: ForwardedHeaders__Enabled
+                value: "true"
+              - key: ForwardedHeaders__ClientIpHeader
+                value: CF-Connecting-IP
+              - key: ForwardedHeaders__KnownProxies
+                sync: false
+              - key: ForwardedHeaders__KnownNetworks
+                sync: false
+              - key: ForwardedHeaders__ForwardLimit
+                value: "1"
               - key: Order__DuplicateDetectionWindowMinutes
                 value: "2"
               - key: Payments__DefaultProvider
