@@ -8,7 +8,7 @@ ENV VITE_USE_STATIC_MENU=${VITE_USE_STATIC_MENU}
 
 COPY roast66/package.json .
 COPY roast66/package-lock.json .
-RUN npm install
+RUN npm ci
 
 # Copy the source code and .env file
 COPY roast66/ .

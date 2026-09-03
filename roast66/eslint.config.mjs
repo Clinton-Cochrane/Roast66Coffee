@@ -1,7 +1,7 @@
 import js from "@eslint/js";
+import vitest from "@vitest/eslint-plugin";
 import globals from "globals";
 import react from "eslint-plugin-react";
-import vitest from "eslint-plugin-vitest";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
