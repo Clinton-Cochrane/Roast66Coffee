@@ -60,11 +60,37 @@ Create a Blueprint instance from `render.prod.yaml`. Confirm:
 - the API uses the database's private/internal connection property;
 - the API has one instance, a maximum Npgsql pool size of 20, and
   `/api/health/ready` as its health check;
+- forwarded-header processing is enabled for the API, uses Render's
+  `CF-Connecting-IP` client header, and lists only the proxy addresses or
+  networks observed and approved for that Render service;
 - both services track `prod` with automatic deploys disabled;
 - every `sync: false` value is stored in Render, not Git or documentation;
 - platform failure and database-unhealthy alerts reach both the client/business
   owner and current operator; and
 - application workflow alerts use the approved client-owned destination.
+
+Render public web-service traffic passes through Cloudflare and Render's load
+balancer before reaching the container. The API therefore uses
+`CF-Connecting-IP` for client-IP-aware rate limiting and source attribution.
+Do not enable unrestricted forwarded-header processing or use arbitrary
+`X-Forwarded-For` values. Populate `ForwardedHeaders__KnownProxies` and/or
+`ForwardedHeaders__KnownNetworks` in Render from the verified transport peer
+addresses for the service; these values are intentionally deployment
+configuration, not application defaults. Recheck them after a hosting or
+network-topology change.
+
+For a new Render service, populate the trust entries before enabling normal
+traffic. If the transport peer address is not already known, deploy a short-
+lived diagnostic revision with forwarded-header processing disabled, capture
+the transport-level proxy address in the private service logs, then set the
+corresponding `sync: false` Render variable and redeploy with processing
+enabled. Remove the diagnostic logging before merging the release.
+
+Before accepting production traffic, verify from two separate client networks
+that one client's configured login window returns `429` only for that client,
+while the other client's first request remains below the limit. Repeat with
+forged `CF-Connecting-IP` and `X-Forwarded-For` headers; changing those caller
+supplied values must not evade the real client partition.
 
 Production starts fresh. Do not transfer customer or order history from the
 development Supabase project. Apply EF migrations, load the current approved

@@ -7,6 +7,7 @@ using CoffeeShopApi.Data;
 using CoffeeShopApi.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Microsoft.AspNetCore.RateLimiting;
@@ -44,6 +45,23 @@ namespace CoffeeShopApi
         public void ConfigureServices(IServiceCollection services)
         {
             SecurityConfiguration.Validate(Configuration, _env);
+            var forwardedHeaders = TrustedProxyConfiguration.Build(Configuration);
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = forwardedHeaders.ForwardedHeaders;
+                options.ForwardedForHeaderName = forwardedHeaders.ForwardedForHeaderName;
+                options.ForwardLimit = forwardedHeaders.ForwardLimit;
+                options.KnownProxies.Clear();
+                options.KnownNetworks.Clear();
+                foreach (var proxy in forwardedHeaders.KnownProxies)
+                {
+                    options.KnownProxies.Add(proxy);
+                }
+                foreach (var network in forwardedHeaders.KnownNetworks)
+                {
+                    options.KnownNetworks.Add(network);
+                }
+            });
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(PostgresConnectionString.Build(
                     Configuration.GetConnectionString("DefaultConnection"))));
@@ -283,6 +301,10 @@ namespace CoffeeShopApi
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
+            // Must run before logging, rate limiting, authentication, and any
+            // controller that consumes the client IP address.
+            app.UseForwardedHeaders();
+
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();

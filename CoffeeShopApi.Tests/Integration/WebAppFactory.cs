@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Security;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -88,7 +90,12 @@ public class WebAppFactory : WebApplicationFactory<Program>
                 ["Jwt:Issuer"] = "Roast66Coffee",
                 ["Jwt:Audience"] = "Roast66Coffee",
                 ["Jwt:TokenExpiryInHours"] = "8",
-                ["Authentication:LegacySharedLoginEnabled"] = "true"
+                ["Authentication:LegacySharedLoginEnabled"] = "true",
+                ["ForwardedHeaders:Enabled"] = "true",
+                ["ForwardedHeaders:ClientIpHeader"] = "CF-Connecting-IP",
+                ["ForwardedHeaders:KnownProxies"] = "127.0.0.1",
+                ["ForwardedHeaders:KnownNetworks"] = "",
+                ["ForwardedHeaders:ForwardLimit"] = "1"
             };
             if (_loginPermitLimit.HasValue)
             {
@@ -104,6 +111,7 @@ public class WebAppFactory : WebApplicationFactory<Program>
         });
         builder.ConfigureTestServices(services =>
         {
+            services.AddTransient<IStartupFilter, TestTransportIpStartupFilter>();
             services.RemoveAll<ApplicationDbContext>();
             services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
             services.AddDbContext<ApplicationDbContext>(options =>
