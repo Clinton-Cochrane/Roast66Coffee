@@ -22,6 +22,21 @@ assert_absent() {
 test -f render.dev.yaml
 test -f render.prod.yaml
 test ! -e render.yaml
+test -f .node-version
+
+node_version=$(tr -d '[:space:]' <.node-version)
+case "$node_version" in
+  24.*.*) ;;
+  *)
+    echo ".node-version must pin an exact Node 24 release." >&2
+    exit 1
+    ;;
+esac
+
+test "$(grep -Fc -- "node-version: \"$node_version\"" .github/workflows/ci.yml)" -eq 2
+assert_contains .github/workflows/codeql.yml "node-version: \"$node_version\""
+assert_contains Dockerfile.frontend "FROM node:$node_version AS build"
+assert_contains roast66/package.json '"node": "24.x"'
 
 assert_contains render.dev.yaml "name: roast66-api"
 assert_contains render.dev.yaml "name: roast66-web"

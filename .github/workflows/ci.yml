@@ -68,7 +68,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24.20.0"
           cache: npm
           cache-dependency-path: roast66/package-lock.json
 
@@ -103,7 +103,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: "20"
+          node-version: "24.20.0"
           cache: npm
           cache-dependency-path: candidate/roast66/package-lock.json
 

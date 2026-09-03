@@ -1,6 +1,6 @@
 # Stage 1: Build the React app
-# Align with CI (Node 20): Node 18 lacks global Web Crypto used by webpack/css-minimizer deps.
-FROM node:20 AS build
+# Keep the frontend build runtime aligned with CI and Render.
+FROM node:24.20.0 AS build
 WORKDIR /app
 
 ARG VITE_USE_STATIC_MENU
