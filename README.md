@@ -97,7 +97,7 @@ than extending the component with another cross-cutting effect.
 ### Prerequisites
 
 - Docker with Docker Compose for the recommended setup
-- Node.js 20+ and npm for frontend-only development
+- Node.js 24 LTS and npm for frontend-only development (see `.node-version`)
 - .NET 8 SDK for backend development and EF migrations
 - PostgreSQL when running the backend without Docker
 - Python 3 and ripgrep (`rg`) for the coverage summary and full local smoke
