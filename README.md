@@ -115,8 +115,15 @@ than extending the component with another cross-cutting effect.
 2. Start PostgreSQL, initialize the local database, and start the API and frontend:
 
    ```bash
+   scripts/ci/local-preflight.sh compose
    docker compose up --build -d
    ```
+
+   The preflight checks Docker/Compose and all three local environment files. It
+   also validates the password that `initialize-local` will use for the Owner:
+   `Bootstrap__Password` when present, otherwise `Admin__Password`. It reads only
+   those keys without sourcing the file and never prints the password. Follow any
+   reported `cp` command or password-policy recovery guidance before starting Compose.
 
    Compose applies pending migrations and seeds the default menu only when the
    local database is empty. Existing local menu and order data are preserved.
@@ -373,6 +380,11 @@ Use a clean checkout of the PR base revision as the baseline so the smoke proves
 that the candidate can upgrade the schema currently deployed. With no argument,
 the script uses the candidate as its own baseline, which is useful for a clean
 installation check but does not exercise a real version-to-version upgrade.
+
+The full smoke starts with the full local preflight, deriving the .NET and Node
+requirements from the repository contracts and checking every command it uses.
+After `npm ci`, it verifies the executable path for Playwright's managed Chromium;
+it does not require a system Chrome or Chromium installation.
 
 The full smoke runs the coverage reporter tests; all backend tests with required
 PostgreSQL contracts and coverage gates; frontend tests, lint, build, and audit;

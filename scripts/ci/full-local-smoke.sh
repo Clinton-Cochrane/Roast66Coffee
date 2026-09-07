@@ -3,6 +3,8 @@ set -Eeuo pipefail
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 candidate_context=$(cd "$script_dir/../.." && pwd)
+"$candidate_context/scripts/ci/local-preflight.sh" full "$candidate_context"
+
 base_context=$(realpath "${1:-$candidate_context}")
 coverage_directory=$(mktemp -d /tmp/roast66-full-smoke-coverage.XXXXXX)
 
@@ -18,17 +20,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-for dependency in docker dotnet npm npx python3; do
-  if ! command -v "$dependency" >/dev/null 2>&1; then
-    echo "Required command is unavailable: $dependency" >&2
-    exit 1
-  fi
-done
-
 if [ ! -f "$base_context/Dockerfile.backend" ]; then
   echo "Baseline checkout must contain Dockerfile.backend: $base_context" >&2
   exit 1
 fi
+
+echo "Installing frontend dependencies and verifying Playwright's managed Chromium"
+npm --prefix "$candidate_context/roast66" ci
+"$candidate_context/scripts/ci/local-preflight.sh" \
+  full "$candidate_context" --require-browser
 
 echo "Verifying hosting configuration contracts"
 (
@@ -59,7 +59,6 @@ dotnet list "$candidate_context/Roast66.sln" package \
 python3 "$candidate_context/scripts/ci/backend_coverage.py" "$coverage_directory"
 
 echo "Running frontend tests, lint, production build, and dependency audit"
-npm --prefix "$candidate_context/roast66" ci
 npm --prefix "$candidate_context/roast66" test
 npm --prefix "$candidate_context/roast66" run lint
 npm --prefix "$candidate_context/roast66" run build
