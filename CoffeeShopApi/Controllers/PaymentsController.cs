@@ -1,3 +1,4 @@
+using CoffeeShopApi.Models;
 using CoffeeShopApi.Models.Payments;
 using CoffeeShopApi.Services.Payments;
 using Microsoft.AspNetCore.Mvc;
@@ -67,6 +68,10 @@ public class PaymentsController : ControllerBase
         catch (InvalidOperationException ex)
         {
             return BadRequest(new { message = ex.Message });
+        }
+        catch (CheckoutOrderUnavailableException)
+        {
+            return NotFound(OrderTrackingUnavailableDto.Response);
         }
         catch (PaymentProviderUnavailableException ex)
         {

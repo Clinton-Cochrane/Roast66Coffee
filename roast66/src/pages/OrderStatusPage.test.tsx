@@ -5,12 +5,17 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import { LanguageProvider } from "../i18n/LanguageContext";
 import { ORDER_STATUS_LOOKUP_SESSION_KEY } from "../constants/orderStatusSession";
 
+vi.hoisted(() => {
+  vi.stubEnv("VITE_ENABLE_ONLINE_PAYMENTS", "true");
+});
+
 const mockGet = vi.fn();
+const mockPost = vi.fn();
 
 vi.mock("../axiosConfig", () => ({
   default: {
     get: (...args: unknown[]) => mockGet(...args),
-    post: vi.fn(),
+    post: (...args: unknown[]) => mockPost(...args),
   },
 }));
 
@@ -84,6 +89,7 @@ describe("OrderStatusPage", () => {
     sessionStorage.clear();
     vi.clearAllMocks();
     mockGet.mockResolvedValue({ data: lookupResponse });
+    mockPost.mockResolvedValue({ data: { checkoutUrl: "https://payments.example/checkout" } });
   });
 
   afterEach(() => {
@@ -289,5 +295,29 @@ describe("OrderStatusPage", () => {
 
     await vi.advanceTimersByTimeAsync(90_000);
     expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+
+  it("sends the successful lookup tracking token when starting checkout", async () => {
+    const { container } = renderPage();
+    const form = container.querySelector("form");
+    if (!form) {
+      throw new Error("form not found");
+    }
+
+    fireEvent.change(screen.getByRole("textbox", { name: /tracking code/i }), {
+      target: { value: "  token-42  " },
+    });
+    fireEvent.submit(form);
+    await screen.findByText(/Order #42/i);
+
+    fireEvent.click(screen.getByRole("button", { name: /pay securely online/i }));
+
+    await waitFor(() => {
+      expect(mockPost).toHaveBeenCalledWith(
+        "/payments/checkout-session",
+        { existingOrderId: 42, trackingToken: "token-42" },
+        expect.objectContaining({ headers: expect.objectContaining({ "X-Idempotency-Key": expect.any(String) }) })
+      );
+    });
   });
 });

@@ -87,8 +87,7 @@ public class PaymentServiceTests
             new CheckoutSessionRequest
             {
                 ExistingOrderId = order.Id,
-                CustomerName = "Gateway Customer",
-                CustomerPhone = "5551234567"
+                TrackingToken = order.TrackingToken
             },
             "provider-neutral-key");
 
@@ -102,6 +101,8 @@ public class PaymentServiceTests
         Assert.Equal(FakePaymentGateway.Name, payment.Provider);
         Assert.Equal(PaymentStatuses.Pending, payment.Status);
         Assert.Equal(9.00m, payment.Amount);
+        Assert.DoesNotContain(order.TrackingToken, payment.PayloadJson);
+        Assert.DoesNotContain(order.TrackingToken, gateway.LastCheckoutRequest.Metadata.Values);
 
         gateway.NextWebhookEvent = new GatewayPaymentEvent(
             payment.Id,
@@ -127,6 +128,74 @@ public class PaymentServiceTests
         Assert.Equal(savedOrder.Id, payment.OrderId);
         Assert.Equal(PaymentStatuses.Paid, payment.Status);
         Assert.Equal("wallet", payment.Method);
+    }
+
+    [Fact]
+    public async Task Checkout_RequiresMatchingTrackingTokenBeforeGatewayOrPaymentCreation()
+    {
+        var gateway = new FakePaymentGateway();
+        await using var services = BuildServices(gateway);
+        await using var scope = services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var order = await AddBillableOrderAsync(context, "order-a-token");
+        var paymentService = scope.ServiceProvider.GetRequiredService<PaymentService>();
+
+        await Assert.ThrowsAsync<CheckoutOrderUnavailableException>(() => paymentService.CreateCheckoutAsync(
+            new CheckoutSessionRequest { ExistingOrderId = order.Id },
+            "missing-token-key"));
+        await Assert.ThrowsAsync<CheckoutOrderUnavailableException>(() => paymentService.CreateCheckoutAsync(
+            new CheckoutSessionRequest { ExistingOrderId = order.Id, TrackingToken = "invalid-token" },
+            "invalid-token-key"));
+
+        Assert.Equal(0, gateway.CreateCheckoutCount);
+        Assert.Empty(await context.Payments.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Checkout_RejectsTokenForDifferentOrderBeforeGatewayOrPaymentCreation()
+    {
+        var gateway = new FakePaymentGateway();
+        await using var services = BuildServices(gateway);
+        await using var scope = services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var orderA = await AddBillableOrderAsync(context, "order-a-token");
+        var orderB = await AddBillableOrderAsync(context, "order-b-token");
+        var paymentService = scope.ServiceProvider.GetRequiredService<PaymentService>();
+
+        await Assert.ThrowsAsync<CheckoutOrderUnavailableException>(() => paymentService.CreateCheckoutAsync(
+            new CheckoutSessionRequest { ExistingOrderId = orderB.Id, TrackingToken = orderA.TrackingToken },
+            "mismatch-key"));
+
+        Assert.Equal(0, gateway.CreateCheckoutCount);
+        Assert.Empty(await context.Payments.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Checkout_ReplaysOnlyForTheAuthorizedOrderWhenIdempotencyKeyIsReused()
+    {
+        var gateway = new FakePaymentGateway();
+        await using var services = BuildServices(gateway);
+        await using var scope = services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var orderA = await AddBillableOrderAsync(context, "order-a-token");
+        var orderB = await AddBillableOrderAsync(context, "order-b-token");
+        var paymentService = scope.ServiceProvider.GetRequiredService<PaymentService>();
+        const string idempotencyKey = "shared-checkout-key";
+
+        var first = await paymentService.CreateCheckoutAsync(
+            new CheckoutSessionRequest { ExistingOrderId = orderA.Id, TrackingToken = orderA.TrackingToken },
+            idempotencyKey);
+        var replay = await paymentService.CreateCheckoutAsync(
+            new CheckoutSessionRequest { ExistingOrderId = orderA.Id, TrackingToken = orderA.TrackingToken },
+            idempotencyKey);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => paymentService.CreateCheckoutAsync(
+            new CheckoutSessionRequest { ExistingOrderId = orderB.Id, TrackingToken = orderB.TrackingToken },
+            idempotencyKey));
+
+        Assert.Equal(first.CheckoutId, replay.CheckoutId);
+        Assert.Equal(1, gateway.CreateCheckoutCount);
+        Assert.Single(await context.Payments.ToListAsync());
     }
 
     [Fact]
@@ -197,12 +266,35 @@ public class PaymentServiceTests
         return services.BuildServiceProvider();
     }
 
+    private static async Task<Order> AddBillableOrderAsync(ApplicationDbContext context, string trackingToken)
+    {
+        var menuItemId = (await context.MenuItems.MaxAsync(item => (int?)item.Id) ?? 0) + 1;
+        context.MenuItems.Add(new MenuItem
+        {
+            Id = menuItemId,
+            Name = $"Test drink {menuItemId}",
+            Price = 4.50m,
+            CategoryType = CategoryType.COFFEE
+        });
+        var order = new Order
+        {
+            CustomerName = "Stored customer",
+            CustomerPhone = "5551234567",
+            TrackingToken = trackingToken.PadRight(43, 'x'),
+            OrderItems = [new OrderItem { MenuItemId = menuItemId, Quantity = 1, UnitPrice = 4.50m }]
+        };
+        context.Orders.Add(order);
+        await context.SaveChangesAsync();
+        return order;
+    }
+
     private sealed class FakePaymentGateway : IPaymentGateway
     {
         public const string Name = "fake";
 
         public string ProviderName => Name;
         public GatewayCheckoutRequest? LastCheckoutRequest { get; private set; }
+        public int CreateCheckoutCount { get; private set; }
         public GatewayPaymentEvent? NextWebhookEvent { get; set; }
 
         public bool IsConfigured() => true;
@@ -212,6 +304,7 @@ public class PaymentServiceTests
             string idempotencyKey,
             CancellationToken cancellationToken = default)
         {
+            CreateCheckoutCount++;
             LastCheckoutRequest = request;
             return Task.FromResult(new GatewayCheckoutResult(
                 "https://payments.example/checkout",
