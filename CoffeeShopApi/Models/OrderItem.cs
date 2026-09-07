@@ -18,7 +18,7 @@ namespace CoffeeShopApi.Models
         public int? MenuItemId { get; set; }
 
         [Required]
-        [Range(1, 100, ErrorMessage = "Quantity must be between 1 and 100")]
+        [Range(1, 12, ErrorMessage = "Quantity must be between 1 and 12")]
         [Column("quantity")]
         public int Quantity { get; set; }
 
@@ -61,6 +61,7 @@ namespace CoffeeShopApi.Models
         public int? MenuItemId { get; set; }
 
         [Required]
+        [Range(1, 12, ErrorMessage = "Quantity must be between 1 and 12")]
         [Column("quantity")]
         public int Quantity { get; set; }
 
