@@ -24,6 +24,10 @@ test -f render.prod.yaml
 test ! -e render.yaml
 test -f .node-version
 
+assert_contains docker-compose.yml '5001:8080'
+assert_contains docker-compose.yml 'PORT=8080'
+assert_absent docker-compose.yml 'ASPNETCORE_URLS'
+
 node_version=$(tr -d '[:space:]' <.node-version)
 case "$node_version" in
   24.*.*) ;;
