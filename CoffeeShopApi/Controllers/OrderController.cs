@@ -75,16 +75,10 @@ public class OrderController : ControllerBase
     [HttpPost]
     [EnableRateLimiting("Order")]
     public async Task<ActionResult<PublicOrderDto>> PostOrder(
-        Order order,
+        CreateOrderRequest request,
         [FromHeader(Name = "X-Idempotency-Key")] string? idempotencyKey,
         CancellationToken cancellationToken)
     {
-        if (order.OrderItems == null || order.OrderItems.Count == 0)
-        {
-            ModelState.AddModelError("OrderItems", "The OrderItems field is required.");
-            return BadRequest(ModelState);
-        }
-
         var key = idempotencyKey?.Trim();
         if (string.IsNullOrEmpty(key) || key.Length > MaxIdempotencyKeyLength)
         {
@@ -97,7 +91,7 @@ public class OrderController : ControllerBase
         OrderSubmissionResult submission;
         try
         {
-            submission = await _orderService.SubmitOrderAsync(order, key, cancellationToken);
+            submission = await _orderService.SubmitOrderAsync(MapToOrder(request), key, cancellationToken);
         }
         catch (UnavailableMenuItemsException ex)
         {
@@ -124,6 +118,25 @@ public class OrderController : ControllerBase
             new { trackingToken = submission.Order.TrackingToken },
             PublicOrderDto.FromOrder(submission.Order));
     }
+
+    private static Order MapToOrder(CreateOrderRequest request) => new()
+    {
+        CustomerName = request.CustomerName,
+        CustomerPhone = request.CustomerPhone,
+        CustomerEmail = request.CustomerEmail,
+        CustomerNotificationOptIn = request.CustomerNotificationOptIn,
+        OrderItems = request.OrderItems.Select(item => new OrderItem
+        {
+            MenuItemId = item.MenuItemId,
+            Quantity = item.Quantity,
+            Notes = item.Notes,
+            AddOns = (item.AddOns ?? []).Select(addOn => new AddOn
+            {
+                MenuItemId = addOn.MenuItemId,
+                Quantity = addOn.Quantity
+            }).ToList()
+        }).ToList()
+    };
 
     [AllowAnonymous]
     [HttpGet("track/{trackingToken}/notifications")]

@@ -83,6 +83,10 @@ namespace CoffeeShopApi.Data
                 .Property(orderItem => orderItem.ItemDescription)
                 .IsRequired();
             modelBuilder.Entity<OrderItem>()
+                .ToTable(table => table.HasCheckConstraint(
+                    "ck_orderitems_quantity_range",
+                    "quantity >= 1 AND quantity <= 12"));
+            modelBuilder.Entity<OrderItem>()
                 .HasOne(orderItem => orderItem.MenuItem)
                 .WithMany()
                 .HasForeignKey(orderItem => orderItem.MenuItemId)
@@ -93,6 +97,10 @@ namespace CoffeeShopApi.Data
             modelBuilder.Entity<AddOn>()
                 .Property(addOn => addOn.ItemDescription)
                 .IsRequired();
+            modelBuilder.Entity<AddOn>()
+                .ToTable(table => table.HasCheckConstraint(
+                    "ck_addons_quantity_range",
+                    "quantity >= 1 AND quantity <= 12"));
             modelBuilder.Entity<AddOn>()
                 .HasOne(addOn => addOn.MenuItem)
                 .WithMany()
