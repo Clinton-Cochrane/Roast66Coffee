@@ -4,7 +4,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.RateLimiting;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Services;
-using CoffeeShopApi.Security;
 
 
 namespace CoffeeShopApi.Controllers;
@@ -218,23 +217,5 @@ public class OrderController : ControllerBase
 
     private NotFoundObjectResult TrackingUnavailable() =>
         NotFound(OrderTrackingUnavailableDto.Response);
-
-    [Authorize(Roles = "Admin")]
-    [HttpPut("{id}")]
-    public async Task<IActionResult> PutOrder(int id, Order order)
-    {
-        if (id != order.Id)
-        {
-            return BadRequest();
-        }
-
-        var result = await _orderService.UpdateOrderAsync(order, StaffActor.FromPrincipal(User));
-        if (!result)
-        {
-            return NotFound();
-        }
-
-        return NoContent();
-    }
 
 }

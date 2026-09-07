@@ -445,64 +445,6 @@ public class OrderService(
             .Replace('/', '_');
 
     /// <summary>
-    /// Updates editable order data while preserving the persisted status fields.
-    /// Status changes must go through <see cref="AdvanceStatusAsync(int, OrderStatus, CancellationToken)"/>
-    /// so clients cannot bypass the state machine or its concurrency token.
-    /// </summary>
-    public async Task<bool> UpdateOrderAsync(Order order, StaffActor? actor = null)
-    {
-        var persistedStatus = await _context.Orders
-            .AsNoTracking()
-            .Where(existing => existing.Id == order.Id)
-            .Select(existing => new
-            {
-                existing.OrderStatus,
-                existing.CompletedUtc,
-                existing.StatusConcurrencyToken
-            })
-            .SingleOrDefaultAsync();
-        if (persistedStatus == null)
-        {
-            return false;
-        }
-
-        order.OrderStatus = persistedStatus.OrderStatus;
-        order.CompletedUtc = persistedStatus.CompletedUtc;
-        order.StatusConcurrencyToken = persistedStatus.StatusConcurrencyToken;
-        _context.Entry(order).State = EntityState.Modified;
-        _context.Entry(order).Property(existing => existing.StatusConcurrencyToken).IsModified = false;
-        if (actor != null && _auditEvents != null)
-        {
-            _auditEvents.Add(
-                actor,
-                "order.updated",
-                "order",
-                order.Id.ToString(System.Globalization.CultureInfo.InvariantCulture));
-        }
-        try
-        {
-            await _context.SaveChangesAsync();
-            return true;
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            if (!OrderExists(order.Id))
-            {
-                return false;
-            }
-            else
-            {
-                throw;
-            }
-        }
-    }
-
-    private bool OrderExists(int id)
-    {
-        return _context.Orders.Any(e => e.Id == id);
-    }
-
-    /// <summary>
     /// Advances exactly one state when the caller's expected status is current.
     /// A repeated successful request is reported as a replay; competing or stale
     /// transitions return a conflict after reloading the database winner.
