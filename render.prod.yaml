@@ -104,6 +104,31 @@ projects:
             autoDeployTrigger: "off"
             buildCommand: cd roast66 && npm ci && npm run build
             staticPublishPath: roast66/dist
+            headers:
+              - path: /*
+                name: Content-Security-Policy
+                value: "default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob:; connect-src 'self' https://roast66-api-prod.onrender.com; manifest-src 'self'; worker-src 'self' blob:; form-action 'self'"
+              - path: /*
+                name: X-Frame-Options
+                value: DENY
+              - path: /*
+                name: X-Content-Type-Options
+                value: nosniff
+              - path: /*
+                name: Referrer-Policy
+                value: strict-origin-when-cross-origin
+              - path: /*
+                name: Permissions-Policy
+                value: "camera=(), geolocation=(), microphone=(), payment=(), usb=()"
+              - path: /*
+                name: Strict-Transport-Security
+                value: "max-age=31536000; includeSubDomains"
+              - path: /*
+                name: Cache-Control
+                value: no-cache
+              - path: /assets/*
+                name: Cache-Control
+                value: "public, max-age=31536000, immutable"
             envVars:
               - key: VITE_API_URL
                 sync: false
