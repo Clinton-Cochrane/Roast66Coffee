@@ -34,7 +34,7 @@ public class TrustedProxyConfigurationTests
         Assert.Equal("CF-Connecting-IP", options.ForwardedForHeaderName);
         Assert.Equal(1, options.ForwardLimit);
         Assert.Single(options.KnownProxies);
-        Assert.Single(options.KnownNetworks);
+        Assert.Single(options.KnownIPNetworks);
     }
 
     [Fact]

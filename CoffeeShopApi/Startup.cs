@@ -52,14 +52,14 @@ namespace CoffeeShopApi
                 options.ForwardedForHeaderName = forwardedHeaders.ForwardedForHeaderName;
                 options.ForwardLimit = forwardedHeaders.ForwardLimit;
                 options.KnownProxies.Clear();
-                options.KnownNetworks.Clear();
+                options.KnownIPNetworks.Clear();
                 foreach (var proxy in forwardedHeaders.KnownProxies)
                 {
                     options.KnownProxies.Add(proxy);
                 }
-                foreach (var network in forwardedHeaders.KnownNetworks)
+                foreach (var network in forwardedHeaders.KnownIPNetworks)
                 {
-                    options.KnownNetworks.Add(network);
+                    options.KnownIPNetworks.Add(network);
                 }
             });
             services.AddDbContext<ApplicationDbContext>(options =>

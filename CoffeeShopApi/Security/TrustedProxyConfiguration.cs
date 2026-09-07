@@ -40,12 +40,12 @@ internal static class TrustedProxyConfiguration
         options.ForwardedForHeaderName = clientIpHeader;
         options.ForwardLimit = forwardLimit;
         options.KnownProxies.Clear();
-        options.KnownNetworks.Clear();
+        options.KnownIPNetworks.Clear();
 
         AddKnownProxies(options, section["KnownProxies"]);
         AddKnownNetworks(options, section["KnownNetworks"]);
 
-        if (options.KnownProxies.Count == 0 && options.KnownNetworks.Count == 0)
+        if (options.KnownProxies.Count == 0 && options.KnownIPNetworks.Count == 0)
         {
             throw new InvalidOperationException(
                 $"{SectionName}:KnownProxies or {SectionName}:KnownNetworks must contain " +
@@ -83,7 +83,7 @@ internal static class TrustedProxyConfiguration
                     $"{SectionName}:KnownNetworks contains an invalid CIDR network: '{value}'.");
             }
 
-            options.KnownNetworks.Add(new Microsoft.AspNetCore.HttpOverrides.IPNetwork(prefix, prefixLength));
+            options.KnownIPNetworks.Add(new System.Net.IPNetwork(prefix, prefixLength));
         }
     }
 

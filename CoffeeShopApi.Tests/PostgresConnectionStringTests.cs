@@ -15,6 +15,7 @@ public class PostgresConnectionStringTests
 
         Assert.True(parsed.Pooling);
         Assert.Equal(20, parsed.MaxPoolSize);
+        Assert.Equal(GssEncryptionMode.Disable, parsed.GssEncryptionMode);
     }
 
     [Fact]

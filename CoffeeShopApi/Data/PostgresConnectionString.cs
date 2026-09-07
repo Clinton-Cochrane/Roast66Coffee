@@ -26,6 +26,7 @@ internal static class PostgresConnectionString
 
         builder.Pooling = true;
         builder.MaxPoolSize = MaximumPoolSize;
+        builder.GssEncryptionMode = GssEncryptionMode.Disable;
         return builder.ConnectionString;
     }
 
