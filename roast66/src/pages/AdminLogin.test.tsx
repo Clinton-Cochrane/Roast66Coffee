@@ -12,16 +12,6 @@ vi.mock("../axiosConfig", () => ({
   },
 }));
 
-const toastSuccess = vi.fn();
-const toastError = vi.fn();
-
-vi.mock("react-toastify", () => ({
-  toast: {
-    success: (...args: unknown[]) => toastSuccess(...args),
-    error: (...args: unknown[]) => toastError(...args),
-  },
-}));
-
 function renderLogin() {
   return render(
     <LanguageProvider>
@@ -44,6 +34,7 @@ describe("AdminLogin", () => {
     expect(screen.getByPlaceholderText("Username")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /login/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /forgot password/i })).not.toBeInTheDocument();
   });
 
   it("calls onLoginSuccess and stores token on successful login", async () => {
@@ -91,20 +82,6 @@ describe("AdminLogin", () => {
 
     await waitFor(() => {
       expect(screen.getByText("Invalid credentials")).toBeInTheDocument();
-    });
-  });
-
-  it("calls forgot-password endpoint", async () => {
-    mockPost.mockResolvedValueOnce({ data: { message: "ok" } });
-    renderLogin();
-
-    fireEvent.click(screen.getByRole("button", { name: /forgot password/i }));
-
-    await waitFor(() => {
-      expect(mockPost).toHaveBeenCalledWith("/admin/forgot-password", {});
-    });
-    await waitFor(() => {
-      expect(toastSuccess).toHaveBeenCalled();
     });
   });
 });

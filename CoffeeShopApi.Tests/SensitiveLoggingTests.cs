@@ -158,36 +158,6 @@ public class SensitiveLoggingTests
     }
 
     [Fact]
-    public async Task SupportEmailFailureLogs_StatusWithoutProviderResponseBody()
-    {
-        var responseBody = $"{ProviderSecret}; token={Jwt}; connection={ConnectionString}";
-        var factory = new StubHttpClientFactory(
-            new HttpClient(new StubHttpHandler(
-                new HttpResponseMessage(HttpStatusCode.Unauthorized)
-                {
-                    Content = new StringContent(responseBody)
-                })));
-        var logger = new RecordingLogger<SupportEmailService>();
-        var service = new SupportEmailService(
-            BuildConfiguration(new Dictionary<string, string?>
-            {
-                ["Resend:ApiKey"] = ProviderSecret,
-                ["Resend:From"] = "support@example.test",
-                ["Support:AlertEmail"] = "owner@example.test"
-            }),
-            factory,
-            logger);
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.SendForgotPasswordAlertAsync("192.0.2.10", "customer requested help", default));
-
-        var entry = Assert.Single(logger.Entries);
-        Assert.Contains("Unauthorized", entry.Message);
-        AssertSensitiveValuesAbsent(entry.Message);
-        Assert.DoesNotContain("owner@example.test", entry.Message, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public async Task NotificationAuditRecord_OmitsCustomerPayloadAndExceptionMessage()
     {
         await using var context = CreateContext();

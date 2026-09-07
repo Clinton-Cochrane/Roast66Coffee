@@ -293,16 +293,9 @@ export const esMx: Messages = {
     usernamePlaceholder: "Usuario",
     passwordPlaceholder: "Contraseña",
     login: "Iniciar sesión",
-    forgotPassword: "¿Olvidaste la contraseña?",
-    sending: "Enviando...",
-    forgotSent:
-      "Solicitud de soporte enviada. Revisa con el contacto técnico familiar.",
     serverError:
       "Error del servidor. Intenta más tarde o contacta al soporte.",
     invalidCredentials: "Credenciales inválidas",
-    forgotNotConfigured:
-      "El soporte de contraseña no está configurado en este momento.",
-    forgotFailed: "No se pudo enviar la solicitud. Intenta de nuevo.",
   },
   common: {
     logOut: "Cerrar sesión",
