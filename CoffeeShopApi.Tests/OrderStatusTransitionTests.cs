@@ -154,28 +154,6 @@ public class OrderStatusTransitionTests
         Assert.Equal((OrderStatus)99, order.OrderStatus);
     }
 
-    [Fact]
-    public async Task GeneralOrderUpdate_CannotBypassTerminalStatusRule()
-    {
-        await using var context = CreateContext();
-        var completedUtc = NowUtc.AddMinutes(-5);
-        var completed = CreateOrder(OrderStatus.Completed, completedUtc);
-        context.Orders.Add(completed);
-        await context.SaveChangesAsync();
-        context.ChangeTracker.Clear();
-
-        var replacement = CreateOrder(OrderStatus.Received);
-        replacement.CustomerName = "Updated Customer";
-
-        Assert.True(await CreateService(context).UpdateOrderAsync(replacement));
-
-        context.ChangeTracker.Clear();
-        var persisted = await context.Orders.SingleAsync();
-        Assert.Equal("Updated Customer", persisted.CustomerName);
-        Assert.Equal(OrderStatus.Completed, persisted.OrderStatus);
-        Assert.Equal(completedUtc, persisted.CompletedUtc);
-    }
-
     private static Order CreateOrder(OrderStatus status, DateTime? completedUtc = null) =>
         new()
         {

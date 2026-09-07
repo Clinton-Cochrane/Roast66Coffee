@@ -174,6 +174,27 @@ public class ApiIntegrationTests : IClassFixture<WebAppFactory>
     }
 
     [Fact]
+    public async Task LegacyOrderUpdateRoute_IsRemoved()
+    {
+        var token = await GetAdminToken();
+        using var request = new HttpRequestMessage(HttpMethod.Put, "/api/order/1")
+        {
+            Content = JsonContent.Create(new Order
+            {
+                Id = 1,
+                CustomerName = "Legacy update",
+                OrderItems = [new OrderItem { MenuItemId = 1, Quantity = 1 }]
+            }, options: JsonOptions)
+        };
+        request.Headers.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.MethodNotAllowed, response.StatusCode);
+    }
+
+    [Fact]
     public async Task PostOrder_ThenGetOrders_WithAdminToken_ReturnsOrder()
     {
         var token = await GetAdminToken();
