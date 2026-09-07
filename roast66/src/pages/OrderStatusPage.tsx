@@ -204,8 +204,7 @@ function OrderStatusPage() {
         "/payments/checkout-session",
         {
           existingOrderId: order.id,
-          customerName: order.customerName,
-          customerPhone: order.customerPhone ?? "",
+          trackingToken: trackingToken.trim(),
         },
         { headers: { "X-Idempotency-Key": idempotencyKey } }
       );

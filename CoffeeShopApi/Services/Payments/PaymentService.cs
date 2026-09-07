@@ -59,6 +59,14 @@ public sealed class PaymentService
                 $"{gateway.ProviderName} is not configured for this environment.");
         }
 
+        var authorizedOrder = await _orderService.GetOrderByTrackingTokenAsync(
+            request.TrackingToken ?? string.Empty,
+            cancellationToken);
+        if (authorizedOrder == null || authorizedOrder.Id != request.ExistingOrderId)
+        {
+            throw new CheckoutOrderUnavailableException();
+        }
+
         var existingPayment = await _context.Payments
             .AsNoTracking()
             .FirstOrDefaultAsync(
@@ -67,6 +75,11 @@ public sealed class PaymentService
                 cancellationToken);
         if (existingPayment != null)
         {
+            if (existingPayment.OrderId != authorizedOrder.Id)
+            {
+                throw new InvalidOperationException("This idempotency key is already in use.");
+            }
+
             var existingCheckout = await gateway.GetCheckoutAsync(
                 existingPayment.ProviderCheckoutId,
                 cancellationToken);
@@ -76,13 +89,13 @@ public sealed class PaymentService
                 gateway.ProviderName);
         }
 
-        var prepared = await PrepareCheckoutAsync(request, cancellationToken);
+        var prepared = PrepareCheckout(authorizedOrder);
 
         var pendingPayment = await _context.Payments
             .AsNoTracking()
             .Where(payment =>
                 payment.Provider == gateway.ProviderName &&
-                payment.OrderId == request.ExistingOrderId &&
+                payment.OrderId == authorizedOrder.Id &&
                 payment.Status == PaymentStatuses.Pending)
             .OrderByDescending(payment => payment.CreatedUtc)
             .FirstOrDefaultAsync(cancellationToken);
@@ -215,31 +228,20 @@ public sealed class PaymentService
     }
 
     /// <summary>
-    /// Rebuilds checkout lines and return URLs from the authoritative stored order.
-    /// Customer identity is checked only to prevent attaching checkout to another order.
+    /// Rebuilds checkout lines and return URLs from the already-authorized stored order.
     /// </summary>
-    private async Task<PreparedCheckout> PrepareCheckoutAsync(
-        CheckoutSessionRequest request,
-        CancellationToken cancellationToken)
+    private PreparedCheckout PrepareCheckout(Order order)
     {
         var frontendBaseUrl = (
             _configuration["Payments:FrontendBaseUrl"] ??
             _configuration["Stripe:FrontendBaseUrl"] ??
             "http://localhost:3000").TrimEnd('/');
 
-        if (request.ExistingOrderId is not int existingOrderId || existingOrderId <= 0)
-        {
-            throw new InvalidOperationException("Create the order before starting online payment.");
-        }
-
-        var order = await _orderService.GetOrderByIdAsync(existingOrderId, cancellationToken)
-            ?? throw new InvalidOperationException("Order not found.");
         if (order.PaidUtc != null)
         {
             throw new InvalidOperationException("This order is already paid.");
         }
 
-        ValidateCustomerIdentity(request, order);
         var lineItems = BuildLineItemsFromOrder(order);
         if (lineItems.Count == 0)
         {
@@ -247,13 +249,13 @@ public sealed class PaymentService
         }
 
         return new PreparedCheckout(
-            new CheckoutSessionRequest
+            new CheckoutSessionPayload
             {
-                ExistingOrderId = existingOrderId,
+                ExistingOrderId = order.Id,
                 CustomerName = order.CustomerName,
-                CustomerPhone = order.CustomerPhone ?? request.CustomerPhone ?? string.Empty,
-                CustomerEmail = order.CustomerEmail ?? request.CustomerEmail,
-                CustomerNotificationOptIn = order.CustomerNotificationOptIn || request.CustomerNotificationOptIn
+                CustomerPhone = order.CustomerPhone ?? string.Empty,
+                CustomerEmail = order.CustomerEmail,
+                CustomerNotificationOptIn = order.CustomerNotificationOptIn
             },
             lineItems,
             $"{frontendBaseUrl}/order-status?checkout=success&token={order.TrackingToken}",
@@ -267,7 +269,7 @@ public sealed class PaymentService
             return;
         }
 
-        var payload = JsonSerializer.Deserialize<CheckoutSessionRequest>(payment.PayloadJson)
+        var payload = JsonSerializer.Deserialize<CheckoutSessionPayload>(payment.PayloadJson)
             ?? throw new InvalidOperationException("Unable to deserialize payment checkout payload.");
         if (payload.ExistingOrderId is not int existingOrderId || existingOrderId <= 0)
         {
@@ -387,26 +389,6 @@ public sealed class PaymentService
         return lineItems;
     }
 
-    private static void ValidateCustomerIdentity(CheckoutSessionRequest request, Order order)
-    {
-        var requestPhone = NormalizePhone(request.CustomerPhone ?? string.Empty);
-        var orderPhone = NormalizePhone(order.CustomerPhone ?? string.Empty);
-        if (!string.IsNullOrEmpty(orderPhone))
-        {
-            if (string.IsNullOrEmpty(requestPhone) || requestPhone != orderPhone)
-            {
-                throw new InvalidOperationException("Phone number does not match this order.");
-            }
-            return;
-        }
-
-        if (string.IsNullOrEmpty(NormalizeName(request.CustomerName)) ||
-            NormalizeName(request.CustomerName) != NormalizeName(order.CustomerName))
-        {
-            throw new InvalidOperationException("Customer details do not match this order.");
-        }
-    }
-
     private IPaymentGateway GetGateway(string? providerName)
     {
         if (TryGetGateway(providerName, out var gateway))
@@ -425,22 +407,20 @@ public sealed class PaymentService
         return _gateways.TryGetValue(requested, out gateway!);
     }
 
-    private static string NormalizePhone(string phone) =>
-        new(phone.Where(char.IsDigit).ToArray());
-
-    private static string NormalizeName(string name) =>
-        string.Join(
-            " ",
-            (name ?? string.Empty)
-                .Trim()
-                .ToLowerInvariant()
-                .Split(' ', StringSplitOptions.RemoveEmptyEntries));
-
     private sealed record PreparedCheckout(
-        CheckoutSessionRequest Payload,
+        CheckoutSessionPayload Payload,
         IReadOnlyList<GatewayLineItem> LineItems,
         string SuccessUrl,
         string CancelUrl);
+
+    private sealed class CheckoutSessionPayload
+    {
+        public int? ExistingOrderId { get; init; }
+        public string CustomerName { get; init; } = string.Empty;
+        public string CustomerPhone { get; init; } = string.Empty;
+        public string? CustomerEmail { get; init; }
+        public bool CustomerNotificationOptIn { get; init; }
+    }
 }
 
 public sealed record PaymentCheckoutResult(
@@ -449,3 +429,5 @@ public sealed record PaymentCheckoutResult(
     string Provider);
 
 public sealed class PaymentProviderUnavailableException(string message) : Exception(message);
+
+public sealed class CheckoutOrderUnavailableException : Exception;
