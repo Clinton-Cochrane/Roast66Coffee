@@ -18,5 +18,6 @@ COPY --from=build /app .
 COPY docker/backend-entrypoint.sh /app/backend-entrypoint.sh
 RUN chmod 755 /app/backend-entrypoint.sh
 
-EXPOSE 80
+EXPOSE 8080
+USER $APP_UID
 ENTRYPOINT ["/app/backend-entrypoint.sh"]

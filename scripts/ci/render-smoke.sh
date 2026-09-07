@@ -57,7 +57,6 @@ start_candidate_api() {
     --name "$api_name" \
     --network "$network_name" \
     -p "127.0.0.1:$api_port:8080" \
-    -e PORT=8080 \
     -e ASPNETCORE_ENVIRONMENT=Production \
     -e "ConnectionStrings__DefaultConnection=Host=$database_name;Port=5432;Database=coffeedb;Username=roast66;Password=roast66-test" \
     -e "AllowedOrigins=http://127.0.0.1:$web_port" \
@@ -96,6 +95,26 @@ assert_database_fixture() {
   docker exec -i "$database_name" \
     psql -v ON_ERROR_STOP=1 -U roast66 -d coffeedb \
     <"$candidate_context/docker/postgres/render-smoke-assertions.sql"
+}
+
+assert_non_root_api_user() {
+  local runtime_uid
+  runtime_uid=$(docker exec "$api_name" id -u)
+  if [ "$runtime_uid" = "0" ]; then
+    echo "Candidate API is running as root." >&2
+    return 1
+  fi
+}
+
+assert_migration_precedes_startup() {
+  local migration_line
+  local listening_line
+  docker logs "$api_name" >"$api_log" 2>&1
+  migration_line=$(grep -n -m1 'Database initialization successful.' "$api_log" | cut -d: -f1)
+  listening_line=$(grep -n -m1 'Now listening on:' "$api_log" | cut -d: -f1)
+  test -n "$migration_line"
+  test -n "$listening_line"
+  test "$migration_line" -lt "$listening_line"
 }
 
 echo "Building the base backend image from $base_context"
@@ -141,6 +160,8 @@ grep -Fq 'Database migration failed (InvalidOperationException).' "$api_log"
 echo "Starting the candidate image through its production entrypoint"
 start_candidate_api
 wait_for_api
+assert_non_root_api_user
+assert_migration_precedes_startup
 assert_menu_api
 assert_database_fixture
 
@@ -149,13 +170,6 @@ docker exec "$database_name" \
   psql -v ON_ERROR_STOP=1 -U roast66 -d coffeedb \
   -c 'DROP OWNED BY anon; DROP OWNED BY authenticated; DROP ROLE anon; DROP ROLE authenticated;' \
   >/dev/null
-
-docker logs "$api_name" >"$api_log" 2>&1
-migration_line=$(grep -n -m1 'Database initialization successful.' "$api_log" | cut -d: -f1)
-listening_line=$(grep -n -m1 'Now listening on:' "$api_log" | cut -d: -f1)
-test -n "$migration_line"
-test -n "$listening_line"
-test "$migration_line" -lt "$listening_line"
 
 echo "Building and serving the frontend with the candidate API URL"
 if [ ! -x "$candidate_context/roast66/node_modules/.bin/tsc" ] ||
@@ -193,6 +207,8 @@ echo "Restarting the candidate image to verify migration idempotence"
 docker rm -f "$api_name" >/dev/null
 start_candidate_api
 wait_for_api
+assert_non_root_api_user
+assert_migration_precedes_startup
 assert_menu_api
 assert_database_fixture
 

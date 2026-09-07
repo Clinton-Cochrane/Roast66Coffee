@@ -210,7 +210,7 @@ namespace CoffeeShopApi
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();
-                    var port = Environment.GetEnvironmentVariable("PORT") ?? "80";
+                    var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
                     webBuilder.UseUrls($"http://0.0.0.0:{port}");
                 });
     }

@@ -70,4 +70,6 @@ for manifest in render.dev.yaml render.prod.yaml; do
   assert_absent "$manifest" "supabaseheartbeat"
 done
 
+python3 scripts/ci/verify-render-static-headers.py
+
 echo "Hosting configuration contracts passed."
