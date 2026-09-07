@@ -132,7 +132,7 @@ npm test -- src/pages/OrderPage.test.tsx
 
 ## Full local smoke
 
-Prerequisites are Docker with Compose support, .NET 8, Node.js 20+, npm,
+Prerequisites are Docker with Compose support, .NET 10 LTS, Node.js 20+, npm,
 Python 3, ripgrep, and a Chromium browser installed for Playwright:
 
 ```bash

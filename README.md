@@ -44,7 +44,7 @@ Online payments and external SMS are feature-gated and disabled by default until
 | Area | Technology |
 | --- | --- |
 | Frontend | React 18, TypeScript, React Router 7, Axios, Tailwind CSS, Vite |
-| Backend | .NET 8, ASP.NET Core Web API, Entity Framework Core |
+| Backend | .NET 10 LTS, ASP.NET Core Web API, Entity Framework Core |
 | Database | PostgreSQL |
 | Authentication | ASP.NET Core Identity accounts and JWT bearer tokens for staff routes |
 | Testing | xUnit, ASP.NET integration tests, Vitest, Testing Library |
@@ -98,7 +98,7 @@ than extending the component with another cross-cutting effect.
 
 - Docker with Docker Compose for the recommended setup
 - Node.js 24 LTS and npm for frontend-only development (see `.node-version`)
-- .NET 8 SDK for backend development and EF migrations
+- .NET 10 LTS SDK for backend development and EF migrations
 - PostgreSQL when running the backend without Docker
 - Python 3 and ripgrep (`rg`) for the coverage summary and full local smoke
 
