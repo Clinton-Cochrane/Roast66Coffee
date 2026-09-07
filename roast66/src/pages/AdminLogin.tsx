@@ -1,7 +1,6 @@
 import React, { useState, type FormEvent } from "react";
 import axios from "axios";
 import axiosInstance from "../axiosConfig";
-import { toast } from "react-toastify";
 import FormInput from "../components/common/FormInput";
 import Button from "../components/common/Button";
 import { useI18n } from "../i18n/LanguageContext";
@@ -16,7 +15,6 @@ const AdminLogin = ({ onLoginSuccess }: AdminLoginProps) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isForgotLoading, setIsForgotLoading] = useState(false);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -34,25 +32,6 @@ const AdminLogin = ({ onLoginSuccess }: AdminLoginProps) => {
           ? t("adminLogin.serverError")
           : t("adminLogin.invalidCredentials")
       );
-    }
-  };
-
-  const handleForgotPassword = async () => {
-    setIsForgotLoading(true);
-    try {
-      await axiosInstance.post("/admin/forgot-password", {});
-      toast.success(t("adminLogin.forgotSent"));
-    } catch (err: unknown) {
-      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-      const data = axios.isAxiosError(err) ? err.response?.data : undefined;
-      const message =
-        (data && typeof data === "object" && "message" in data
-          ? String((data as { message?: string }).message)
-          : null) ||
-        (status === 503 ? t("adminLogin.forgotNotConfigured") : t("adminLogin.forgotFailed"));
-      toast.error(message);
-    } finally {
-      setIsForgotLoading(false);
     }
   };
 
@@ -80,15 +59,6 @@ const AdminLogin = ({ onLoginSuccess }: AdminLoginProps) => {
         />
         <Button type="submit" color="green" className="w-full">
           {t("adminLogin.login")}
-        </Button>
-        <Button
-          type="button"
-          color="gray"
-          className="w-full"
-          onClick={() => void handleForgotPassword()}
-          disabled={isForgotLoading}
-        >
-          {isForgotLoading ? t("adminLogin.sending") : t("adminLogin.forgotPassword")}
         </Button>
         {error ? <p className="text-red-500">{error}</p> : null}
       </form>

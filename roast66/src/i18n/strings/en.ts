@@ -283,13 +283,8 @@ export const en = {
     usernamePlaceholder: "Username",
     passwordPlaceholder: "Password",
     login: "Login",
-    forgotPassword: "Forgot password?",
-    sending: "Sending...",
-    forgotSent: "Support request sent. Check with the family tech contact.",
     serverError: "Server error. Please try again later or contact support.",
     invalidCredentials: "Invalid credentials",
-    forgotNotConfigured: "Password support is not configured right now.",
-    forgotFailed: "Could not send request. Please try again.",
   },
   common: {
     logOut: "Log out",
