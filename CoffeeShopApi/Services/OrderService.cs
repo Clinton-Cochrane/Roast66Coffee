@@ -113,6 +113,7 @@ public class OrderService(
         var totalItems = await query.CountAsync(cancellationToken);
         var totalPages = (int)Math.Ceiling(totalItems / (double)AdminOrderHistoryPageSize);
         var items = await query
+            .AsSplitQuery()
             .OrderBy(order => order.OrderStatus == OrderStatus.Completed)
             .ThenByDescending(order => order.OrderDate)
             .ThenByDescending(order => order.Id)
@@ -178,6 +179,7 @@ public class OrderService(
     public async Task<Order?> GetOrderByIdAsync(int id, CancellationToken cancellationToken = default)
     {
         return await _context.Orders
+            .AsSplitQuery()
             .Include(o => o.OrderItems)
             .ThenInclude(oi => oi.MenuItem)
             .Include(o => o.OrderItems)
@@ -197,6 +199,7 @@ public class OrderService(
         }
 
         return await _context.Orders
+            .AsSplitQuery()
             .Include(o => o.OrderItems!)
                 .ThenInclude(oi => oi.MenuItem)
             .Include(o => o.OrderItems!)
@@ -252,6 +255,7 @@ public class OrderService(
         CancellationToken cancellationToken)
     {
         return await _context.Orders
+            .AsSplitQuery()
             .Include(o => o.OrderItems)
             .ThenInclude(oi => oi.MenuItem)
             .Include(o => o.OrderItems)
