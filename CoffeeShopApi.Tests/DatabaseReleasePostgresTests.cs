@@ -6,12 +6,71 @@ using Microsoft.EntityFrameworkCore.Metadata;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Npgsql;
+using System.Diagnostics;
 
 namespace CoffeeShopApi.Tests;
 
 [Collection(PostgresIntegrationCollection.Name)]
 public class DatabaseReleasePostgresTests
 {
+    [PostgresIntegrationFact]
+    [Trait("Category", "PostgreSQLIntegration")]
+    public async Task MigrateCommand_OnFreshDatabase_SucceedsWithoutExpectedHistoryProbeError()
+    {
+        await using var database = await PostgresTestDatabase.CreateAsync("roast66_migrate_command");
+        if (database == null)
+        {
+            return;
+        }
+
+        var firstRun = await RunMigrationCommandAsync(database.ConnectionString);
+
+        Assert.Equal(0, firstRun.ExitCode);
+        Assert.Contains("Database initialization successful.", firstRun.Output);
+        Assert.DoesNotContain(
+            "Failed executing DbCommand",
+            firstRun.Output,
+            StringComparison.Ordinal);
+        Assert.DoesNotContain(" ERR]", firstRun.Output, StringComparison.Ordinal);
+
+        await using var context = database.CreateContext();
+        var knownMigrations = context.Database.GetMigrations().ToArray();
+        var appliedMigrations = (await context.Database.GetAppliedMigrationsAsync()).ToArray();
+        Assert.Equal(knownMigrations, appliedMigrations);
+        Assert.Empty(await context.Database.GetPendingMigrationsAsync());
+
+        var secondRun = await RunMigrationCommandAsync(database.ConnectionString);
+
+        Assert.Equal(0, secondRun.ExitCode);
+        Assert.Contains("Database initialization successful.", secondRun.Output);
+        Assert.DoesNotContain(" ERR]", secondRun.Output, StringComparison.Ordinal);
+        Assert.Empty(await context.Database.GetPendingMigrationsAsync());
+    }
+
+    [PostgresIntegrationFact]
+    [Trait("Category", "PostgreSQLIntegration")]
+    public async Task MigrateCommand_OnGenuineDatabaseFailure_LogsErrorAndFailsClosed()
+    {
+        await using var database = await PostgresTestDatabase.CreateAsync("roast66_migrate_failure");
+        if (database == null)
+        {
+            return;
+        }
+
+        var connectionString = new NpgsqlConnectionStringBuilder(database.ConnectionString)
+        {
+            Port = 1,
+            Timeout = 1
+        }.ConnectionString;
+
+        var result = await RunMigrationCommandAsync(connectionString);
+
+        Assert.NotEqual(0, result.ExitCode);
+        Assert.Contains(" ERR]", result.Output);
+        Assert.Contains("Database migration failed", result.Output);
+        Assert.DoesNotContain("Database initialization successful.", result.Output);
+    }
+
     [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
     public async Task MigrationsProduceEveryEfMappedTableAndColumn()
@@ -367,5 +426,31 @@ public class DatabaseReleasePostgresTests
         }
 
         return result;
+    }
+
+    private static async Task<(int ExitCode, string Output)> RunMigrationCommandAsync(
+        string connectionString)
+    {
+        var applicationAssembly = typeof(Program).Assembly.Location;
+        var startInfo = new ProcessStartInfo("dotnet")
+        {
+            WorkingDirectory = Path.GetDirectoryName(applicationAssembly)!,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        startInfo.ArgumentList.Add(applicationAssembly);
+        startInfo.ArgumentList.Add("migrate");
+        startInfo.Environment["ASPNETCORE_ENVIRONMENT"] = "Development";
+        startInfo.Environment["ConnectionStrings__DefaultConnection"] = connectionString;
+
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Failed to start the migration command.");
+        var standardOutput = process.StandardOutput.ReadToEndAsync();
+        var standardError = process.StandardError.ReadToEndAsync();
+        await process.WaitForExitAsync();
+
+        return (
+            process.ExitCode,
+            string.Concat(await standardOutput, Environment.NewLine, await standardError));
     }
 }
