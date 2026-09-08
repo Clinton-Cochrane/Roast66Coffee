@@ -41,8 +41,6 @@ services:
         sync: false
       - key: ForwardedHeaders__ForwardLimit
         value: "1"
-      - key: Order__DuplicateDetectionWindowMinutes
-        value: "2"
       - key: Payments__DefaultProvider
         value: stripe
       - key: Payments__FrontendBaseUrl
