@@ -85,6 +85,12 @@ refreshes its security stamp, and writes a system audit event. Remove `Bootstrap
 values immediately afterward. If the named account does not exist, restore database
 access and initialize a new Owner through the controlled `initialize-owner` command.
 
+Identity/Data Protection tokens are intentionally process-local and do not survive a
+backend restart. Current password resets and Owner recovery generate and consume their
+tokens in one process. Reconsider durable Data Protection before adding emailed or
+self-service password resets, protected values shared across instances, or multiple
+backend instances.
+
 ## Rollback
 
 The migration is additive, so the first application rollback may continue using the

@@ -7,6 +7,7 @@ using CoffeeShopApi.Data;
 using CoffeeShopApi.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -65,6 +66,9 @@ namespace CoffeeShopApi
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(PostgresConnectionString.Build(
                     Configuration.GetConnectionString("DefaultConnection"))));
+
+            services.AddDataProtection()
+                .UseEphemeralDataProtectionProvider();
 
             services.AddIdentityCore<StaffUser>(options =>
                 {
@@ -285,6 +289,17 @@ namespace CoffeeShopApi
                     }
                 };
             });
+
+            // ASP.NET Core eagerly initializes its default key ring even when the
+            // application uses the ephemeral provider registered above.
+            const string dataProtectionHostedService =
+                "Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService";
+            foreach (var descriptor in services.Where(service =>
+                         service.ServiceType == typeof(IHostedService) &&
+                         service.ImplementationType?.FullName == dataProtectionHostedService).ToArray())
+            {
+                services.Remove(descriptor);
+            }
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
