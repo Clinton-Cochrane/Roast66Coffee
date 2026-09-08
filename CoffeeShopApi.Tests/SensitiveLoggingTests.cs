@@ -4,6 +4,7 @@ using CoffeeShopApi.Controllers;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Middleware;
 using CoffeeShopApi.Models;
+using CoffeeShopApi.Models.Payments;
 using CoffeeShopApi.Services;
 using CoffeeShopApi.Services.Payments;
 using CoffeeShopApi.Services.Sms;
@@ -71,6 +72,185 @@ public class SensitiveLoggingTests
         Assert.Equal(nameof(InvalidOperationException), entry.Properties["FailureType"]);
         Assert.Equal(StatusCodes.Status500InternalServerError, entry.Properties["StatusCode"]);
         AssertSensitiveValuesAbsent(entry.Message);
+    }
+
+    [Fact]
+    public async Task RequestLog_RecordsAbortedRequestAsInformationAndRethrowsCancellation()
+    {
+        using var requestCancellation = new CancellationTokenSource();
+        requestCancellation.Cancel();
+        var logger = new RecordingLogger<SafeRequestLoggingMiddleware>();
+        var middleware = new SafeRequestLoggingMiddleware(
+            _ => throw new OperationCanceledException(ProviderSecret),
+            logger);
+        var context = CreateTrackingContext();
+        context.RequestAborted = requestCancellation.Token;
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => middleware.InvokeAsync(context));
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Information, entry.Level);
+        Assert.Null(entry.Exception);
+        Assert.Equal("GET", entry.Properties["RequestMethod"]);
+        Assert.Equal("api/order/track/{trackingToken}", entry.Properties["RouteTemplate"]);
+        Assert.Equal("trace-safe-123", entry.Properties["TraceId"]);
+        Assert.False(entry.Properties.ContainsKey("StatusCode"));
+        Assert.True(Convert.ToDouble(entry.Properties["ElapsedMilliseconds"]) >= 0);
+        AssertSensitiveValuesAbsent(entry.Message);
+    }
+
+    [Fact]
+    public async Task RequestLog_RecordsCancellationAsErrorWhenRequestWasNotAborted()
+    {
+        var logger = new RecordingLogger<SafeRequestLoggingMiddleware>();
+        var middleware = new SafeRequestLoggingMiddleware(
+            _ => throw new OperationCanceledException(ProviderSecret),
+            logger);
+        var context = CreateTrackingContext();
+
+        await Assert.ThrowsAsync<OperationCanceledException>(() => middleware.InvokeAsync(context));
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.Equal(nameof(OperationCanceledException), entry.Properties["FailureType"]);
+        Assert.Equal(StatusCodes.Status500InternalServerError, entry.Properties["StatusCode"]);
+        Assert.Equal("trace-safe-123", entry.Properties["TraceId"]);
+        AssertSensitiveValuesAbsent(entry.Message);
+    }
+
+    [Fact]
+    public async Task RequestLog_RecordsMarkedExpected503AsInformation()
+    {
+        var logger = new RecordingLogger<SafeRequestLoggingMiddleware>();
+        var middleware = new SafeRequestLoggingMiddleware(
+            context =>
+            {
+                context.Features.Set(new ExpectedServerResponseFeature());
+                context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return Task.CompletedTask;
+            },
+            logger);
+        var context = CreateTrackingContext();
+
+        await middleware.InvokeAsync(context);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Information, entry.Level);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, entry.Properties["StatusCode"]);
+        Assert.Equal("trace-safe-123", entry.Properties["TraceId"]);
+    }
+
+    [Fact]
+    public async Task RequestLog_RecordsUnmarked503AsError()
+    {
+        var logger = new RecordingLogger<SafeRequestLoggingMiddleware>();
+        var middleware = new SafeRequestLoggingMiddleware(
+            context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return Task.CompletedTask;
+            },
+            logger);
+        var context = CreateTrackingContext();
+
+        await middleware.InvokeAsync(context);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, entry.Properties["StatusCode"]);
+        Assert.Equal("trace-safe-123", entry.Properties["TraceId"]);
+    }
+
+    [Fact]
+    public async Task RequestLog_OmitsSuccessfulCorsPreflightCompletion()
+    {
+        var logger = new RecordingLogger<SafeRequestLoggingMiddleware>();
+        var middleware = new SafeRequestLoggingMiddleware(
+            context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status204NoContent;
+                return Task.CompletedTask;
+            },
+            logger);
+        var context = CreateTrackingContext();
+        context.Request.Method = HttpMethods.Options;
+        context.Request.Headers.Origin = "http://localhost";
+        context.Request.Headers.AccessControlRequestMethod = HttpMethods.Get;
+        context.SetEndpoint(null);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Empty(logger.Entries);
+    }
+
+    [Fact]
+    public async Task RequestLog_RecordsNonPreflightOptionsCompletion()
+    {
+        var logger = new RecordingLogger<SafeRequestLoggingMiddleware>();
+        var middleware = new SafeRequestLoggingMiddleware(_ => Task.CompletedTask, logger);
+        var context = CreateTrackingContext();
+        context.Request.Method = HttpMethods.Options;
+        context.SetEndpoint(null);
+
+        await middleware.InvokeAsync(context);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Information, entry.Level);
+        Assert.Equal("OPTIONS", entry.Properties["RequestMethod"]);
+        Assert.Equal("<unmatched>", entry.Properties["RouteTemplate"]);
+    }
+
+    [Fact]
+    public async Task RequestLog_RecordsFailedCorsPreflightAsError()
+    {
+        var logger = new RecordingLogger<SafeRequestLoggingMiddleware>();
+        var middleware = new SafeRequestLoggingMiddleware(
+            context =>
+            {
+                context.Response.StatusCode = StatusCodes.Status503ServiceUnavailable;
+                return Task.CompletedTask;
+            },
+            logger);
+        var context = CreateTrackingContext();
+        context.Request.Method = HttpMethods.Options;
+        context.Request.Headers.Origin = "http://localhost";
+        context.Request.Headers.AccessControlRequestMethod = HttpMethods.Get;
+        context.SetEndpoint(null);
+
+        await middleware.InvokeAsync(context);
+
+        var entry = Assert.Single(logger.Entries);
+        Assert.Equal(LogLevel.Error, entry.Level);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, entry.Properties["StatusCode"]);
+    }
+
+    [Fact]
+    public async Task UnconfiguredCheckout_MarksExpected503Response()
+    {
+        await using var dataContext = CreateContext();
+        var configuration = BuildConfiguration([]);
+        var paymentService = new PaymentService(
+            dataContext,
+            configuration,
+            new OrderService(dataContext, configuration),
+            [],
+            new RecordingLogger<PaymentService>());
+        var httpContext = new DefaultHttpContext();
+        var controller = new PaymentsController(
+            paymentService,
+            new RecordingLogger<PaymentsController>())
+        {
+            ControllerContext = new ControllerContext { HttpContext = httpContext }
+        };
+
+        var result = await controller.CreateCheckoutSession(
+            new CheckoutSessionRequest { ExistingOrderId = 1 },
+            null,
+            default);
+
+        var response = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, response.StatusCode);
+        Assert.NotNull(httpContext.Features.Get<ExpectedServerResponseFeature>());
     }
 
     [Fact]

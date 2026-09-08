@@ -1,3 +1,4 @@
+using CoffeeShopApi.Middleware;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Models.Payments;
 using CoffeeShopApi.Services.Payments;
@@ -43,6 +44,7 @@ public class PaymentsController : ControllerBase
 
         if (!_paymentService.IsConfigured())
         {
+            HttpContext.Features.Set(new ExpectedServerResponseFeature());
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new
             {
                 message = "Online payments are not configured for this environment."

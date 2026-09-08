@@ -29,10 +29,20 @@ public sealed class SafeRequestLoggingMiddleware
         {
             await _next(context);
         }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            LogRequestAborted(context, stopwatch.Elapsed.TotalMilliseconds);
+            throw;
+        }
         catch (Exception ex)
         {
             LogFailure(context, stopwatch.Elapsed.TotalMilliseconds, ex.GetType().Name);
             throw;
+        }
+
+        if (IsSuccessfulCorsPreflight(context))
+        {
+            return;
         }
 
         LogCompletion(context, stopwatch.Elapsed.TotalMilliseconds);
@@ -41,7 +51,8 @@ public sealed class SafeRequestLoggingMiddleware
     private void LogCompletion(HttpContext context, double elapsedMilliseconds)
     {
         var statusCode = context.Response.StatusCode;
-        var level = statusCode >= StatusCodes.Status500InternalServerError
+        var level = statusCode >= StatusCodes.Status500InternalServerError &&
+                    context.Features.Get<ExpectedServerResponseFeature>() is null
             ? LogLevel.Error
             : LogLevel.Information;
 
@@ -66,6 +77,23 @@ public sealed class SafeRequestLoggingMiddleware
             context.TraceIdentifier,
             failureType);
     }
+
+    private void LogRequestAborted(HttpContext context, double elapsedMilliseconds)
+    {
+        _logger.LogInformation(
+            "HTTP {RequestMethod} {RouteTemplate} request aborted in {ElapsedMilliseconds:0.0000} ms with trace {TraceId}.",
+            GetSafeRequestMethod(context.Request.Method),
+            GetRouteTemplate(context),
+            elapsedMilliseconds,
+            context.TraceIdentifier);
+    }
+
+    private static bool IsSuccessfulCorsPreflight(HttpContext context) =>
+        HttpMethods.IsOptions(context.Request.Method) &&
+        context.Request.Headers.ContainsKey("Origin") &&
+        context.Request.Headers.ContainsKey("Access-Control-Request-Method") &&
+        context.Response.StatusCode >= StatusCodes.Status200OK &&
+        context.Response.StatusCode < StatusCodes.Status400BadRequest;
 
     private static string GetSafeRequestMethod(string method) =>
         method switch
