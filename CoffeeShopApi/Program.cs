@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using CoffeeShopApi.Data;
 using System;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Serilog;
 using Serilog.Events;
 using Microsoft.AspNetCore.Identity;
@@ -19,6 +20,11 @@ namespace CoffeeShopApi
     /// <summary>Entry point. Exposed for integration testing via WebApplicationFactory.</summary>
     public class Program
     {
+        private const string MigrationHistoryQuery =
+            "SELECT \"MigrationId\", \"ProductVersion\"\n" +
+            "FROM \"__EFMigrationsHistory\"\n" +
+            "ORDER BY \"MigrationId\";";
+
         public static void Main(string[] args)
         {
             Log.Logger = new LoggerConfiguration()
@@ -191,21 +197,29 @@ namespace CoffeeShopApi
 
         public static IHostBuilder CreateHostBuilder(string[] args) =>
             Host.CreateDefaultBuilder(args)
-                .UseSerilog((context, configuration) => configuration
-                    .ReadFrom.Configuration(context.Configuration)
-                    .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-                    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
-                    .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
-                    .MinimumLevel.Override("Microsoft.AspNetCore.Mvc", LogEventLevel.Warning)
-                    .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
-                    .MinimumLevel.Override(
-                        "Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware",
-                        LogEventLevel.Fatal)
-                    .MinimumLevel.Override(
-                        "Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddleware",
-                        LogEventLevel.Fatal)
-                    .Enrich.FromLogContext()
-                    .WriteTo.Console())
+                .UseSerilog((context, configuration) =>
+                {
+                    configuration
+                        .ReadFrom.Configuration(context.Configuration)
+                        .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
+                        .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Information)
+                        .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
+                        .MinimumLevel.Override("Microsoft.AspNetCore.Mvc", LogEventLevel.Warning)
+                        .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
+                        .MinimumLevel.Override(
+                            "Microsoft.AspNetCore.Diagnostics.ExceptionHandlerMiddleware",
+                            LogEventLevel.Fatal)
+                        .MinimumLevel.Override(
+                            "Microsoft.AspNetCore.Diagnostics.DeveloperExceptionPageMiddleware",
+                            LogEventLevel.Fatal)
+                        .Enrich.FromLogContext()
+                        .WriteTo.Console();
+
+                    if (IsExplicitMigrationCommand(args))
+                    {
+                        configuration.Filter.ByExcluding(IsExpectedMissingMigrationHistoryProbe);
+                    }
+                })
                 .ConfigureAppConfiguration(SecurityConfiguration.ApplyDevelopmentDefaults)
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
@@ -213,5 +227,57 @@ namespace CoffeeShopApi
                     var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
                     webBuilder.UseUrls($"http://0.0.0.0:{port}");
                 });
+
+        private static bool IsExplicitMigrationCommand(string[] args) =>
+            args.Length == 1 &&
+            (string.Equals(args[0], "migrate", StringComparison.OrdinalIgnoreCase) ||
+             string.Equals(args[0], "initialize-local", StringComparison.OrdinalIgnoreCase));
+
+        private static bool IsExpectedMissingMigrationHistoryProbe(LogEvent logEvent) =>
+            // EF does not include the handled PostgresException or SQLSTATE in this event.
+            // Match every stable discriminator that it does expose.
+            logEvent.Level == LogEventLevel.Error &&
+            HasStringProperty(
+                logEvent,
+                "SourceContext",
+                DbLoggerCategory.Database.Command.Name) &&
+            HasEventId(
+                logEvent,
+                RelationalEventId.CommandError.Id,
+                RelationalEventId.CommandError.Name) &&
+            HasScalarProperty(logEvent, "commandType", System.Data.CommandType.Text) &&
+            HasStringProperty(logEvent, "parameters", string.Empty) &&
+            HasStringProperty(logEvent, "commandText", MigrationHistoryQuery);
+
+        private static bool HasScalarProperty(
+            LogEvent logEvent,
+            string propertyName,
+            object expectedValue) =>
+            logEvent.Properties.TryGetValue(propertyName, out var propertyValue) &&
+            propertyValue is ScalarValue scalarValue &&
+            Equals(scalarValue.Value, expectedValue);
+
+        private static bool HasStringProperty(
+            LogEvent logEvent,
+            string propertyName,
+            string expectedValue) =>
+            logEvent.Properties.TryGetValue(propertyName, out var propertyValue) &&
+            propertyValue is ScalarValue { Value: string actualValue } &&
+            string.Equals(actualValue, expectedValue, StringComparison.Ordinal);
+
+        private static bool HasEventId(
+            LogEvent logEvent,
+            int expectedId,
+            string? expectedName) =>
+            logEvent.Properties.TryGetValue("EventId", out var propertyValue) &&
+            propertyValue is StructureValue eventId &&
+            eventId.Properties.Any(property =>
+                string.Equals(property.Name, "Id", StringComparison.Ordinal) &&
+                property.Value is ScalarValue { Value: int actualId } &&
+                actualId == expectedId) &&
+            eventId.Properties.Any(property =>
+                string.Equals(property.Name, "Name", StringComparison.Ordinal) &&
+                property.Value is ScalarValue { Value: string actualName } &&
+                string.Equals(actualName, expectedName, StringComparison.Ordinal));
     }
 }
