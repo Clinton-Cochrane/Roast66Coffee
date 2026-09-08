@@ -18,7 +18,6 @@ using CoffeeShopApi.Services.Sms;
 using CoffeeShopApi.Health;
 using CoffeeShopApi.Middleware;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Security;
@@ -286,20 +285,6 @@ namespace CoffeeShopApi
                     }
                 };
             });
-
-            services.AddDataProtection()
-                .UseEphemeralDataProtectionProvider();
-
-            // The framework's hosted service eagerly initializes the otherwise-unused
-            // default key ring even when IDataProtectionProvider is ephemeral.
-            const string dataProtectionHostedService =
-                "Microsoft.AspNetCore.DataProtection.Internal.DataProtectionHostedService";
-            foreach (var descriptor in services.Where(service =>
-                         service.ServiceType == typeof(IHostedService) &&
-                         service.ImplementationType?.FullName == dataProtectionHostedService).ToArray())
-            {
-                services.Remove(descriptor);
-            }
         }
 
         public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
