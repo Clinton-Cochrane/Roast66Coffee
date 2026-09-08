@@ -63,7 +63,7 @@ public class AdminOrderHistoryPostgresTests
 
     [PostgresIntegrationFact]
     [Trait("Category", "PostgreSQLIntegration")]
-    public async Task RealisticDrinkSearch_UsesTwoQueriesAndReturnsAtMostFiftyDtos()
+    public async Task RealisticDrinkSearch_UsesFourSplitQueriesAndReturnsAtMostFiftyDtos()
     {
         await using var database = await PostgresTestDatabase.CreateAsync("roast66_order_history_query");
         if (database == null)
@@ -79,6 +79,8 @@ public class AdminOrderHistoryPostgresTests
         var counter = new ReaderCommandCounter();
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(database.ConnectionString)
+            .ConfigureWarnings(warnings =>
+                warnings.Throw(RelationalEventId.MultipleCollectionIncludeWarning))
             .AddInterceptors(counter)
             .Options;
         await using var context = new ApplicationDbContext(options);
@@ -118,7 +120,13 @@ public class AdminOrderHistoryPostgresTests
         Assert.Equal(120, result.TotalItems);
         Assert.Equal(50, result.Items.Count);
         Assert.All(result.Items, order => Assert.Equal("Superman", Assert.Single(order.OrderItems).ItemName));
-        Assert.Equal(2, counter.ReaderCommandCount);
+        Assert.All(
+            result.Items,
+            order => Assert.Equal(
+                "Blue Raspberry",
+                Assert.Single(Assert.Single(order.OrderItems).AddOns).ItemName));
+        // Count, paged orders, their line items, and their add-ons each use one reader command.
+        Assert.Equal(4, counter.ReaderCommandCount);
     }
 
     private sealed class ReaderCommandCounter : DbCommandInterceptor
