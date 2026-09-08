@@ -326,9 +326,11 @@ function OrderPage() {
   };
 
   const handleNotesChange = (index: number, notes: string) => {
-    const newOrderItems = [...orderItems];
-    newOrderItems[index].notes = notes;
-    setOrderItems(newOrderItems);
+    setOrderItems((previousItems) =>
+      previousItems.map((item, itemIndex) =>
+        itemIndex === index ? { ...item, notes } : item
+      )
+    );
   };
 
   const handleRemoveItem = (index: number) => {
@@ -344,12 +346,16 @@ function OrderPage() {
   const handleAddFlavor = (index: number, flavor: MenuItemDto) => {
     if (!flavor?.id) return;
 
-    const newOrderItems = [...orderItems];
-    const addOns = newOrderItems[index].addOns;
+    const addOns = orderItems[index].addOns;
 
     if (!addOns.some((addOn) => addOn.id === flavor.id)) {
-      addOns.push({ ...flavor, quantity: 1 });
-      setOrderItems(newOrderItems);
+      setOrderItems((previousItems) =>
+        previousItems.map((item, itemIndex) =>
+          itemIndex === index
+            ? { ...item, addOns: [...item.addOns, { ...flavor, quantity: 1 }] }
+            : item
+        )
+      );
     } else {
       toast.warning(t("order.addOnDuplicateWarning"));
     }
