@@ -30,9 +30,6 @@ public class OrderService(
     private readonly IConfiguration _configuration = configuration;
     private readonly AuditEventFactory? _auditEvents = auditEvents;
 
-    private int DuplicateDetectionWindowMinutes =>
-        _configuration.GetValue("Order:DuplicateDetectionWindowMinutes", 2);
-
     private int CompletedOrderRetentionHours =>
         _configuration.GetValue("DataRetention:CompletedOrderHours", 48);
 
@@ -331,44 +328,6 @@ public class OrderService(
     {
         var normalized = value?.Trim().ToLowerInvariant();
         return string.IsNullOrEmpty(normalized) ? null : normalized;
-    }
-
-    /// <summary>
-    /// Finds a recent same-customer order with equivalent normalized content.
-    /// This legacy/operator heuristic is time-bounded and is separate from the durable
-    /// idempotency-key contract used by public submission.
-    /// </summary>
-    public async Task<Order?> FindDuplicateOrderAsync(Order order)
-    {
-        var windowStart = DateTime.UtcNow.AddMinutes(-DuplicateDetectionWindowMinutes);
-        var customerKey = NormalizeCustomerKey(order);
-        if (string.IsNullOrEmpty(customerKey)) return null;
-        if (order.OrderItems == null || order.OrderItems.Count == 0) return null;
-
-        var incomingFingerprint = ComputeRequestFingerprint(order);
-
-        var recentOrders = await _context.Orders
-            .Include(o => o.OrderItems)
-            .ThenInclude(oi => oi.AddOns)
-            .Where(o => o.OrderDate >= windowStart)
-            .ToListAsync();
-
-        var sameCustomer = recentOrders.Where(o => NormalizeCustomerKey(o) == customerKey);
-
-        foreach (var existing in sameCustomer)
-        {
-            if (ComputeRequestFingerprint(existing) == incomingFingerprint)
-                return existing;
-        }
-        return null;
-    }
-
-    private static string NormalizeCustomerKey(Order order)
-    {
-        var phone = NormalizePhone(order.CustomerPhone ?? "");
-        if (!string.IsNullOrEmpty(phone)) return $"phone:{phone}";
-        var name = NormalizeName(order.CustomerName);
-        return string.IsNullOrEmpty(name) ? "" : $"name:{name}";
     }
 
     /// <summary>

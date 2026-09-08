@@ -92,12 +92,7 @@ public class DatabaseReleasePostgresTests
         Assert.True(await menuService.ArchiveMenuItemAsync(drink.Id));
         Assert.True(await menuService.RestoreMenuItemAsync(drink.Id));
 
-        var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Order:DuplicateDetectionWindowMinutes"] = "2"
-            })
-            .Build();
+        var configuration = new ConfigurationBuilder().Build();
         var orderService = new OrderService(context, configuration);
         var order = await orderService.CreateOrderAsync(new Order
         {
@@ -124,7 +119,6 @@ public class DatabaseReleasePostgresTests
         Assert.NotNull(await orderService.GetOrderByIdAsync(order.Id));
         Assert.NotNull(await orderService.GetOrderByTrackingTokenAsync(order.TrackingToken));
         Assert.Contains(await orderService.GetOrdersAsync(), item => item.Id == order.Id);
-        Assert.NotNull(await orderService.FindDuplicateOrderAsync(order));
         Assert.NotNull(await orderService.GetOrderForCustomerAsync(
             order.Id,
             order.CustomerPhone,
