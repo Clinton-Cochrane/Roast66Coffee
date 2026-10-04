@@ -34,7 +34,9 @@ test("the built menu renders data from the candidate API", async ({ page }) => {
   await expect(menuHeader).toHaveCSS("border-radius", "16px");
 
   const categoryLink = page.getByRole("link", { name: "Drinks", exact: true });
-  await expect(categoryLink).toHaveCSS("display", "inline-flex");
+  // Browsers blockify inline-flex when the element is itself a flex item.
+  await expect(categoryLink).toHaveCSS("display", "flex");
+  await expect(categoryLink).toHaveCSS("align-items", "center");
   await expect(categoryLink).toHaveCSS("min-height", "44px");
   await categoryLink.focus();
   await expect(categoryLink).toHaveCSS("outline-style", "solid");
