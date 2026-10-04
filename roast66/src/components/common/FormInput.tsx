@@ -41,7 +41,7 @@ const FormInput = ({
         value={value}
         onChange={onChange}
         required={required}
-        className={`w-full p-2 border border-[#cbb8a8] rounded-md bg-[#fffaf3] text-[#2f2621] placeholder:text-[#8b7768] focus:outline-none focus:ring-2 focus:ring-[#99bfdd] ${className}`.trim()}
+        className={`w-full p-2 border border-[#cbb8a8] rounded-md bg-[#fffaf3] text-[#2f2621] placeholder:text-[#8b7768] focus:outline-hidden focus:ring-2 focus:ring-[#99bfdd] ${className}`.trim()}
         {...rest}
       />
     </div>

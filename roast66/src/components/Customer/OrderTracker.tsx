@@ -44,7 +44,7 @@ function OrderTracker({ currentStatus }: OrderTrackerProps) {
             className={`flex items-start gap-4 ${isCurrent ? "text-green-800 font-semibold" : ""}`}
           >
             <div
-              className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+              className={`shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
                 isComplete ? "bg-green-600 text-white" : "bg-gray-200 text-gray-500"
               }`}
             >

@@ -98,7 +98,7 @@ function AdminPage() {
                   aria-selected={selected}
                   aria-controls={`admin-panel-${id}`}
                   onClick={() => setActiveTab(id)}
-                  className={`px-4 py-3 text-sm font-medium rounded-t-md border border-b-0 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-red-800 focus-visible:ring-offset-2 ${
+                  className={`px-4 py-3 text-sm font-medium rounded-t-md border border-b-0 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-red-800 focus-visible:ring-offset-2 ${
                     selected
                       ? "bg-white text-red-900 border-gray-200 relative z-10 mb-[-1px]"
                       : "bg-transparent text-gray-600 border-transparent hover:text-gray-900 hover:bg-gray-100"
