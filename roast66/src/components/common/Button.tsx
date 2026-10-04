@@ -19,10 +19,10 @@ const linkTextClasses = {
 type ColorKey = keyof typeof colorClasses;
 
 const solidButtonClasses =
-  "py-2 px-4 rounded-md font-semibold tracking-wide shadow-[0_2px_0_rgba(0,0,0,0.16)] transition-[background-color,color,box-shadow,transform] duration-150 motion-safe:hover:-translate-y-[1px] hover:shadow-[0_5px_14px_rgba(74,51,38,0.24)] active:translate-y-0 active:shadow-[0_1px_0_rgba(0,0,0,0.16)] focus:outline-none focus:ring-2 focus:ring-[#99bfdd] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[0_2px_0_rgba(0,0,0,0.16)]";
+  "py-2 px-4 rounded-md font-semibold tracking-wide shadow-[0_2px_0_rgba(0,0,0,0.16)] transition-[background-color,color,box-shadow,transform] duration-150 motion-safe:hover:-translate-y-[1px] hover:shadow-[0_5px_14px_rgba(74,51,38,0.24)] active:translate-y-0 active:shadow-[0_1px_0_rgba(0,0,0,0.16)] focus:outline-hidden focus:ring-2 focus:ring-[#99bfdd] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0 disabled:hover:shadow-[0_2px_0_rgba(0,0,0,0.16)]";
 
 const linkButtonClasses =
-  "bg-transparent py-0.5 px-0 rounded-sm font-semibold tracking-wide underline underline-offset-[0.2em] shadow-none transition-colors duration-150 focus:outline-none focus:ring-2 focus:ring-[#99bfdd] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
+  "bg-transparent py-0.5 px-0 rounded-xs font-semibold tracking-wide underline underline-offset-[0.2em] shadow-none transition-colors duration-150 focus:outline-hidden focus:ring-2 focus:ring-[#99bfdd] focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60";
 
 type ButtonProps = {
   children: ReactNode;

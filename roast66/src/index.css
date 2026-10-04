@@ -1,3 +1,27 @@
+@import "tailwindcss";
+@config "../tailwind.config.cjs";
+
+/* Preserve the v3 defaults used by existing forms and staff controls. */
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: #e5e7eb;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #9ca3af;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
+
 @font-face {
   font-family: "Source Sans 3 Variable";
   font-style: normal;
@@ -33,10 +57,6 @@
   src: url("@fontsource/barlow-condensed/files/barlow-condensed-latin-900-normal.woff2")
     format("woff2");
 }
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
 
 :root {
   --r66-font-ui: "Source Sans 3 Variable", "Segoe UI", Arial, sans-serif;

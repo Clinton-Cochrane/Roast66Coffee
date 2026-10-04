@@ -113,7 +113,7 @@ function Menu() {
           <>
             <nav
               aria-label={t("menu.categoryNavigation")}
-              className="sticky top-3 z-30 mx-0 -mt-6 mb-8 overflow-x-auto rounded-xl border border-[#cdb9a7] bg-[#f4e9dd]/95 px-4 py-3 shadow-[0_8px_20px_rgba(74,51,38,0.14)] backdrop-blur-sm md:overflow-visible"
+              className="sticky top-3 z-30 mx-0 -mt-6 mb-8 overflow-x-auto rounded-xl border border-[#cdb9a7] bg-[#f4e9dd]/95 px-4 py-3 shadow-[0_8px_20px_rgba(74,51,38,0.14)] backdrop-blur-xs md:overflow-visible"
             >
               <div className="flex min-w-max items-center justify-center gap-2">
                 {visibleSections.map(({ id, titleKey }) => {
@@ -124,7 +124,7 @@ function Menu() {
                       href={`#${id}`}
                       aria-current={isActive ? "location" : undefined}
                       onClick={() => setActiveCategory(id)}
-                      className={`inline-flex min-h-11 items-center rounded-full border px-5 py-2 font-semibold no-underline transition-colors focus-visible:outline-none ${
+                      className={`inline-flex min-h-11 items-center rounded-full border px-5 py-2 font-semibold no-underline transition-colors focus-visible:outline-hidden ${
                         isActive
                           ? "border-[#c77e42] bg-[#c77e42] text-black hover:text-black"
                           : "border-[#cdb9a7] bg-[#fff9f2] text-[#4a3326] hover:border-[#a94727] hover:text-[#a94727]"
@@ -145,7 +145,7 @@ function Menu() {
                   aria-labelledby={`${id}-heading`}
                   className={`w-full scroll-mt-20 rounded-2xl border p-4 md:p-5 ${
                     id === "specials"
-                      ? "border-[#c77e42] bg-gradient-to-br from-[#fff8ee] via-[#fff1df] to-[#f8e2cc] shadow-[0_12px_30px_rgba(166,75,42,0.12)]"
+                      ? "border-[#c77e42] bg-linear-to-br from-[#fff8ee] via-[#fff1df] to-[#f8e2cc] shadow-[0_12px_30px_rgba(166,75,42,0.12)]"
                       : "border-[#4a3326] bg-[#fffaf4] shadow-[0_10px_24px_rgba(74,51,38,0.1)]"
                   }`}
                 >
