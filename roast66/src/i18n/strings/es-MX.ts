@@ -316,6 +316,11 @@ export const esMx: Messages = {
   cash: {
     dashboardTitle: "Panel de mostrador",
     newOrder: "Nuevo pedido",
+    orders: "Pedidos",
+    tablistAriaLabel: "Secciones del mostrador",
+    orderConfirmed: "Pedido confirmado",
+    confirmedOrderNumber: "Pedido #{{orderId}}",
+    alreadySubmitted: "Este pedido ya se envió. No se creó un segundo pedido.",
   },
   adminOrders: {
     title: "Ver pedidos",

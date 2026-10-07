@@ -305,6 +305,11 @@ export const en = {
   cash: {
     dashboardTitle: "Counter Dashboard",
     newOrder: "New Order",
+    orders: "Orders",
+    tablistAriaLabel: "Counter sections",
+    orderConfirmed: "Order confirmed",
+    confirmedOrderNumber: "Order #{{orderId}}",
+    alreadySubmitted: "This order was already submitted. No second order was created.",
   },
   adminOrders: {
     title: "View Orders",

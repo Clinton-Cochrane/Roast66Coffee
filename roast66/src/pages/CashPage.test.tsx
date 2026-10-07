@@ -32,6 +32,12 @@ vi.mock("../components/Admin/StaffDevicePrompt", () => ({
   },
 }));
 
+vi.mock("./OrderPage", () => ({
+  default: function MockOrderPage() {
+    return <div>Mock Order Builder</div>;
+  },
+}));
+
 describe("CashPage", () => {
   beforeEach(() => {
     mockNavigate.mockReset();
@@ -47,19 +53,54 @@ describe("CashPage", () => {
     expect(mockNavigate).toHaveBeenCalledWith("/cash", { replace: true });
   });
 
-  it("navigates to /order from New Order button", () => {
-    localStorage.setItem("token", "jwt-token");
+  it("defaults to New Order and switches views without navigating", () => {
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
     render(
       <MemoryRouter>
         <CashPage />
       </MemoryRouter>
     );
-    fireEvent.click(screen.getByRole("button", { name: /new order/i }));
-    expect(mockNavigate).toHaveBeenCalledWith("/order");
+    const newOrderTab = screen.getByRole("tab", { name: "New Order" });
+    const ordersTab = screen.getByRole("tab", { name: "Orders" });
+    expect(newOrderTab).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Mock Order Builder")).toBeVisible();
+    expect(screen.getByText("Mock Orders")).not.toBeVisible();
+    expect(screen.queryByRole("button", { name: "New Order" })).not.toBeInTheDocument();
+
+    fireEvent.click(ordersTab);
+    expect(ordersTab).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "Orders" })).toHaveTextContent("Mock Orders");
+    expect(screen.getByText("Mock Order Builder")).not.toBeVisible();
+
+    fireEvent.click(newOrderTab);
+    expect(screen.getByRole("tabpanel", { name: "New Order" })).toHaveTextContent("Mock Order Builder");
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it("supports arrow, Home, and End keys for tab selection and focus", () => {
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
+    render(<MemoryRouter><CashPage /></MemoryRouter>);
+    const newOrderTab = screen.getByRole("tab", { name: "New Order" });
+    const ordersTab = screen.getByRole("tab", { name: "Orders" });
+
+    newOrderTab.focus();
+    fireEvent.keyDown(newOrderTab, { key: "ArrowRight" });
+    expect(ordersTab).toHaveFocus();
+    expect(ordersTab).toHaveAttribute("aria-selected", "true");
+    expect(newOrderTab).toHaveAttribute("tabindex", "-1");
+
+    fireEvent.keyDown(ordersTab, { key: "ArrowRight" });
+    expect(newOrderTab).toHaveFocus();
+    fireEvent.keyDown(newOrderTab, { key: "ArrowLeft" });
+    expect(ordersTab).toHaveFocus();
+    fireEvent.keyDown(ordersTab, { key: "Home" });
+    expect(newOrderTab).toHaveFocus();
+    fireEvent.keyDown(newOrderTab, { key: "End" });
+    expect(ordersTab).toHaveFocus();
   });
 
   it("logs out and routes back to /cash", () => {
-    localStorage.setItem("token", "jwt-token");
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
     render(
       <MemoryRouter>
         <CashPage />

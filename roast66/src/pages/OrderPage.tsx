@@ -37,13 +37,19 @@ type CartLine = MenuItemDto & {
 };
 type DrinkCategoryFilter = "dailySpecials" | "coffee" | "drinks" | "all";
 
+// A completion callback opts into embedded mode; a staff token never changes public ordering.
+type OrderPageProps = {
+  onOrderCompleted?: (order: OrderDto, wasReplay: boolean) => void;
+  isActive?: boolean;
+};
+
 /**
- * Customer order builder. Menu rows are copied into client-side cart lines, but
+ * Shared order builder. Menu rows are copied into client-side cart lines, but
  * the API revalidates availability and prices before saving authoritative order
  * snapshots. `cartLineId` is intentionally separate from a menu ID so the same
  * drink can appear more than once with different notes or add-ons.
  */
-function OrderPage() {
+function OrderPage({ onOrderCompleted, isActive = true }: OrderPageProps) {
   const { locale, t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
@@ -96,7 +102,11 @@ function OrderPage() {
   }, []);
 
   useEffect(() => {
-    if (!isMobileOrderLayout || !isMobileOrderPanelOpen) return;
+    if (!isActive) setIsMobileOrderPanelOpen(false);
+  }, [isActive]);
+
+  useEffect(() => {
+    if (!isActive || !isMobileOrderLayout || !isMobileOrderPanelOpen) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -135,7 +145,7 @@ function OrderPage() {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleDialogKeyDown);
     };
-  }, [isMobileOrderLayout, isMobileOrderPanelOpen]);
+  }, [isActive, isMobileOrderLayout, isMobileOrderPanelOpen]);
 
   const fetchMenuItems = async (): Promise<number> => {
     try {
@@ -216,6 +226,7 @@ function OrderPage() {
   // Home/menu deep links carry a menu ID in router state. Consume it once per
   // history entry, then replace the state so refresh/back cannot add it again.
   useEffect(() => {
+    if (onOrderCompleted) return;
     const state = location.state as { menuItemId?: number } | null | undefined;
     const menuItemId = state?.menuItemId;
     if (menuItemId == null || menuItems.length === 0) {
@@ -256,7 +267,7 @@ function OrderPage() {
       setIsMobileOrderPanelOpen(true);
     }
     clearPrefillState();
-  }, [isMobileOrderLayout, menuItems, location.key, location.state, navigate, t]);
+  }, [isMobileOrderLayout, menuItems, location.key, location.state, navigate, onOrderCompleted, t]);
 
   const currencyFormatter = new Intl.NumberFormat(locale, {
     style: "currency",
@@ -440,7 +451,9 @@ function OrderPage() {
       setActiveCartLineId(null);
       setCustomerName("");
       setCustomerEmail("");
-      if (response.status === 200) {
+      if (onOrderCompleted) {
+        onOrderCompleted(createdOrder, response.status === 200);
+      } else if (response.status === 200) {
         const existingOrderId = createdOrder.id ?? createdOrder.Id;
         navigate("/order/duplicate", {
           state: { order: createdOrder, existingOrderId },
@@ -471,9 +484,11 @@ function OrderPage() {
       <div className="r66-order-shell">
         <div className="r66-order-heading-row">
           <h1 className="r66-order-title">{t("order.placeYourOrder")}</h1>
-          <Link to="/order-status" className="r66-order-status-link">
-            {t("order.checkOrderStatus")} →
-          </Link>
+          {!onOrderCompleted ? (
+            <Link to="/order-status" className="r66-order-status-link">
+              {t("order.checkOrderStatus")} →
+            </Link>
+          ) : null}
         </div>
         <p className="r66-order-subtitle">{t("order.pageSubtitle")}</p>
 

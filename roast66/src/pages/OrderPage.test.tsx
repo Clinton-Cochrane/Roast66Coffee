@@ -681,4 +681,42 @@ describe("OrderPage", () => {
     expect(await screen.findByRole("dialog", { name: "Order details" })).toBeInTheDocument();
     expect(updatedSummaryBar).toHaveAttribute("aria-expanded", "true");
   });
+
+  it("releases the mobile sheet when embedded order entry becomes inactive without losing the draft", async () => {
+    mockMobileOrderLayout(true);
+    mockGet.mockResolvedValue({ data: menuPayload });
+    const onOrderCompleted = vi.fn();
+    const { rerender } = render(
+      <MemoryRouter initialEntries={["/cash"]}>
+        <OrderPage onOrderCompleted={onOrderCompleted} isActive />
+      </MemoryRouter>
+    );
+    await buildBasicOrder();
+    expect(screen.getByRole("dialog", { name: "Order details" })).toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("hidden");
+
+    rerender(
+      <MemoryRouter initialEntries={["/cash"]}>
+        <OrderPage onOrderCompleted={onOrderCompleted} isActive={false} />
+      </MemoryRouter>
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("");
+    const ordersTab = document.createElement("button");
+    document.body.appendChild(ordersTab);
+    ordersTab.focus();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(ordersTab).toHaveFocus();
+    ordersTab.remove();
+
+    rerender(
+      <MemoryRouter initialEntries={["/cash"]}>
+        <OrderPage onOrderCompleted={onOrderCompleted} isActive />
+      </MemoryRouter>
+    );
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Your Name" })).toHaveValue("Ada Lovelace");
+    fireEvent.click(screen.getByRole("button", { name: /Current Order.*1 item.*\$2\.50/ }));
+    expect(screen.getByRole("dialog", { name: "Order details" })).toHaveTextContent("Customize Espresso");
+  });
 });
