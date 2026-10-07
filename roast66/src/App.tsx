@@ -14,6 +14,7 @@ import "./styles/Navigation.css";
 import Footer from "./components/layout/Footer";
 import Loading from "./components/common/Loading";
 import { useI18n } from "./i18n/LanguageContext";
+import RouteMetadata from "./components/RouteMetadata";
 
 const HomePage = lazy(() => import("./pages/HomePage"));
 const AboutPage = lazy(() => import("./pages/AboutPage"));
@@ -53,6 +54,7 @@ function App() {
           {t("app.skipToMain")}
         </a>
         <RouteFocusManager />
+        <RouteMetadata />
         <Navigation />
         <main id="main-content" tabIndex={-1}>
           <Suspense fallback={<Loading />}>
