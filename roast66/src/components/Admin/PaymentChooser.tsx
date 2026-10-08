@@ -102,18 +102,18 @@ function PaymentChooser({ orderId, total, onClose, onViewOrder, onRecordPayment,
             <FaXmark aria-hidden="true" />
           </button>
         </div>
-        <div className="flex items-baseline justify-between gap-3 mb-6">
-          <p className="text-lg font-semibold whitespace-nowrap">{t("adminOrders.orderCardTitle", { id: orderId })}</p>
-          <p className="flex flex-wrap items-baseline justify-end gap-x-2 text-right">
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 mb-6">
+          <p className="min-w-0 text-base font-semibold sm:text-lg">{t("adminOrders.orderCardTitle", { id: orderId })}</p>
+          <Button color="gray" disabled={!onViewOrder || isRecording} onClick={() => onViewOrder?.(orderId)} className="min-h-11 text-sm whitespace-nowrap">
+            {t("adminOrders.viewOrder")}
+          </Button>
+          <p className="min-w-0 flex flex-wrap items-baseline justify-end gap-x-2 text-right">
             <span>{t("order.total")}</span>
-            <span className="text-2xl font-bold whitespace-nowrap">
+            <span className="text-xl font-bold sm:text-2xl">
               {hasTotal ? currencyFormatter.format(total) : t("adminOrders.totalUnavailable")}
             </span>
           </p>
         </div>
-        <Button color="gray" disabled={!onViewOrder || isRecording} onClick={() => onViewOrder?.(orderId)} className="w-full mb-4">
-          {t("adminOrders.viewOrder")}
-        </Button>
         {selectedMethod === null ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Button disabled={!hasTotal || !onRecordPayment || isPaymentBusy} onClick={() => setSelectedMethod("cash")}>{t("adminOrders.cashPayment")}</Button>
