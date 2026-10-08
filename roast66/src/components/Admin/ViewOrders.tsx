@@ -61,6 +61,9 @@ type ViewOrdersProps = {
   /** Hosts providing a target ID also handle selecting and clearing it. */
   targetOrderId?: number | null;
   onTargetOrderChange?: (orderId: number | null) => void;
+  onOrderUpdated?: (order: OrderDto) => void;
+  requestedPaymentOrderId?: number | null;
+  onPaymentRequestConsumed?: () => void;
   isActive?: boolean;
 };
 
@@ -70,7 +73,8 @@ type ViewOrdersProps = {
  * page. Status updates include the last-seen status so concurrent staff actions
  * replay safely or return a conflict instead of skipping state-machine steps.
  */
-function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange, isActive = true }: ViewOrdersProps) {
+function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange, onOrderUpdated,
+  requestedPaymentOrderId = null, onPaymentRequestConsumed, isActive = true }: ViewOrdersProps) {
   const { t } = useI18n();
   const [orders, setOrders] = useState<OrderDto[]>([]);
   const [localTargetOrderId, setLocalTargetOrderId] = useState<number | null>(null);
@@ -104,13 +108,14 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
   >({});
   const [advancingOrderIds, setAdvancingOrderIds] = useState<Record<number, boolean>>({});
   const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null);
+  const [pendingPaymentOrderId, setPendingPaymentOrderId] = useState<number | null>(null);
   const [recordingPayment, setRecordingPayment] = useState(false);
   const manualPaymentInFlightRef = useRef(false);
   const paymentOrder = displayedOrders.find((order) => orderId(order) === paymentOrderId);
   const paymentOrderIsPaid = Boolean(paymentOrder?.paidUtc ?? paymentOrder?.PaidUtc);
   const closePaymentChooser = useCallback(() => setPaymentOrderId(null), []);
 
-  const viewOrder = (id: number) => {
+  const viewOrder = useCallback((id: number) => {
     closePaymentChooser();
     targetFocusPendingRef.current = true;
     setTargetedOrder(null);
@@ -119,7 +124,27 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
     setLocalTargetOrderId(id);
     onTargetOrderChange?.(id);
     setRefreshVersion((version) => version + 1);
-  };
+  }, [closePaymentChooser, onTargetOrderChange]);
+
+  useEffect(() => {
+    if (requestedPaymentOrderId === null) {
+      setPendingPaymentOrderId(null);
+      return;
+    }
+    // Reset cached target data so even a repeated request waits for an exact read.
+    viewOrder(requestedPaymentOrderId);
+    setPendingPaymentOrderId(requestedPaymentOrderId);
+  }, [requestedPaymentOrderId, viewOrder]);
+
+  useEffect(() => {
+    if (!isActive || loadingOrders || pendingPaymentOrderId === null || pendingPaymentOrderId !== targetOrderId) return;
+    if (!targetError && (!targetedOrder || orderId(targetedOrder) !== pendingPaymentOrderId)) return;
+    setPendingPaymentOrderId(null);
+    onPaymentRequestConsumed?.();
+    if (!targetError && targetedOrder && !(targetedOrder.paidUtc ?? targetedOrder.PaidUtc)) {
+      setPaymentOrderId(pendingPaymentOrderId);
+    }
+  }, [isActive, loadingOrders, pendingPaymentOrderId, targetOrderId, targetError, targetedOrder, onPaymentRequestConsumed]);
 
   useEffect(() => {
     if (paymentOrderId !== null && (!paymentOrder || paymentOrderIsPaid)) {
@@ -150,6 +175,7 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
           if (requestSequence !== requestSequenceRef.current) return;
           if (orderId(response.data) !== targetOrderId) throw new Error("Unexpected order ID");
           setTargetedOrder(response.data);
+          onOrderUpdated?.(response.data);
         })
         .catch((err: unknown) => {
           if (requestSequence !== requestSequenceRef.current) return;
@@ -204,7 +230,7 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
       .finally(() => {
         if (requestSequence === requestSequenceRef.current) setLoadingOrders(false);
       });
-  }, [appliedFilters, page, t, targetOrderId, refreshVersion]);
+  }, [appliedFilters, page, t, targetOrderId, refreshVersion, onOrderUpdated]);
 
   /** Polls only the badge count; full order graphs load on explicit refresh. */
   const fetchNewOrdersCount = useCallback(() => {
@@ -319,6 +345,7 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
       } : order;
       setOrders((current) => current.map(markPaid));
       setTargetedOrder((current) => current ? markPaid(current) : current);
+      if (paymentOrder) onOrderUpdated?.(markPaid(paymentOrder));
       toast.success(t("adminOrders.paymentRecorded", { id }));
       setRefreshVersion((version) => version + 1);
     } catch (err: unknown) {

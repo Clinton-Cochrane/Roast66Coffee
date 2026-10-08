@@ -128,6 +128,175 @@ describe("cashier order entry and public route regression", () => {
     expect(screen.getByRole("spinbutton", { name: "Quantity for Espresso" })).toHaveValue(1);
   });
 
+  it.each([
+    { paidUtc: null },
+    { paidUtc: "2026-10-07T10:05:00Z" },
+    { PaidUtc: "2026-10-07T10:05:00Z" },
+  ])("offers Take Payment on confirmation only when unpaid (%j)", async (paymentFields) => {
+    http.post.mockResolvedValue({ data: { ...order, ...paymentFields }, status: 201 });
+    renderFlow();
+    await buildOrder();
+    submitOrder();
+    await screen.findByRole("heading", { name: "Order confirmed" });
+
+    const confirmation = within(screen.getByRole("tabpanel", { name: "New Order" }));
+    expect(confirmation.queryAllByRole("button", { name: "Take Payment" }))
+      .toHaveLength(paymentFields.paidUtc || paymentFields.PaidUtc ? 0 : 1);
+    expect(confirmation.getByRole("button", { name: "New Order" })).toBeEnabled();
+    expect(confirmation.getByRole("button", { name: "Orders" })).toBeEnabled();
+  });
+
+  it("opens the shared chooser after exact lookup and keeps the target after dismissal and rerenders", async () => {
+    const get = http.get.getMockImplementation()!;
+    let resolveTarget!: (value: { data: OrderDto }) => void;
+    http.get.mockImplementation((url: string, ...args: unknown[]) => url === "/admin/orders/42"
+      ? new Promise((resolve) => { resolveTarget = resolve; }) : get(url, ...args));
+    renderFlow();
+    await buildOrder();
+    submitOrder();
+    await screen.findByRole("heading", { name: "Order confirmed" });
+    fireEvent.click(screen.getByRole("button", { name: "Take Payment" }));
+
+    expect(screen.getByRole("tab", { name: "Orders" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "Orders" })).toBeVisible();
+    expect(http.get).toHaveBeenCalledWith("/admin/orders/42");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await act(async () => { resolveTarget({ data: { ...order, total: 2.5 } }); });
+
+    const chooser = screen.getByRole("dialog", { name: "Take Payment" });
+    expect(screen.getAllByRole("dialog")).toHaveLength(1);
+    expect(within(chooser).getByText("Order #42")).toBeInTheDocument();
+    expect(within(chooser).getByText("$2.50")).toBeInTheDocument();
+    expect(within(chooser).getByRole("button", { name: "Card" })).toBeDisabled();
+    expect(http.post).toHaveBeenCalledTimes(1);
+    expect(http.post.mock.calls[0][0]).toBe("/order");
+    fireEvent.click(within(chooser).getByRole("button", { name: "Close payment chooser" }));
+
+    const card = screen.getByRole("region", { name: "Order #42" });
+    expect(card).toHaveFocus();
+    expect(screen.getByRole("tab", { name: "Orders" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByText("Showing Order #42")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "New Order" }));
+    fireEvent.click(screen.getByRole("button", { name: "Orders" }));
+    expect(card).toBeVisible();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await act(async () => { resolveTarget({ data: { ...order, total: 2.5 } }); });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(http.post).toHaveBeenCalledTimes(1);
+
+    // A new explicit request for the same target must fetch again before opening.
+    fireEvent.click(screen.getByRole("tab", { name: "New Order" }));
+    fireEvent.click(screen.getByRole("button", { name: "Take Payment" }));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(http.get.mock.calls.filter(([url]) => url === "/admin/orders/42")).toHaveLength(3);
+    await act(async () => { resolveTarget({ data: { ...order, total: 3 } }); });
+    expect(within(screen.getByRole("dialog")).getByText("$3.00")).toBeInTheDocument();
+    expect(http.post).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    { paidUtc: "2026-10-07T10:05:00Z", paymentProvider: "cash" },
+    { PaidUtc: "2026-10-07T10:05:00Z", PaymentProvider: "cash" },
+  ])("shows the paid exact response without opening a chooser (%j)", async (paymentFields) => {
+    const get = http.get.getMockImplementation()!;
+    let resolveTarget!: (value: { data: OrderDto }) => void;
+    http.get.mockImplementation((url: string, ...args: unknown[]) => url === "/admin/orders/42"
+      ? new Promise((resolve) => { resolveTarget = resolve; }) : get(url, ...args));
+    renderFlow();
+    await buildOrder();
+    submitOrder();
+    await screen.findByRole("heading", { name: "Order confirmed" });
+    fireEvent.click(screen.getByRole("button", { name: "Take Payment" }));
+    await act(async () => { resolveTarget({ data: { ...order, ...paymentFields } }); });
+
+    expect(within(screen.getByRole("tabpanel", { name: "Orders" })).getByText("Paid · Cash")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Order #42" })).toHaveFocus();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Take Payment" })).not.toBeInTheDocument();
+    expect(http.post).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole("tab", { name: "New Order" }));
+    expect(within(screen.getByRole("tabpanel", { name: "New Order" })).getByText("Paid · Cash")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Take Payment" })).not.toBeInTheDocument();
+  });
+
+  it.each(["Cash", "Other"])("records %s through the shared post-order flow and updates the saved confirmation", async (label) => {
+    const get = http.get.getMockImplementation()!;
+    let currentOrder: OrderDto = { ...order, total: 2.5 };
+    http.get.mockImplementation((url: string, ...args: unknown[]) => url === "/admin/orders/42"
+      ? Promise.resolve({ data: currentOrder }) : get(url, ...args));
+    http.post.mockImplementation(async (url: string, body: { method: string }) => {
+      if (url === "/order") return { data: currentOrder, status: 201 };
+      if (url !== "/payments/manual") throw new Error(`Unexpected POST ${url}`);
+      currentOrder = { ...currentOrder, paidUtc: "2026-10-07T10:05:00Z", paymentProvider: body.method };
+      return { data: {
+        paymentId: "manual-receipt", orderId: 42, method: body.method, amount: 2.5,
+        currency: "USD", paidUtc: currentOrder.paidUtc, wasReplay: false,
+      } };
+    });
+    renderFlow();
+    await buildOrder();
+    submitOrder();
+    await screen.findByRole("heading", { name: "Order confirmed" });
+    fireEvent.click(screen.getByRole("button", { name: "Take Payment" }));
+    const chooser = await screen.findByRole("dialog", { name: "Take Payment" });
+    fireEvent.click(within(chooser).getByRole("button", { name: label }));
+    expect(http.post).toHaveBeenCalledTimes(1);
+    fireEvent.click(within(chooser).getByRole("button", { name: "Confirm payment received" }));
+    expect(await within(screen.getByRole("tabpanel", { name: "Orders" })).findByText(`Paid · ${label}`)).toBeInTheDocument();
+    expect(http.post.mock.calls.filter(([url]) => url === "/payments/manual"))
+      .toEqual([["/payments/manual", { orderId: 42, method: label.toLowerCase() }]]);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("tab", { name: "New Order" }));
+    expect(screen.getByRole("heading", { name: "Order confirmed" })).toBeInTheDocument();
+    expect(within(screen.getByRole("tabpanel", { name: "New Order" })).getByText(`Paid · ${label}`)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Take Payment" })).not.toBeInTheDocument();
+  });
+
+  it.each([404, 500])("keeps the existing recoverable target after a failed payment lookup (%s)", async (status) => {
+    const get = http.get.getMockImplementation()!;
+    http.get.mockImplementation((url: string, ...args: unknown[]) => url === "/admin/orders/42"
+      ? Promise.reject({ isAxiosError: true, response: { status } }) : get(url, ...args));
+    renderFlow();
+    await buildOrder();
+    submitOrder();
+    await screen.findByRole("heading", { name: "Order confirmed" });
+    fireEvent.click(screen.getByRole("button", { name: "Take Payment" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(status === 404
+      ? "Order #42 was not found."
+      : "Could not load Order #42. Try Refresh or clear the target.");
+    expect(screen.getByRole("tabpanel", { name: "Orders" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Clear target" })).toBeEnabled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Refresh" })).toBeEnabled());
+    http.get.mockImplementation((url: string, ...args: unknown[]) => url === "/admin/orders/42"
+      ? Promise.resolve({ data: { ...order, total: 2.5 } }) : get(url, ...args));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    expect(await screen.findByRole("region", { name: "Order #42" })).toHaveFocus();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(http.post).toHaveBeenCalledTimes(1);
+  });
+
+  it("discards a pending payment request when its exact target is cleared", async () => {
+    const get = http.get.getMockImplementation()!;
+    let resolveTarget!: (value: { data: OrderDto }) => void;
+    http.get.mockImplementation((url: string, ...args: unknown[]) => url === "/admin/orders/42"
+      ? new Promise((resolve) => { resolveTarget = resolve; }) : get(url, ...args));
+    renderFlow();
+    await buildOrder();
+    submitOrder();
+    await screen.findByRole("heading", { name: "Order confirmed" });
+    fireEvent.click(screen.getByRole("button", { name: "Take Payment" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear target" }));
+    await act(async () => { resolveTarget({ data: { ...order, total: 2.5 } }); });
+
+    expect(screen.queryByRole("region", { name: "Order #42" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(http.post).toHaveBeenCalledTimes(1);
+  });
+
   it("preserves draft details, customizations, filters, and the mounted Orders view", async () => {
     renderFlow();
     await buildOrder();

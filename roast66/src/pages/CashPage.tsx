@@ -16,10 +16,13 @@ function CashPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<CashTab>("newOrder");
   const [targetOrderId, setTargetOrderId] = useState<number | null>(null);
+  const [requestedPaymentOrderId, setRequestedPaymentOrderId] = useState<number | null>(null);
   const [completedOrder, setCompletedOrder] = useState<{
     order: OrderDto;
     wasReplay: boolean;
   } | null>(null);
+  const completedOrderIsPaid = Boolean(completedOrder?.order.paidUtc ?? completedOrder?.order.PaidUtc);
+  const completedOrderProvider = (completedOrder?.order.paymentProvider ?? completedOrder?.order.PaymentProvider ?? "online").trim();
   const confirmationHeadingRef = useRef<HTMLHeadingElement>(null);
   const newOrderPanelRef = useRef<HTMLDivElement>(null);
 
@@ -40,10 +43,19 @@ function CashPage() {
     setCompletedOrder({ order, wasReplay });
   }, []);
 
+  const handleOrderUpdated = useCallback((order: OrderDto) => {
+    setCompletedOrder((current) => current &&
+      (current.order.id ?? current.order.Id) === (order.id ?? order.Id)
+      ? { ...current, order } : current);
+  }, []);
+
   const handleTargetOrderChange = useCallback((orderId: number | null) => {
     setTargetOrderId(orderId);
+    if (orderId === null) setRequestedPaymentOrderId(null);
     if (orderId !== null) setActiveTab("orders");
   }, []);
+
+  const consumePaymentRequest = useCallback(() => setRequestedPaymentOrderId(null), []);
 
   const selectTab = (tab: CashTab) => {
     setActiveTab(tab);
@@ -137,12 +149,25 @@ function CashPage() {
                   })}
                 </p>
                 <p>{completedOrder.order.customerName ?? completedOrder.order.CustomerName}</p>
+                {completedOrderIsPaid ? (
+                  <p>{t("adminOrders.paidWithProvider", {
+                    provider: completedOrderProvider.charAt(0).toUpperCase() + completedOrderProvider.slice(1),
+                  })}</p>
+                ) : null}
                 {completedOrder.wasReplay ? (
                   <p className="rounded border border-amber-200 bg-amber-50 p-3 text-amber-900">
                     {t("cash.alreadySubmitted")}
                   </p>
                 ) : null}
                 <div className="flex flex-wrap gap-3">
+                  {!completedOrderIsPaid ? (
+                    <Button color="blue" onClick={() => {
+                      setRequestedPaymentOrderId(completedOrder.order.id ?? completedOrder.order.Id ?? 0);
+                      selectTab("orders");
+                    }}>
+                      {t("adminOrders.takePayment")}
+                    </Button>
+                  ) : null}
                   <Button color="green" onClick={() => {
                     setCompletedOrder(null);
                     selectTab("newOrder");
@@ -169,6 +194,9 @@ function CashPage() {
             <ViewOrders
               targetOrderId={targetOrderId}
               onTargetOrderChange={handleTargetOrderChange}
+              onOrderUpdated={handleOrderUpdated}
+              requestedPaymentOrderId={requestedPaymentOrderId}
+              onPaymentRequestConsumed={consumePaymentRequest}
               isActive={activeTab === "orders"}
             />
           </div>
