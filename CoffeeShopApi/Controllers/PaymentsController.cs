@@ -1,7 +1,9 @@
 using CoffeeShopApi.Middleware;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Models.Payments;
+using CoffeeShopApi.Security;
 using CoffeeShopApi.Services.Payments;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -78,6 +80,36 @@ public class PaymentsController : ControllerBase
         catch (PaymentProviderUnavailableException ex)
         {
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
+        }
+    }
+
+    /// <summary>Calling this staff-only operation confirms Cash/Other was received.</summary>
+    [Authorize(Roles = "Admin")]
+    [HttpPost("manual")]
+    public async Task<ActionResult<ManualPaymentResult>> RecordManualPayment(
+        [FromBody] ManualPaymentRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _paymentService.RecordManualPaymentAsync(
+                request.OrderId, request.Method, StaffActor.FromPrincipal(User), cancellationToken));
+        }
+        catch (ManualPaymentOrderNotFoundException)
+        {
+            return NotFound(new { message = "Order not found." });
+        }
+        catch (ManualPaymentConflictException exception)
+        {
+            return Conflict(new { message = exception.Message });
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
         }
     }
 
