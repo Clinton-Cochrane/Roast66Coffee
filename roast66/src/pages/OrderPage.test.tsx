@@ -149,7 +149,7 @@ function mockMobileOrderLayout(matches: boolean) {
 async function buildBasicOrder() {
   fireEvent.click(screen.getByRole("button", { name: "Coffee" }));
   fireEvent.click(await screen.findByRole("button", { name: "Order Espresso" }));
-  fireEvent.change(screen.getByRole("textbox", { name: "Your Name" }), {
+  fireEvent.change(screen.getByRole("textbox", { name: "Name" }), {
     target: { value: "Ada Lovelace" },
   });
 }
@@ -342,7 +342,7 @@ describe("OrderPage", () => {
     fireEvent.change(screen.getByRole("textbox", { name: "Notes (optional)" }), {
       target: { value: "Light ice" },
     });
-    fireEvent.change(screen.getByRole("textbox", { name: "Your Name" }), {
+    fireEvent.change(screen.getByRole("textbox", { name: "Name" }), {
       target: { value: "Alex" },
     });
 
@@ -479,7 +479,7 @@ describe("OrderPage", () => {
 
     await waitFor(() =>
       expect(toastFns.error).toHaveBeenCalledWith(
-        "This submission key was already used for a different order. Please review your order and try again."
+        "This submission key was already used for a different order. Please review the order and try again."
       )
     );
     expect(mockNavigate).not.toHaveBeenCalledWith(
@@ -516,7 +516,7 @@ describe("OrderPage", () => {
     fireEvent.change(quantityInput, { target: { value: "0" } });
 
     expect(screen.queryByTestId("order-item")).not.toBeInTheDocument();
-    expect(screen.getByText("Your order is empty.")).toBeInTheDocument();
+    expect(screen.getByText("The order is empty.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Place Order" })).toBeDisabled();
   });
 
@@ -715,7 +715,7 @@ describe("OrderPage", () => {
       </MemoryRouter>
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Your Name" })).toHaveValue("Ada Lovelace");
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("Ada Lovelace");
     fireEvent.click(screen.getByRole("button", { name: /Current Order.*1 item.*\$2\.50/ }));
     expect(screen.getByRole("dialog", { name: "Order details" })).toHaveTextContent("Customize Espresso");
   });

@@ -147,15 +147,15 @@ export const esMx: Messages = {
     requestNotes: "Cualquier otro detalle que nos ayude a atenderte mejor",
   },
   order: {
-    placeYourOrder: "Haz tu pedido",
+    placeYourOrder: "Hacer pedido",
     checkOrderStatus: "Ver estado del pedido",
-    namePlaceholder: "Tu nombre",
+    namePlaceholder: "Nombre",
     phonePlaceholder: "Teléfono para cuando el pedido esté listo",
     emailPlaceholder: "Correo para actualizaciones del pedido (opcional)",
     emailHelpText:
       "Solo enviamos actualizaciones del pedido cuando se proporciona un correo válido.",
     emailOptIn:
-      "Envíame actualizaciones del estado por correo. Solo lo usamos para tu pedido.",
+      "Enviar actualizaciones del estado por correo. Solo lo usamos para actualizaciones del pedido.",
     instructions:
       "Elige una bebida abajo y personalízala con sabores y notas a la derecha.",
     chooseDrink: "Elige una bebida",
@@ -171,7 +171,7 @@ export const esMx: Messages = {
     noDrinksAvailable: "No hay bebidas disponibles en este momento.",
     noMatchingDrinks: "Ninguna bebida coincide con esta búsqueda y categoría.",
     selectMenuItem: "Selecciona un artículo del menú",
-    customizeOrder: "Personaliza tu pedido",
+    customizeOrder: "Personaliza el pedido",
     customizeItem: "Personaliza {{itemName}}",
     customizerEmpty: "Elige una bebida para comenzar a personalizarla.",
     quantity: "Cantidad",
@@ -185,7 +185,7 @@ export const esMx: Messages = {
     noFlavors: "Sin sabores",
     notesPlaceholder: "Notas (opcional)",
     currentOrder: "Pedido actual",
-    currentOrderEmpty: "Tu pedido está vacío.",
+    currentOrderEmpty: "El pedido está vacío.",
     orderDetails: "Detalles del pedido",
     closeOrderDetails: "Cerrar detalles del pedido",
     viewOrder: "Ver pedido",
@@ -199,14 +199,14 @@ export const esMx: Messages = {
     flavorStandaloneWarning:
       "Los sabores no se pueden ordenar solos. Agrégalos como extras a una bebida.",
     itemRemoved: "{{itemName}} fue eliminado del pedido.",
-    orderRequiredError: "Agrega al menos un artículo a tu pedido.",
+    orderRequiredError: "Agrega al menos un artículo al pedido.",
     checkoutMissingUrl: "Falta URL de pago",
     submitFailed:
       "No se pudo enviar el pedido. Intenta de nuevo o revisa la consola.",
     idempotencyConflict:
-      "Esta clave de envío ya se usó para otro pedido. Revisa tu pedido e intenta de nuevo.",
+      "Esta clave de envío ya se usó para otro pedido. Revisa el pedido e intenta de nuevo.",
     pageSubtitle:
-      "Arma tu bebida casera para la carretera en unos toques.",
+      "Arma bebidas caseras para la carretera en unos toques.",
   },
   orderStatus: {
     title: "Estado del pedido",
