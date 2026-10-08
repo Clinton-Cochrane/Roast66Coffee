@@ -51,7 +51,9 @@ function renderFlow(pathname = "/cash", state?: Record<string, unknown>) {
 }
 
 async function buildOrder() {
-  fireEvent.change(screen.getByRole("textbox", { name: "Your Name" }), { target: { value: "Ada" } });
+  expect(screen.getByRole("heading", { name: "Place Order" })).toBeInTheDocument();
+  expect(screen.getByText("Build homemade drinks for the road in just a few taps.")).toBeInTheDocument();
+  fireEvent.change(screen.getByRole("textbox", { name: "Name" }), { target: { value: "Ada" } });
   fireEvent.click(screen.getByRole("button", { name: "Coffee" }));
   fireEvent.click(await screen.findByRole("button", { name: "Order Espresso" }));
 }
@@ -117,7 +119,7 @@ describe("cashier order entry and public route regression", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Apply filters" })).toBeEnabled());
 
     fireEvent.click(screen.getByRole("tab", { name: "New Order" }));
-    expect(screen.getByRole("textbox", { name: "Your Name" })).toHaveValue("Ada");
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("Ada");
     expect(screen.getByRole("textbox", { name: "Email for order updates (optional)" })).toHaveValue("ada@example.com");
     expect(screen.getByRole("spinbutton", { name: "Quantity for Espresso" })).toHaveValue(2);
     expect(screen.getByRole("textbox", { name: "Notes (optional)" })).toHaveValue("Light ice");
@@ -167,7 +169,7 @@ describe("cashier order entry and public route regression", () => {
     expect(screen.getByRole("heading", { name: "Order confirmed" })).toBeInTheDocument();
     expect(screen.getByRole("tab", { name: "New Order" })).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "New Order" }));
-    expect(screen.getByRole("textbox", { name: "Your Name" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("");
     expect(screen.getByRole("textbox", { name: "Email for order updates (optional)" })).toHaveValue("");
     expect(screen.getByRole("searchbox", { name: "Search drinks" })).toHaveValue("");
     expect(screen.getByRole("button", { name: "Daily Specials" })).toHaveAttribute("aria-pressed", "true");
@@ -277,7 +279,7 @@ describe("cashier order entry and public route regression", () => {
     await buildOrder();
     submitOrder();
     await waitFor(() => expect(toasts.error).toHaveBeenCalled());
-    expect(screen.getByRole("textbox", { name: "Your Name" })).toHaveValue("Ada");
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("Ada");
     expect(screen.getByTestId("order-item")).toHaveTextContent("Espresso");
     expect(screen.getByRole("button", { name: "Place Order" })).toBeEnabled();
     if (path === "/cash") {
@@ -298,7 +300,7 @@ describe("cashier order entry and public route regression", () => {
     await buildOrder();
     submitOrder();
     await waitFor(() => expect(toasts.error).toHaveBeenCalledWith(
-      "This submission key was already used for a different order. Please review your order and try again."
+      "This submission key was already used for a different order. Please review the order and try again."
     ));
     expect(screen.getByTestId("current-path")).toHaveTextContent(path);
     expect(screen.getByRole("button", { name: "Place Order" })).toBeEnabled();
@@ -323,7 +325,7 @@ describe("cashier order entry and public route regression", () => {
     renderFlow("/order", { menuItemId: 1 });
     await screen.findByTestId("order-item");
     expect(screen.getByRole("link", { name: /check order status/i })).toHaveAttribute("href", "/order-status");
-    fireEvent.change(screen.getByRole("textbox", { name: "Your Name" }), { target: { value: "Ada" } });
+    fireEvent.change(screen.getByRole("textbox", { name: "Name" }), { target: { value: "Ada" } });
     submitOrder();
     await screen.findByRole("heading", { name: "Order Confirmed!" });
     expect(screen.getByTestId("current-path")).toHaveTextContent("/order/confirmation");

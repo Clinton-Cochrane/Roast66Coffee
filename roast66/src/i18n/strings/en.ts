@@ -143,15 +143,15 @@ export const en = {
     requestNotes: "Anything else that would make the stop a good fit",
   },
   order: {
-    placeYourOrder: "Place Your Order",
+    placeYourOrder: "Place Order",
     checkOrderStatus: "Check Order Status",
-    namePlaceholder: "Your Name",
+    namePlaceholder: "Name",
     phonePlaceholder: "Phone For When Order Is Ready",
     emailPlaceholder: "Email for order updates (optional)",
     emailHelpText:
       "We only send order status updates when a valid email address is provided.",
     emailOptIn:
-      "Send me order status updates by email. We only use this for your order updates.",
+      "Send order status updates by email. We only use this for order updates.",
     instructions:
       "Choose a drink below, then customize it with flavors and notes on the right.",
     chooseDrink: "Choose a drink",
@@ -167,7 +167,7 @@ export const en = {
     noDrinksAvailable: "No drinks are currently available.",
     noMatchingDrinks: "No drinks match this search and category.",
     selectMenuItem: "Select a menu item",
-    customizeOrder: "Customize your order",
+    customizeOrder: "Customize order",
     customizeItem: "Customize {{itemName}}",
     customizerEmpty: "Choose a drink to start customizing it.",
     quantity: "Quantity",
@@ -181,7 +181,7 @@ export const en = {
     noFlavors: "No flavors",
     notesPlaceholder: "Notes (optional)",
     currentOrder: "Current Order",
-    currentOrderEmpty: "Your order is empty.",
+    currentOrderEmpty: "The order is empty.",
     orderDetails: "Order details",
     closeOrderDetails: "Close order details",
     viewOrder: "View order",
@@ -195,13 +195,13 @@ export const en = {
     flavorStandaloneWarning:
       "Flavors cannot be ordered alone. Add them as add-ons to an existing drink.",
     itemRemoved: "{{itemName}} removed from order.",
-    orderRequiredError: "Please add at least one item to your order.",
+    orderRequiredError: "Please add at least one item to the order.",
     checkoutMissingUrl: "Missing checkout URL",
     submitFailed:
       "Failed to place the order. Please try again or check the console for details.",
     idempotencyConflict:
-      "This submission key was already used for a different order. Please review your order and try again.",
-    pageSubtitle: "Build your homemade drink for the road in just a few taps.",
+      "This submission key was already used for a different order. Please review the order and try again.",
+    pageSubtitle: "Build homemade drinks for the road in just a few taps.",
   },
   orderStatus: {
     title: "Order Status",
