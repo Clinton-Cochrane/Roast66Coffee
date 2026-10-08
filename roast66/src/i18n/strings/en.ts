@@ -368,7 +368,7 @@ export const en = {
     cardPaymentStartFailed: "Could not start card payment. Retry to check or start the same order's payment.",
     cardPaymentStatusUnavailable: "Could not check payment status. Retrying…",
     otherPayment: "Other",
-    confirmManualPayment: "Have you received {{total}} by {{method}} for Order #{{id}}?",
+    confirmManualPayment: "Mark this order paid?",
     confirmPaymentReceived: "Confirm payment received",
     paymentBack: "Back",
     recordingPayment: "Recording payment…",

@@ -380,7 +380,7 @@ export const esMx: Messages = {
     cardPaymentStartFailed: "No se pudo iniciar el pago con tarjeta. Intenta de nuevo para consultar o iniciar el pago del mismo pedido.",
     cardPaymentStatusUnavailable: "No se pudo consultar el estado del pago. Reintentando…",
     otherPayment: "Otro",
-    confirmManualPayment: "¿Recibiste {{total}} mediante {{method}} para el pedido #{{id}}?",
+    confirmManualPayment: "¿Marcar este pedido como pagado?",
     confirmPaymentReceived: "Confirmar pago recibido",
     paymentBack: "Volver",
     recordingPayment: "Registrando pago…",

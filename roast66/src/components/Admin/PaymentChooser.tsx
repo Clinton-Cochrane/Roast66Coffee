@@ -122,11 +122,7 @@ function PaymentChooser({ orderId, total, onClose, onViewOrder, onRecordPayment,
           </div>
         ) : (
           <div>
-            <p className="mb-4">{t("adminOrders.confirmManualPayment", {
-              total: hasTotal ? currencyFormatter.format(total) : t("adminOrders.totalUnavailable"),
-              method: t(selectedMethod === "cash" ? "adminOrders.cashPayment" : "adminOrders.otherPayment"),
-              id: orderId,
-            })}</p>
+            <p className="mb-4">{t("adminOrders.confirmManualPayment")}</p>
             <div className="flex flex-wrap gap-3">
               <Button color="gray" disabled={isPaymentBusy} onClick={() => setSelectedMethod(null)}>{t("adminOrders.paymentBack")}</Button>
               <div ref={confirmationRef}>
