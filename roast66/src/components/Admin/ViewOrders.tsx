@@ -388,7 +388,11 @@ function ViewOrders() {
                         provider: paymentProviderLabel(order),
                       })}
                     </span>
-                  ) : null}
+                  ) : (
+                    <Button color="blue" disabled>
+                      {t("adminOrders.takePayment")}
+                    </Button>
+                  )}
                   {isComplete ? (
                     <span className="text-sm font-medium text-green-800">
                       {t("adminOrders.completedNoAction")}

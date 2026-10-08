@@ -362,6 +362,7 @@ export const esMx: Messages = {
     advanceStatus: "Avanzar estado",
     completedNoAction: "Completado — sin acción adicional",
     paidWithProvider: "Pagado · {{provider}}",
+    takePayment: "Cobrar",
     refreshNotifications: "Actualizar notificaciones",
     loading: "Cargando...",
     customerLabel: "Cliente:",

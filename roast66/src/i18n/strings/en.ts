@@ -350,6 +350,7 @@ export const en = {
     advanceStatus: "Advance status",
     completedNoAction: "Completed — no further action",
     paidWithProvider: "Paid · {{provider}}",
+    takePayment: "Take Payment",
     refreshNotifications: "Refresh notifications",
     loading: "Loading...",
     customerLabel: "Customer:",
