@@ -238,6 +238,29 @@ public class PaymentServiceTests
             () => secondContext.SaveChangesAsync());
     }
 
+    [Fact]
+    public async Task OnlineCheckout_DoesNotReplayAnInPersonAttemptAsACheckout()
+    {
+        var gateway = new FakePaymentGateway();
+        await using var services = BuildServices(gateway);
+        await using var scope = services.CreateAsyncScope();
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var order = await AddBillableOrderAsync(context, "separate-flow-token");
+        context.Payments.Add(new Payment
+        {
+            Provider = FakePaymentGateway.Name, IsInPerson = true, OrderId = order.Id,
+            Method = "card", Status = PaymentStatuses.Pending, Amount = 4.5m,
+            IdempotencyKey = "same-key", PayloadJson = "{}"
+        });
+        await context.SaveChangesAsync();
+        var checkout = await scope.ServiceProvider.GetRequiredService<PaymentService>().CreateCheckoutAsync(
+            new CheckoutSessionRequest { ExistingOrderId = order.Id, TrackingToken = order.TrackingToken }, "same-key");
+        Assert.Equal(1, gateway.CreateCheckoutCount);
+        Assert.Equal("fake-checkout-123", checkout.CheckoutId);
+        Assert.Single(await context.Payments.Where(payment => payment.IsInPerson).ToListAsync());
+        Assert.Single(await context.Payments.Where(payment => !payment.IsInPerson).ToListAsync());
+    }
+
     private static ServiceProvider BuildServices(IPaymentGateway gateway)
     {
         var configuration = new ConfigurationBuilder()

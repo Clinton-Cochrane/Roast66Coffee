@@ -167,7 +167,7 @@ describe("cashier order entry and public route regression", () => {
     expect(screen.getAllByRole("dialog")).toHaveLength(1);
     expect(within(chooser).getByText("Order #42")).toBeInTheDocument();
     expect(within(chooser).getByText("$2.50")).toBeInTheDocument();
-    expect(within(chooser).getByRole("button", { name: "Card" })).toBeDisabled();
+    expect(within(chooser).getByRole("button", { name: "Card" })).toBeEnabled();
     expect(http.post).toHaveBeenCalledTimes(1);
     expect(http.post.mock.calls[0][0]).toBe("/order");
     fireEvent.click(within(chooser).getByRole("button", { name: "Close payment chooser" }));
@@ -218,6 +218,34 @@ describe("cashier order entry and public route regression", () => {
     fireEvent.click(screen.getByRole("tab", { name: "New Order" }));
     expect(within(screen.getByRole("tabpanel", { name: "New Order" })).getByText("Paid · Cash")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Take Payment" })).not.toBeInTheDocument();
+  });
+
+  it("updates cashier confirmation from an authoritative Card receipt through the shared chooser", async () => {
+    const get = http.get.getMockImplementation()!;
+    let currentOrder: OrderDto = { ...order, total: 2.5 };
+    http.get.mockImplementation((url: string, ...args: unknown[]) => url === "/admin/orders/42"
+      ? Promise.resolve({ data: currentOrder }) : get(url, ...args));
+    http.post.mockImplementation(async (url: string) => {
+      if (url === "/order") return { data: currentOrder, status: 201 };
+      if (url !== "/payments/in-person") throw new Error(`Unexpected POST ${url}`);
+      currentOrder = { ...currentOrder, paidUtc: "2026-10-07T10:05:00Z", paymentProvider: "test-terminal" };
+      return { data: {
+        paymentId: "card-receipt", orderId: 42, provider: "test-terminal", status: "paid",
+        amount: 2.5, currency: "USD", paidUtc: currentOrder.paidUtc,
+      } };
+    });
+    renderFlow();
+    await buildOrder();
+    submitOrder();
+    await screen.findByRole("heading", { name: "Order confirmed" });
+    fireEvent.click(screen.getByRole("button", { name: "Take Payment" }));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: "Card" }));
+    expect(await within(screen.getByRole("tabpanel", { name: "Orders" })).findByText("Paid · Test-terminal")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "New Order" }));
+    expect(within(screen.getByRole("tabpanel", { name: "New Order" })).getByText("Paid · Test-terminal")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Take Payment" })).not.toBeInTheDocument();
+    expect(http.post.mock.calls.filter(([url]) => url === "/payments/in-person"))
+      .toEqual([["/payments/in-person", { orderId: 42 }]]);
   });
 
   it.each(["Cash", "Other"])("records %s through the shared post-order flow and updates the saved confirmation", async (label) => {

@@ -113,6 +113,53 @@ public class PaymentsController : ControllerBase
         }
     }
 
+    [Authorize(Roles = "Admin")]
+    [HttpPost("in-person")]
+    public async Task<ActionResult<InPersonPaymentResult>> StartInPersonPayment(
+        [FromBody] InPersonPaymentRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _paymentService.StartInPersonPaymentAsync(
+                request.OrderId, StaffActor.FromPrincipal(User), cancellationToken));
+        }
+        catch (InPersonPaymentOrderNotFoundException)
+        {
+            return NotFound(new { message = "Order not found." });
+        }
+        catch (InPersonPaymentConflictException exception)
+        {
+            return Conflict(new { message = exception.Message });
+        }
+        catch (PaymentWebhookRetryException)
+        {
+            HttpContext.Features.Set(new ExpectedServerResponseFeature());
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                message = "The card payment status is being updated. Retry to observe the same attempt."
+            });
+        }
+        catch (PaymentProviderUnavailableException exception)
+        {
+            HttpContext.Features.Set(new ExpectedServerResponseFeature());
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = exception.Message });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("in-person/{paymentId:guid}")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<ActionResult<InPersonPaymentResult>> GetInPersonPayment(
+        Guid paymentId, CancellationToken cancellationToken)
+    {
+        var payment = await _paymentService.GetInPersonPaymentAsync(paymentId, cancellationToken);
+        return payment == null ? NotFound(new { message = "In-person payment not found." }) : Ok(payment);
+    }
+
     [HttpPost("webhook")]
     public Task<IActionResult> HandleDefaultWebhook(CancellationToken cancellationToken) =>
         HandleWebhook(null, cancellationToken);

@@ -144,7 +144,7 @@ describe("staff manual payment recording", () => {
     expect(screen.queryByText("Paid · Other")).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(toast.success).not.toHaveBeenCalled();
-    expect(toast.error).toHaveBeenCalledWith("This order already has a payment recorded. Refreshing its payment status.");
+    expect(toast.error).toHaveBeenCalledWith("This order already has a recorded or pending payment. Refreshing its payment status.");
   });
 
   it("ignores an unpaid refresh begun before payment success", async () => {

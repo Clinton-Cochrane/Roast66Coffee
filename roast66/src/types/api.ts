@@ -71,6 +71,16 @@ export type OrderDto = {
 
 export type ManualPaymentMethod = "cash" | "other";
 
+export type InPersonPaymentResult = {
+  paymentId: string;
+  orderId: number;
+  provider: string;
+  status: "pending" | "paid" | "failed";
+  amount: number;
+  currency: string;
+  paidUtc: string | null;
+};
+
 export type ManualPaymentResult = {
   paymentId: string;
   orderId: number;

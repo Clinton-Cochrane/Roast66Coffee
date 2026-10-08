@@ -10,6 +10,7 @@ import { tryGetOrderStatusFromDto } from "../../constants/orderStatusParse";
 import { useI18n } from "../../i18n/LanguageContext";
 import type {
   AdminOrderHistoryResponse,
+  InPersonPaymentResult,
   ManualPaymentMethod,
   ManualPaymentResult,
   NotificationLogEntry,
@@ -19,6 +20,20 @@ import type {
 import "../../styles/Admin.css";
 
 const POLL_INTERVAL_MS = 60000;
+const PAYMENT_POLL_INTERVAL_MS = 2000;
+
+type CardPaymentState = {
+  order: OrderDto;
+  status: "starting" | InPersonPaymentResult["status"];
+  result?: InPersonPaymentResult;
+};
+
+function validateCardPayment(result: InPersonPaymentResult, id: number, paymentId?: string) {
+  if (result.orderId !== id || !result.paymentId || (paymentId && result.paymentId !== paymentId) ||
+    !["pending", "paid", "failed"].includes(result.status) || (result.status === "paid" && !result.paidUtc)) {
+    throw new Error("Unexpected in-person payment response");
+  }
+}
 
 type OrderFilters = {
   status: string;
@@ -111,9 +126,61 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
   const [pendingPaymentOrderId, setPendingPaymentOrderId] = useState<number | null>(null);
   const [recordingPayment, setRecordingPayment] = useState(false);
   const manualPaymentInFlightRef = useRef(false);
+  const cardPaymentInFlightRef = useRef(false);
+  const [cardPayment, setCardPayment] = useState<CardPaymentState | null>(null);
+  const [cardPaymentError, setCardPaymentError] = useState<string | null>(null);
+  const cardPaymentIsBusy = cardPayment?.status === "starting" || cardPayment?.status === "pending";
   const paymentOrder = displayedOrders.find((order) => orderId(order) === paymentOrderId);
   const paymentOrderIsPaid = Boolean(paymentOrder?.paidUtc ?? paymentOrder?.PaidUtc);
   const closePaymentChooser = useCallback(() => setPaymentOrderId(null), []);
+
+  const applyPaymentReceipt = useCallback((order: OrderDto, paidUtc: string, provider: string, amount: number) => {
+    const id = orderId(order);
+    // Invalidate reads started before the authoritative receipt.
+    ++requestSequenceRef.current;
+    const markPaid = (current: OrderDto): OrderDto => orderId(current) === id
+      ? { ...current, paidUtc, paymentProvider: provider, total: amount } : current;
+    setOrders((current) => current.map(markPaid));
+    setTargetedOrder((current) => current ? markPaid(current) : current);
+    onOrderUpdated?.(markPaid(order));
+    setRefreshVersion((version) => version + 1);
+  }, [onOrderUpdated]);
+
+  const observeCardPayment = useCallback((order: OrderDto, result: InPersonPaymentResult) => {
+    setCardPayment({ order, status: result.status, result });
+    setCardPaymentError(result.status === "failed" ? t("adminOrders.cardPaymentFailed") : null);
+    cardPaymentInFlightRef.current = result.status === "pending";
+    if (result.status === "paid" && result.paidUtc) {
+      applyPaymentReceipt(order, result.paidUtc, result.provider, result.amount);
+      toast.success(t("adminOrders.paymentRecorded", { id: result.orderId }));
+    }
+  }, [applyPaymentReceipt, t]);
+
+  useEffect(() => {
+    if (cardPayment?.status !== "pending" || !cardPayment.result) return;
+    const { order, result } = cardPayment;
+    let cancelled = false;
+    let timeout: ReturnType<typeof setTimeout>;
+    const checkPayment = async () => {
+      try {
+        const { data } = await axiosInstance.get<InPersonPaymentResult>(`/payments/in-person/${result.paymentId}`);
+        if (cancelled) return;
+        validateCardPayment(data, orderId(order), result.paymentId);
+        if (data.status !== "pending") {
+          observeCardPayment(order, data);
+          return;
+        }
+        setCardPaymentError(null);
+      } catch {
+        if (cancelled) return;
+        // A failed observation says nothing about whether a charge succeeded.
+        setCardPaymentError(t("adminOrders.cardPaymentStatusUnavailable"));
+      }
+      timeout = setTimeout(() => { void checkPayment(); }, PAYMENT_POLL_INTERVAL_MS);
+    };
+    timeout = setTimeout(() => { void checkPayment(); }, PAYMENT_POLL_INTERVAL_MS);
+    return () => { cancelled = true; clearTimeout(timeout); };
+  }, [cardPayment, observeCardPayment, t]);
 
   const viewOrder = useCallback((id: number) => {
     closePaymentChooser();
@@ -330,7 +397,7 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
 
   const recordManualPayment = async (id: number, method: ManualPaymentMethod) => {
     // This guard survives dismissal/reopening and runs before React disables buttons.
-    if (manualPaymentInFlightRef.current) return;
+    if (manualPaymentInFlightRef.current || cardPaymentInFlightRef.current) return;
     manualPaymentInFlightRef.current = true;
     setRecordingPayment(true);
     try {
@@ -338,16 +405,8 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
       if (data.orderId !== id || data.method !== method || !data.paidUtc) {
         throw new Error("Unexpected manual payment receipt");
       }
-      // Invalidate reads started before the payment, then apply the acknowledged receipt.
-      ++requestSequenceRef.current;
-      const markPaid = (order: OrderDto): OrderDto => orderId(order) === id ? {
-        ...order, paidUtc: data.paidUtc, paymentProvider: data.method, total: data.amount,
-      } : order;
-      setOrders((current) => current.map(markPaid));
-      setTargetedOrder((current) => current ? markPaid(current) : current);
-      if (paymentOrder) onOrderUpdated?.(markPaid(paymentOrder));
+      if (paymentOrder) applyPaymentReceipt(paymentOrder, data.paidUtc, data.method, data.amount);
       toast.success(t("adminOrders.paymentRecorded", { id }));
-      setRefreshVersion((version) => version + 1);
     } catch (err: unknown) {
       const status = axios.isAxiosError(err) ? err.response?.status : undefined;
       const messageKey = status === 401 ? "adminOrders.fetchOrders401"
@@ -360,6 +419,25 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
     } finally {
       manualPaymentInFlightRef.current = false;
       setRecordingPayment(false);
+    }
+  };
+
+  const startCardPayment = async (order: OrderDto) => {
+    if (cardPaymentInFlightRef.current || manualPaymentInFlightRef.current) return;
+    cardPaymentInFlightRef.current = true;
+    setCardPayment({ order, status: "starting" });
+    setCardPaymentError(null);
+    const id = orderId(order);
+    try {
+      const { data } = await axiosInstance.post<InPersonPaymentResult>("/payments/in-person", { orderId: id });
+      validateCardPayment(data, id);
+      observeCardPayment(order, data);
+    } catch (error: unknown) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      setCardPayment({ order, status: "failed" });
+      setCardPaymentError(t(status === 503 ? "adminOrders.cardPaymentUnavailable" : "adminOrders.cardPaymentStartFailed"));
+      cardPaymentInFlightRef.current = false;
+      if (status === 409) setRefreshVersion((version) => version + 1);
     }
   };
 
@@ -735,6 +813,10 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
           onClose={closePaymentChooser}
           onViewOrder={viewOrder}
           onRecordPayment={(method) => { void recordManualPayment(orderId(paymentOrder), method); }}
+          onStartCardPayment={() => { void startCardPayment(paymentOrder); }}
+          cardPaymentStatus={cardPayment && orderId(cardPayment.order) === orderId(paymentOrder) ? cardPayment.status : undefined}
+          cardPaymentError={cardPayment && orderId(cardPayment.order) === orderId(paymentOrder) ? cardPaymentError : null}
+          isCardPaymentBusy={cardPaymentIsBusy}
           isRecording={recordingPayment}
         />
       ) : null}

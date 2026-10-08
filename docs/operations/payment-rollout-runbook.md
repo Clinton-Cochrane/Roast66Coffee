@@ -17,6 +17,8 @@ Do not set `VITE_ENABLE_ONLINE_PAYMENTS=true` until the Stripe account, webhook,
 
 ## Payment behavior
 
+The provider-neutral cashier Card contract is documented in [In-person Card contract](in-person-card-contract.md). It has separate configuration and an authenticated start/status API; production Card remains unavailable until a real in-person adapter is registered and configured.
+
 An order is always created before payment. A customer can place and track an unpaid order even when Stripe is unavailable or disabled. Online checkout only settles an existing order; a successful verified webhook marks that order paid and records `stripe` as its payment provider.
 
 The first launch should enable cards and eligible card wallets. Checkout leaves payment-method selection under Stripe Dashboard control so the client can accept additional methods later. Before enabling a delayed method, exercise its successful and failed asynchronous webhook paths and confirm that the customer-facing status remains accurate while payment is processing.

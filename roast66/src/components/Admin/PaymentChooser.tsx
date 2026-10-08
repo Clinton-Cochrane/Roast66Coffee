@@ -12,10 +12,15 @@ type PaymentChooserProps = {
   onClose: () => void;
   onViewOrder?: (orderId: number) => void;
   onRecordPayment?: (method: ManualPaymentMethod) => void;
+  onStartCardPayment?: () => void;
+  cardPaymentStatus?: "starting" | "pending" | "paid" | "failed";
+  cardPaymentError?: string | null;
+  isCardPaymentBusy?: boolean;
   isRecording?: boolean;
 };
 
-function PaymentChooser({ orderId, total, onClose, onViewOrder, onRecordPayment, isRecording = false }: PaymentChooserProps) {
+function PaymentChooser({ orderId, total, onClose, onViewOrder, onRecordPayment, onStartCardPayment,
+  cardPaymentStatus, cardPaymentError, isCardPaymentBusy = false, isRecording = false }: PaymentChooserProps) {
   const { locale, t } = useI18n();
   const titleId = useId();
   const dialogRef = useRef<HTMLElement>(null);
@@ -24,6 +29,7 @@ function PaymentChooser({ orderId, total, onClose, onViewOrder, onRecordPayment,
   const [selectedMethod, setSelectedMethod] = useState<ManualPaymentMethod | null>(null);
   const currencyFormatter = new Intl.NumberFormat(locale, { style: "currency", currency: "USD" });
   const hasTotal = typeof total === "number" && Number.isFinite(total) && total >= 0;
+  const isPaymentBusy = isRecording || isCardPaymentBusy;
 
   useEffect(() => {
     const trigger = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -69,9 +75,9 @@ function PaymentChooser({ orderId, total, onClose, onViewOrder, onRecordPayment,
   }, [onClose]);
 
   useEffect(() => {
-    if (isRecording || selectedMethod === null) closeButtonRef.current?.focus();
+    if (isPaymentBusy || selectedMethod === null) closeButtonRef.current?.focus();
     else confirmationRef.current?.querySelector("button")?.focus();
-  }, [selectedMethod, isRecording]);
+  }, [selectedMethod, isPaymentBusy]);
 
   return createPortal(
     <div className="r66-payment-backdrop" onClick={(event) => {
@@ -108,9 +114,9 @@ function PaymentChooser({ orderId, total, onClose, onViewOrder, onRecordPayment,
         </Button>
         {selectedMethod === null ? (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <Button disabled={!hasTotal || !onRecordPayment || isRecording} onClick={() => setSelectedMethod("cash")}>{t("adminOrders.cashPayment")}</Button>
-            <Button disabled>{t("adminOrders.cardPayment")}</Button>
-            <Button disabled={!hasTotal || !onRecordPayment || isRecording} onClick={() => setSelectedMethod("other")}>{t("adminOrders.otherPayment")}</Button>
+            <Button disabled={!hasTotal || !onRecordPayment || isPaymentBusy} onClick={() => setSelectedMethod("cash")}>{t("adminOrders.cashPayment")}</Button>
+            <Button disabled={!hasTotal || !onStartCardPayment || isPaymentBusy} onClick={onStartCardPayment}>{t("adminOrders.cardPayment")}</Button>
+            <Button disabled={!hasTotal || !onRecordPayment || isPaymentBusy} onClick={() => setSelectedMethod("other")}>{t("adminOrders.otherPayment")}</Button>
           </div>
         ) : (
           <div>
@@ -120,11 +126,11 @@ function PaymentChooser({ orderId, total, onClose, onViewOrder, onRecordPayment,
               id: orderId,
             })}</p>
             <div className="flex flex-wrap gap-3">
-              <Button color="gray" disabled={isRecording} onClick={() => setSelectedMethod(null)}>{t("adminOrders.paymentBack")}</Button>
+              <Button color="gray" disabled={isPaymentBusy} onClick={() => setSelectedMethod(null)}>{t("adminOrders.paymentBack")}</Button>
               <div ref={confirmationRef}>
                 <Button
                   color="green"
-                  disabled={isRecording || !hasTotal || !onRecordPayment}
+                  disabled={isPaymentBusy || !hasTotal || !onRecordPayment}
                   onClick={() => onRecordPayment?.(selectedMethod)}
                 >
                   {t(isRecording ? "adminOrders.recordingPayment" : "adminOrders.confirmPaymentReceived")}
@@ -134,6 +140,11 @@ function PaymentChooser({ orderId, total, onClose, onViewOrder, onRecordPayment,
           </div>
         )}
         {isRecording ? <p role="status" className="mt-4">{t("adminOrders.recordingPayment")}</p> : null}
+        {cardPaymentStatus === "starting" || cardPaymentStatus === "pending" ? (
+          <p role="status" className="mt-4">{t(cardPaymentStatus === "starting"
+            ? "adminOrders.cardPaymentStarting" : "adminOrders.cardPaymentWaiting")}</p>
+        ) : null}
+        {cardPaymentError ? <p role="alert" className="mt-4 text-red-700">{cardPaymentError}</p> : null}
       </section>
     </div>,
     document.body

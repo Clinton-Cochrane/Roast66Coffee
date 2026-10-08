@@ -14,12 +14,13 @@ namespace CoffeeShopApi.Services.Payments;
 /// never trusted. Provider callbacks are replay-safe and converge on a terminal local
 /// payment state under optimistic concurrency.
 /// </summary>
-public sealed class PaymentService
+public sealed partial class PaymentService
 {
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly OrderService _orderService;
     private readonly IReadOnlyDictionary<string, IPaymentGateway> _gateways;
+    private readonly IReadOnlyDictionary<string, IInPersonPaymentGateway> _inPersonGateways;
     private readonly ILogger<PaymentService> _logger;
     private readonly AuditEventFactory _auditEvents;
 
@@ -29,12 +30,16 @@ public sealed class PaymentService
         OrderService orderService,
         IEnumerable<IPaymentGateway> gateways,
         ILogger<PaymentService> logger,
-        AuditEventFactory? auditEvents = null)
+        AuditEventFactory? auditEvents = null,
+        IEnumerable<IInPersonPaymentGateway>? inPersonGateways = null)
     {
         _context = context;
         _configuration = configuration;
         _orderService = orderService;
         _gateways = gateways.ToDictionary(
+            gateway => gateway.ProviderName,
+            StringComparer.OrdinalIgnoreCase);
+        _inPersonGateways = (inPersonGateways ?? []).ToDictionary(
             gateway => gateway.ProviderName,
             StringComparer.OrdinalIgnoreCase);
         _logger = logger;
@@ -82,6 +87,9 @@ public sealed class PaymentService
         }
         if (order.PaidUtc != null)
             throw new ManualPaymentConflictException("This order is already paid.");
+        if (await _context.Payments.AnyAsync(payment => payment.OrderId == orderId &&
+            payment.IsInPerson && payment.Status == PaymentStatuses.Pending, cancellationToken))
+            throw new ManualPaymentConflictException("This order has a card payment pending. Wait for its result before recording another payment.");
 
         var prepared = PrepareCheckout(order);
         var paidUtc = DateTime.UtcNow;
@@ -169,6 +177,7 @@ public sealed class PaymentService
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 payment => payment.Provider == gateway.ProviderName &&
+                           !payment.IsInPerson &&
                            payment.IdempotencyKey == idempotencyKey,
                 cancellationToken);
         if (existingPayment != null)
@@ -193,6 +202,7 @@ public sealed class PaymentService
             .AsNoTracking()
             .Where(payment =>
                 payment.Provider == gateway.ProviderName &&
+                !payment.IsInPerson &&
                 payment.OrderId == authorizedOrder.Id &&
                 payment.Status == PaymentStatuses.Pending)
             .OrderByDescending(payment => payment.CreatedUtc)
@@ -278,19 +288,32 @@ public sealed class PaymentService
         IReadOnlyDictionary<string, string> headers,
         CancellationToken cancellationToken = default)
     {
-        var gateway = GetGateway(providerName);
-        var paymentEvent = await gateway.ParseWebhookAsync(body, headers, cancellationToken);
+        var requestedProvider = string.IsNullOrWhiteSpace(providerName) ? DefaultProviderName : providerName.Trim();
+        // A provider implementing both boundaries must parse its shared webhook format.
+        GatewayPaymentEvent? paymentEvent;
+        string resolvedProvider;
+        if (_inPersonGateways.TryGetValue(requestedProvider, out var inPersonGateway))
+        {
+            resolvedProvider = inPersonGateway.ProviderName;
+            paymentEvent = await inPersonGateway.ParseWebhookAsync(body, headers, cancellationToken);
+        }
+        else
+        {
+            var gateway = GetGateway(requestedProvider);
+            resolvedProvider = gateway.ProviderName;
+            paymentEvent = await gateway.ParseWebhookAsync(body, headers, cancellationToken);
+        }
         if (paymentEvent == null)
         {
             return;
         }
 
-        var payment = await FindPaymentAsync(gateway.ProviderName, paymentEvent, cancellationToken);
+        var payment = await FindPaymentAsync(resolvedProvider, paymentEvent, cancellationToken);
         if (payment == null)
         {
             _logger.LogWarning(
                 "Ignoring {Provider} payment event because no local payment matched internal payment {PaymentId}.",
-                gateway.ProviderName,
+                resolvedProvider,
                 paymentEvent.PaymentId);
             if (paymentEvent.PaymentId.HasValue)
             {
@@ -300,6 +323,12 @@ public sealed class PaymentService
             return;
         }
 
+        await ApplyGatewayEventAsync(payment, paymentEvent, cancellationToken);
+    }
+
+    private async Task ApplyGatewayEventAsync(Payment payment, GatewayPaymentEvent paymentEvent,
+        CancellationToken cancellationToken)
+    {
         payment.ProviderPaymentId ??= paymentEvent.ProviderPaymentId;
         if (!string.IsNullOrWhiteSpace(paymentEvent.Method))
         {
@@ -321,6 +350,8 @@ public sealed class PaymentService
                     cancellationToken);
                 break;
             case GatewayPaymentStatus.Pending:
+                payment.ConcurrencyToken = Guid.NewGuid();
+                await SaveWebhookChangesAsync(payment, payment.Status, cancellationToken);
                 break;
         }
     }
@@ -382,7 +413,8 @@ public sealed class PaymentService
 
         order.PaidUtc ??= paidUtc;
         order.PaymentProvider ??= payment.Provider;
-        order.PaymentReference ??= payment.ProviderPaymentId ?? payment.ProviderCheckoutId;
+        order.PaymentReference ??= payment.ProviderPaymentId ??
+            (payment.IsInPerson ? payment.Id.ToString("N") : payment.ProviderCheckoutId);
         payment.OrderId = order.Id;
         payment.Status = PaymentStatuses.Paid;
         payment.CompletedUtc = paidUtc;
