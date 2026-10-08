@@ -69,6 +69,18 @@ export type OrderDto = {
   LastStatusChangedUtc?: string | null;
 };
 
+export type ManualPaymentMethod = "cash" | "other";
+
+export type ManualPaymentResult = {
+  paymentId: string;
+  orderId: number;
+  method: ManualPaymentMethod;
+  amount: number;
+  currency: string;
+  paidUtc: string;
+  wasReplay: boolean;
+};
+
 export type StaffAccountDto = {
   id: string;
   displayName: string;

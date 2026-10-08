@@ -59,6 +59,14 @@ describe("axiosConfig interceptors", () => {
     expect(result.headers.Authorization).toBe("Bearer x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
   });
 
+  it("adds the staff bearer token when recording a manual payment", () => {
+    localStorage.setItem("token", "x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
+    const result = requestHolder.fn!({ method: "post", url: "/payments/manual", headers: {} }) as {
+      headers: Record<string, unknown>;
+    };
+    expect(result.headers.Authorization).toBe("Bearer x.eyJleHAiOjQxMDI0NDQ4MDB9.x");
+  });
+
   it("serves menu reads from the public snapshot by default on localhost", () => {
     const result = requestHolder.fn!({
       method: "get",

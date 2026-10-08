@@ -11,7 +11,7 @@ import CategoryType from "../constants/categories";
 import type { OrderDto } from "../types/api";
 
 const http = vi.hoisted(() => ({ get: vi.fn(), post: vi.fn() }));
-const toasts = vi.hoisted(() => ({ error: vi.fn(), warning: vi.fn() }));
+const toasts = vi.hoisted(() => ({ error: vi.fn(), warning: vi.fn(), success: vi.fn() }));
 
 vi.mock("../axiosConfig", () => ({ default: http }));
 vi.mock("react-toastify", () => ({ toast: toasts }));
@@ -92,6 +92,40 @@ describe("cashier order entry and public route regression", () => {
 
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it.each(["Cash", "Other"])("records %s from the cashier Orders panel and preserves the new-order draft", async (label) => {
+    let currentOrder = { ...order, total: 2.5, paidUtc: null as string | null, paymentProvider: null as string | null };
+    http.get.mockImplementation(async (url: string) => {
+      if (url === "/menu") return { data: menu };
+      if (url === "/admin/orders/new-count") return { data: { count: 0 } };
+      if (url === "/admin/orders") return { data: {
+        items: [currentOrder], page: 1, pageSize: 50, totalItems: 1, totalPages: 1,
+        hasPreviousPage: false, hasNextPage: false,
+      } };
+      throw new Error(`Unexpected GET ${url}`);
+    });
+    http.post.mockImplementation(async (_url: string, body: { method: string }) => {
+      currentOrder = { ...currentOrder, paidUtc: "2026-08-26T10:05:00Z", paymentProvider: body.method };
+      return { data: {
+        paymentId: "manual-receipt", orderId: 42, method: body.method, amount: 2.5,
+        currency: "USD", paidUtc: currentOrder.paidUtc, wasReplay: false,
+      } };
+    });
+    renderFlow();
+    await buildOrder();
+    fireEvent.click(screen.getByRole("tab", { name: "Orders" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Take Payment" }));
+    fireEvent.click(screen.getByRole("button", { name: label }));
+    expect(screen.getByText(`Have you received $2.50 by ${label} for Order #42?`)).toBeInTheDocument();
+    expect(http.post).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm payment received" }));
+    expect(await screen.findByText(`Paid · ${label}`)).toBeInTheDocument();
+    expect(http.post).toHaveBeenCalledExactlyOnceWith("/payments/manual", { orderId: 42, method: label.toLowerCase() });
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/cash");
+    fireEvent.click(screen.getByRole("tab", { name: "New Order" }));
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("Ada");
+    expect(screen.getByRole("spinbutton", { name: "Quantity for Espresso" })).toHaveValue(1);
   });
 
   it("preserves draft details, customizations, filters, and the mounted Orders view", async () => {

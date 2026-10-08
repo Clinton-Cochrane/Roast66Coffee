@@ -1,8 +1,9 @@
-import React, { useEffect, useId, useRef } from "react";
+import React, { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { FaXmark } from "react-icons/fa6";
 import Button from "../common/Button";
 import { useI18n } from "../../i18n/LanguageContext";
+import type { ManualPaymentMethod } from "../../types/api";
 import "../../styles/Admin.css";
 
 type PaymentChooserProps = {
@@ -10,13 +11,17 @@ type PaymentChooserProps = {
   total: number | null | undefined;
   onClose: () => void;
   onViewOrder?: (orderId: number) => void;
+  onRecordPayment?: (method: ManualPaymentMethod) => void;
+  isRecording?: boolean;
 };
 
-function PaymentChooser({ orderId, total, onClose, onViewOrder }: PaymentChooserProps) {
+function PaymentChooser({ orderId, total, onClose, onViewOrder, onRecordPayment, isRecording = false }: PaymentChooserProps) {
   const { locale, t } = useI18n();
   const titleId = useId();
   const dialogRef = useRef<HTMLElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const confirmationRef = useRef<HTMLDivElement>(null);
+  const [selectedMethod, setSelectedMethod] = useState<ManualPaymentMethod | null>(null);
   const currencyFormatter = new Intl.NumberFormat(locale, { style: "currency", currency: "USD" });
   const hasTotal = typeof total === "number" && Number.isFinite(total) && total >= 0;
 
@@ -63,6 +68,11 @@ function PaymentChooser({ orderId, total, onClose, onViewOrder }: PaymentChooser
     };
   }, [onClose]);
 
+  useEffect(() => {
+    if (isRecording || selectedMethod === null) closeButtonRef.current?.focus();
+    else confirmationRef.current?.querySelector("button")?.focus();
+  }, [selectedMethod, isRecording]);
+
   return createPortal(
     <div className="r66-payment-backdrop" onClick={(event) => {
       if (event.target === event.currentTarget) onClose();
@@ -93,14 +103,37 @@ function PaymentChooser({ orderId, total, onClose, onViewOrder }: PaymentChooser
             {hasTotal ? currencyFormatter.format(total) : t("adminOrders.totalUnavailable")}
           </span>
         </div>
-        <Button color="gray" disabled={!onViewOrder} onClick={() => onViewOrder?.(orderId)} className="w-full mb-4">
+        <Button color="gray" disabled={!onViewOrder || isRecording} onClick={() => onViewOrder?.(orderId)} className="w-full mb-4">
           {t("adminOrders.viewOrder")}
         </Button>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Button disabled>{t("adminOrders.cashPayment")}</Button>
-          <Button disabled>{t("adminOrders.cardPayment")}</Button>
-          <Button disabled>{t("adminOrders.otherPayment")}</Button>
-        </div>
+        {selectedMethod === null ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Button disabled={!hasTotal || !onRecordPayment || isRecording} onClick={() => setSelectedMethod("cash")}>{t("adminOrders.cashPayment")}</Button>
+            <Button disabled>{t("adminOrders.cardPayment")}</Button>
+            <Button disabled={!hasTotal || !onRecordPayment || isRecording} onClick={() => setSelectedMethod("other")}>{t("adminOrders.otherPayment")}</Button>
+          </div>
+        ) : (
+          <div>
+            <p className="mb-4">{t("adminOrders.confirmManualPayment", {
+              total: hasTotal ? currencyFormatter.format(total) : t("adminOrders.totalUnavailable"),
+              method: t(selectedMethod === "cash" ? "adminOrders.cashPayment" : "adminOrders.otherPayment"),
+              id: orderId,
+            })}</p>
+            <div className="flex flex-wrap gap-3">
+              <Button color="gray" disabled={isRecording} onClick={() => setSelectedMethod(null)}>{t("adminOrders.paymentBack")}</Button>
+              <div ref={confirmationRef}>
+                <Button
+                  color="green"
+                  disabled={isRecording || !hasTotal || !onRecordPayment}
+                  onClick={() => onRecordPayment?.(selectedMethod)}
+                >
+                  {t(isRecording ? "adminOrders.recordingPayment" : "adminOrders.confirmPaymentReceived")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+        {isRecording ? <p role="status" className="mt-4">{t("adminOrders.recordingPayment")}</p> : null}
       </section>
     </div>,
     document.body

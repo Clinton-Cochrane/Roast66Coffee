@@ -47,6 +47,46 @@ describe("PaymentChooser", () => {
     expect(screen.queryByText("Total unavailable")).not.toBeInTheDocument();
   });
 
+  it.each(["Cash", "Other"])("requires confirmation before recording %s and supports going back", (label) => {
+    const onRecordPayment = vi.fn();
+    render(<LanguageProvider><PaymentChooser orderId={66} total={7.25} onClose={vi.fn()} onRecordPayment={onRecordPayment} /></LanguageProvider>);
+    expect(screen.getByRole("button", { name: "Card" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: label }));
+    expect(screen.getByText(`Have you received $7.25 by ${label} for Order #66?`)).toBeInTheDocument();
+    expect(onRecordPayment).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Confirm payment received" })).toHaveFocus();
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByRole("button", { name: label })).toBeEnabled();
+    fireEvent.click(screen.getByRole("button", { name: label }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm payment received" }));
+    expect(onRecordPayment).toHaveBeenCalledExactlyOnceWith(label.toLowerCase());
+  });
+
+  it("cannot start a manual payment without an authoritative total", () => {
+    render(<LanguageProvider><PaymentChooser orderId={66} total={null} onClose={vi.fn()} onRecordPayment={vi.fn()} /></LanguageProvider>);
+    expect(screen.getByRole("button", { name: "Cash" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Other" })).toBeDisabled();
+  });
+
+  it("traps focus between the close button and enabled payment choices", () => {
+    render(<LanguageProvider><PaymentChooser orderId={66} total={7.25} onClose={vi.fn()} onRecordPayment={vi.fn()} /></LanguageProvider>);
+    const close = screen.getByRole("button", { name: "Close payment chooser" });
+    const other = screen.getByRole("button", { name: "Other" });
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+    expect(other).toHaveFocus();
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(close).toHaveFocus();
+  });
+
+  it("translates manual payment confirmation", () => {
+    localStorage.setItem("roast66_locale", "es");
+    render(<LanguageProvider><PaymentChooser orderId={66} total={7.25} onClose={vi.fn()} onRecordPayment={vi.fn()} /></LanguageProvider>);
+    fireEvent.click(screen.getByRole("button", { name: "Efectivo" }));
+    expect(screen.getByText(/¿Recibiste .* mediante Efectivo para el pedido #66\?/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirmar pago recibido" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Volver" })).toBeEnabled();
+  });
+
   it("enables View Order and passes the exact selected order ID to its callback", () => {
     const onViewOrder = vi.fn();
     const onClose = vi.fn();

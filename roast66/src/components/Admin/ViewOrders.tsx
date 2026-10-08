@@ -10,6 +10,8 @@ import { tryGetOrderStatusFromDto } from "../../constants/orderStatusParse";
 import { useI18n } from "../../i18n/LanguageContext";
 import type {
   AdminOrderHistoryResponse,
+  ManualPaymentMethod,
+  ManualPaymentResult,
   NotificationLogEntry,
   OrderDto,
   OrderLineItemDto,
@@ -102,6 +104,8 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
   >({});
   const [advancingOrderIds, setAdvancingOrderIds] = useState<Record<number, boolean>>({});
   const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null);
+  const [recordingPayment, setRecordingPayment] = useState(false);
+  const manualPaymentInFlightRef = useRef(false);
   const paymentOrder = displayedOrders.find((order) => orderId(order) === paymentOrderId);
   const paymentOrderIsPaid = Boolean(paymentOrder?.paidUtc ?? paymentOrder?.PaidUtc);
   const closePaymentChooser = useCallback(() => setPaymentOrderId(null), []);
@@ -120,8 +124,9 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
   useEffect(() => {
     if (paymentOrderId !== null && (!paymentOrder || paymentOrderIsPaid)) {
       closePaymentChooser();
+      if (paymentOrderIsPaid && isActive) headingRef.current?.focus();
     }
-  }, [paymentOrderId, paymentOrder, paymentOrderIsPaid, closePaymentChooser]);
+  }, [paymentOrderId, paymentOrder, paymentOrderIsPaid, closePaymentChooser, isActive]);
 
   const statusLabelKeys = useMemo(
     () =>
@@ -295,6 +300,40 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
     setDraftFilters(EMPTY_FILTERS);
     setAppliedFilters(EMPTY_FILTERS);
     setPage(1);
+  };
+
+  const recordManualPayment = async (id: number, method: ManualPaymentMethod) => {
+    // This guard survives dismissal/reopening and runs before React disables buttons.
+    if (manualPaymentInFlightRef.current) return;
+    manualPaymentInFlightRef.current = true;
+    setRecordingPayment(true);
+    try {
+      const { data } = await axiosInstance.post<ManualPaymentResult>("/payments/manual", { orderId: id, method });
+      if (data.orderId !== id || data.method !== method || !data.paidUtc) {
+        throw new Error("Unexpected manual payment receipt");
+      }
+      // Invalidate reads started before the payment, then apply the acknowledged receipt.
+      ++requestSequenceRef.current;
+      const markPaid = (order: OrderDto): OrderDto => orderId(order) === id ? {
+        ...order, paidUtc: data.paidUtc, paymentProvider: data.method, total: data.amount,
+      } : order;
+      setOrders((current) => current.map(markPaid));
+      setTargetedOrder((current) => current ? markPaid(current) : current);
+      toast.success(t("adminOrders.paymentRecorded", { id }));
+      setRefreshVersion((version) => version + 1);
+    } catch (err: unknown) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      const messageKey = status === 401 ? "adminOrders.fetchOrders401"
+        : status === 403 ? "adminOrders.paymentRecordForbidden"
+        : status === 404 ? "adminOrders.paymentRecordNotFound"
+        : status === 409 ? "adminOrders.paymentRecordConflict"
+        : "adminOrders.paymentRecordFailed";
+      toast.error(t(messageKey));
+      if (status === 409) setRefreshVersion((version) => version + 1);
+    } finally {
+      manualPaymentInFlightRef.current = false;
+      setRecordingPayment(false);
+    }
   };
 
   /** Sends the observed state as an optimistic concurrency precondition. */
@@ -663,10 +702,13 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
       ) : null}
       {paymentOrder && !paymentOrderIsPaid ? (
         <PaymentChooser
+          key={orderId(paymentOrder)}
           orderId={orderId(paymentOrder)}
           total={paymentOrder.total ?? paymentOrder.Total}
           onClose={closePaymentChooser}
           onViewOrder={viewOrder}
+          onRecordPayment={(method) => { void recordManualPayment(orderId(paymentOrder), method); }}
+          isRecording={recordingPayment}
         />
       ) : null}
     </div>
