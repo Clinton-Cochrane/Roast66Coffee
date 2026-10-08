@@ -93,14 +93,16 @@ public class AdminOrderHistoryPostgresTests
             [
                 new OrderItem
                 {
-                    Quantity = 1,
+                    Quantity = 2,
+                    UnitPrice = 4.25m,
                     ItemName = "Superman",
                     ItemDescription = "Historical snapshot",
                     AddOns =
                     [
                         new AddOn
                         {
-                            Quantity = 1,
+                            Quantity = 3,
+                            UnitPrice = 0.75m,
                             ItemName = "Blue Raspberry",
                             ItemDescription = "Historical snapshot"
                         }
@@ -119,6 +121,7 @@ public class AdminOrderHistoryPostgresTests
 
         Assert.Equal(120, result.TotalItems);
         Assert.Equal(50, result.Items.Count);
+        Assert.All(result.Items, order => Assert.Equal(10.75m, order.Total));
         Assert.All(result.Items, order => Assert.Equal("Superman", Assert.Single(order.OrderItems).ItemName));
         Assert.All(
             result.Items,

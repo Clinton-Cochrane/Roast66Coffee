@@ -58,6 +58,9 @@ export type OrderDto = {
   PaidUtc?: string | null;
   paymentProvider?: string | null;
   PaymentProvider?: string | null;
+  /** Authoritative total included in the staff order-history response. */
+  total?: number | null;
+  Total?: number | null;
   completedUtc?: string | null;
   CompletedUtc?: string | null;
   lastStatusChangedBy?: string | null;

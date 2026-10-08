@@ -41,10 +41,16 @@ public class AdminOrderHistoryApiTests : IClassFixture<WebAppFactory>
                 [
                     new OrderItem
                     {
-                        Quantity = 1,
+                        Quantity = 2,
+                        UnitPrice = 4.25m,
                         ItemName = "Superman",
                         ItemDescription = "Snapshot",
-                        AddOns = []
+                        AddOns = [new AddOn
+                        {
+                            ItemName = "Vanilla",
+                            UnitPrice = 0.75m,
+                            Quantity = 3
+                        }]
                     }
                 ]
             });
@@ -60,6 +66,7 @@ public class AdminOrderHistoryApiTests : IClassFixture<WebAppFactory>
         Assert.NotNull(admin);
         Assert.Equal(50, admin.PageSize);
         Assert.Equal(marker, Assert.Single(admin.Items).CustomerName);
+        Assert.Equal(10.75m, Assert.Single(admin.Items).Total);
     }
 
     [Fact]

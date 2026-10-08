@@ -1,4 +1,4 @@
-import React, { type ReactNode } from "react";
+import React, { type MouseEventHandler, type ReactNode } from "react";
 
 const colorClasses = {
   blue: "bg-[#4d6f8a] text-white hover:bg-[#3d5b73] hover:text-white",
@@ -26,7 +26,7 @@ const linkButtonClasses =
 
 type ButtonProps = {
   children: ReactNode;
-  onClick?: () => void;
+  onClick?: MouseEventHandler<HTMLButtonElement>;
   type?: "button" | "submit" | "reset";
   color?: ColorKey;
   variant?: "solid" | "link";

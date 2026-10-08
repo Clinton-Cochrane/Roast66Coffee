@@ -4,6 +4,7 @@ import axiosInstance from "../../axiosConfig";
 import { toast } from "react-toastify";
 import Card from "../common/Card";
 import Button from "../common/Button";
+import PaymentChooser from "./PaymentChooser";
 import { ORDER_STATUS, type OrderStatusValue } from "../../constants/orderStatus";
 import { tryGetOrderStatusFromDto } from "../../constants/orderStatusParse";
 import { useI18n } from "../../i18n/LanguageContext";
@@ -79,6 +80,16 @@ function ViewOrders() {
     Record<number, boolean>
   >({});
   const [advancingOrderIds, setAdvancingOrderIds] = useState<Record<number, boolean>>({});
+  const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null);
+  const paymentOrder = orders.find((order) => orderId(order) === paymentOrderId);
+  const paymentOrderIsPaid = Boolean(paymentOrder?.paidUtc ?? paymentOrder?.PaidUtc);
+  const closePaymentChooser = useCallback(() => setPaymentOrderId(null), []);
+
+  useEffect(() => {
+    if (paymentOrderId !== null && (!paymentOrder || paymentOrderIsPaid)) {
+      closePaymentChooser();
+    }
+  }, [paymentOrderId, paymentOrder, paymentOrderIsPaid, closePaymentChooser]);
 
   const statusLabelKeys = useMemo(
     () =>
@@ -389,7 +400,10 @@ function ViewOrders() {
                       })}
                     </span>
                   ) : (
-                    <Button color="blue" disabled>
+                    <Button color="blue" onClick={(event) => {
+                      event.currentTarget.focus();
+                      setPaymentOrderId(id);
+                    }}>
                       {t("adminOrders.takePayment")}
                     </Button>
                   )}
@@ -534,6 +548,13 @@ function ViewOrders() {
             </Button>
           </div>
         </nav>
+      ) : null}
+      {paymentOrder && !paymentOrderIsPaid ? (
+        <PaymentChooser
+          orderId={orderId(paymentOrder)}
+          total={paymentOrder.total ?? paymentOrder.Total}
+          onClose={closePaymentChooser}
+        />
       ) : null}
     </div>
   );

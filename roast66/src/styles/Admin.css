@@ -5,6 +5,30 @@
   text-decoration-thickness: 1px;
 }
 
+.r66-payment-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.r66-payment-dialog {
+  width: 100%;
+  max-width: 28rem;
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  padding: 1.25rem;
+  border: 1px solid #dccdbe;
+  border-radius: 0.85rem;
+  background: #fffaf3;
+  color: #4a3326;
+  box-shadow: 0 10px 24px rgba(54, 33, 19, 0.2);
+}
+
 .r66-admin-menu {
   color: var(--r66-text);
 }

@@ -11,6 +11,72 @@ public class AdminOrderHistoryTests
     private static readonly DateTime NowUtc = new(2026, 8, 31, 20, 0, 0, DateTimeKind.Utc);
 
     [Fact]
+    public async Task HistoryTotal_UsesSavedPricesAndEachAddOnQuantityWithoutTrackingOrChangingOrders()
+    {
+        await using var context = CreateContext();
+        var menuItem = new MenuItem
+        {
+            Name = "Latte",
+            Description = "Current menu",
+            Price = 5m,
+            CategoryType = CategoryType.COFFEE
+        };
+        context.MenuItems.Add(menuItem);
+        await context.SaveChangesAsync();
+
+        var order = CreateOrder(1, OrderStatus.Preparing, NowUtc.AddMinutes(-5));
+        var latte = order.OrderItems[0];
+        latte.MenuItemId = menuItem.Id;
+        latte.UnitPrice = 4.25m;
+        latte.Quantity = 2;
+        latte.AddOns![0].UnitPrice = 0.75m;
+        latte.AddOns[0].Quantity = 3;
+        order.OrderItems.Add(new OrderItem
+        {
+            Id = 2,
+            ItemName = "Cold brew",
+            UnitPrice = 2.10m,
+            Quantity = 3,
+            AddOns = []
+        });
+        context.Orders.Add(order);
+        await context.SaveChangesAsync();
+
+        menuItem.Price = 99m;
+        menuItem.PromotionType = PromotionType.Dollar;
+        menuItem.PromotionValue = 10m;
+        menuItem.IsArchived = true;
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        var result = await CreateService(context).GetOrderHistoryAsync(new AdminOrderHistoryRequest(), NowUtc);
+
+        Assert.Equal(17.05m, Assert.Single(result.Items).Total);
+        Assert.Empty(context.ChangeTracker.Entries());
+        var savedOrder = await context.Orders.AsNoTracking().SingleAsync();
+        Assert.Equal(OrderStatus.Preparing, savedOrder.OrderStatus);
+        Assert.Null(savedOrder.PaidUtc);
+    }
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(325, 650)]
+    public async Task HistoryTotal_HandlesNoAddOnsAndZeroPrices(int priceCents, int expectedTotalCents)
+    {
+        await using var context = CreateContext();
+        var order = CreateOrder(1, OrderStatus.Received, NowUtc);
+        order.OrderItems[0].UnitPrice = priceCents / 100m;
+        order.OrderItems[0].Quantity = 2;
+        order.OrderItems[0].AddOns = [];
+        context.Orders.Add(order);
+        await context.SaveChangesAsync();
+
+        var result = await CreateService(context).GetOrderHistoryAsync(new AdminOrderHistoryRequest(), NowUtc);
+
+        Assert.Equal(expectedTotalCents / 100m, Assert.Single(result.Items).Total);
+    }
+
+    [Fact]
     public async Task DefaultPage_PrioritizesActiveThenRetainedCompletedNewestFirst()
     {
         await using var context = CreateContext();

@@ -80,6 +80,7 @@ public sealed class AdminOrderListItemDto
     public DateTime? CompletedUtc { get; init; }
     public DateTime? PaidUtc { get; init; }
     public string? PaymentProvider { get; init; }
+    public required decimal Total { get; init; }
     public string? LastStatusChangedBy { get; init; }
     public DateTime? LastStatusChangedUtc { get; init; }
     public required IReadOnlyList<AdminOrderLineItemDto> OrderItems { get; init; }

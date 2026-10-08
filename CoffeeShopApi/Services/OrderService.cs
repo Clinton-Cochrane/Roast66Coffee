@@ -126,6 +126,9 @@ public class OrderService(
                 CompletedUtc = order.CompletedUtc,
                 PaidUtc = order.PaidUtc,
                 PaymentProvider = order.PaymentProvider,
+                Total = order.OrderItems.Sum(item => item.UnitPrice * item.Quantity) +
+                    order.OrderItems.SelectMany(item => item.AddOns!)
+                        .Sum(addOn => addOn.UnitPrice * addOn.Quantity),
                 LastStatusChangedBy = _context.AuditEvents
                     .Where(audit => audit.Action == "order.status.changed" &&
                                     audit.EntityType == "order" &&
