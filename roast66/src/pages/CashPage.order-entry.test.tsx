@@ -117,7 +117,7 @@ describe("cashier order entry and public route regression", () => {
     fireEvent.click(screen.getByRole("tab", { name: "Orders" }));
     fireEvent.click(await screen.findByRole("button", { name: "Take Payment" }));
     fireEvent.click(screen.getByRole("button", { name: label }));
-    expect(screen.getByText(`Have you received $2.50 by ${label} for Order #42?`)).toBeInTheDocument();
+    expect(screen.getByText("Mark this order paid?")).toBeInTheDocument();
     expect(http.post).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Confirm payment received" }));
     expect(await screen.findByText(`Paid · ${label}`)).toBeInTheDocument();

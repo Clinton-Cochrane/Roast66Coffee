@@ -52,7 +52,7 @@ describe("PaymentChooser", () => {
     render(<LanguageProvider><PaymentChooser orderId={66} total={7.25} onClose={vi.fn()} onRecordPayment={onRecordPayment} /></LanguageProvider>);
     expect(screen.getByRole("button", { name: "Card" })).toBeDisabled();
     fireEvent.click(screen.getByRole("button", { name: label }));
-    expect(screen.getByText(`Have you received $7.25 by ${label} for Order #66?`)).toBeInTheDocument();
+    expect(screen.getByText("Mark this order paid?")).toBeInTheDocument();
     expect(onRecordPayment).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Confirm payment received" })).toHaveFocus();
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
@@ -82,7 +82,7 @@ describe("PaymentChooser", () => {
     localStorage.setItem("roast66_locale", "es");
     render(<LanguageProvider><PaymentChooser orderId={66} total={7.25} onClose={vi.fn()} onRecordPayment={vi.fn()} /></LanguageProvider>);
     fireEvent.click(screen.getByRole("button", { name: "Efectivo" }));
-    expect(screen.getByText(/¿Recibiste .* mediante Efectivo para el pedido #66\?/)).toBeInTheDocument();
+    expect(screen.getByText("¿Marcar este pedido como pagado?")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Confirmar pago recibido" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Volver" })).toBeEnabled();
   });

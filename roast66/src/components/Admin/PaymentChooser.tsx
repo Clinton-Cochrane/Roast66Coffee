@@ -102,12 +102,14 @@ function PaymentChooser({ orderId, total, onClose, onViewOrder, onRecordPayment,
             <FaXmark aria-hidden="true" />
           </button>
         </div>
-        <p className="text-lg font-semibold mb-3">{t("adminOrders.orderCardTitle", { id: orderId })}</p>
-        <div className="flex flex-wrap items-baseline justify-between gap-3 mb-6">
-          <span>{t("order.total")}</span>
-          <span className="text-2xl font-bold">
-            {hasTotal ? currencyFormatter.format(total) : t("adminOrders.totalUnavailable")}
-          </span>
+        <div className="flex items-baseline justify-between gap-3 mb-6">
+          <p className="text-lg font-semibold whitespace-nowrap">{t("adminOrders.orderCardTitle", { id: orderId })}</p>
+          <p className="flex flex-wrap items-baseline justify-end gap-x-2 text-right">
+            <span>{t("order.total")}</span>
+            <span className="text-2xl font-bold whitespace-nowrap">
+              {hasTotal ? currencyFormatter.format(total) : t("adminOrders.totalUnavailable")}
+            </span>
+          </p>
         </div>
         <Button color="gray" disabled={!onViewOrder || isRecording} onClick={() => onViewOrder?.(orderId)} className="w-full mb-4">
           {t("adminOrders.viewOrder")}
@@ -120,11 +122,7 @@ function PaymentChooser({ orderId, total, onClose, onViewOrder, onRecordPayment,
           </div>
         ) : (
           <div>
-            <p className="mb-4">{t("adminOrders.confirmManualPayment", {
-              total: hasTotal ? currencyFormatter.format(total) : t("adminOrders.totalUnavailable"),
-              method: t(selectedMethod === "cash" ? "adminOrders.cashPayment" : "adminOrders.otherPayment"),
-              id: orderId,
-            })}</p>
+            <p className="mb-4">{t("adminOrders.confirmManualPayment")}</p>
             <div className="flex flex-wrap gap-3">
               <Button color="gray" disabled={isPaymentBusy} onClick={() => setSelectedMethod(null)}>{t("adminOrders.paymentBack")}</Button>
               <div ref={confirmationRef}>
