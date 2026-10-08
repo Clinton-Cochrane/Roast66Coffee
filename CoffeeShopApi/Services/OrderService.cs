@@ -109,13 +109,37 @@ public class OrderService(
 
         var totalItems = await query.CountAsync(cancellationToken);
         var totalPages = (int)Math.Ceiling(totalItems / (double)AdminOrderHistoryPageSize);
-        var items = await query
+        var pageQuery = query
             .AsSplitQuery()
             .OrderBy(order => order.OrderStatus == OrderStatus.Completed)
             .ThenByDescending(order => order.OrderDate)
             .ThenByDescending(order => order.Id)
             .Skip((request.Page - 1) * AdminOrderHistoryPageSize)
-            .Take(AdminOrderHistoryPageSize)
+            .Take(AdminOrderHistoryPageSize);
+        var items = await ProjectAdminOrders(pageQuery).ToListAsync(cancellationToken);
+
+        return new AdminOrderHistoryResponse
+        {
+            Items = items,
+            Page = request.Page,
+            PageSize = AdminOrderHistoryPageSize,
+            TotalItems = totalItems,
+            TotalPages = totalPages,
+            HasPreviousPage = request.Page > 1,
+            HasNextPage = request.Page < totalPages
+        };
+    }
+
+
+    /// <summary>Exact staff lookup, independent of operational history filters and pagination.</summary>
+    public Task<AdminOrderListItemDto?> GetAdminOrderByIdAsync(
+        int id,
+        CancellationToken cancellationToken = default) =>
+        ProjectAdminOrders(_context.Orders.AsNoTracking().AsSplitQuery().Where(order => order.Id == id))
+            .FirstOrDefaultAsync(cancellationToken);
+
+    private IQueryable<AdminOrderListItemDto> ProjectAdminOrders(IQueryable<Order> query) =>
+        query
             .Select(order => new AdminOrderListItemDto
             {
                 Id = order.Id,
@@ -126,6 +150,9 @@ public class OrderService(
                 CompletedUtc = order.CompletedUtc,
                 PaidUtc = order.PaidUtc,
                 PaymentProvider = order.PaymentProvider,
+                Total = order.OrderItems.Sum(item => item.UnitPrice * item.Quantity) +
+                    order.OrderItems.SelectMany(item => item.AddOns!)
+                        .Sum(addOn => addOn.UnitPrice * addOn.Quantity),
                 LastStatusChangedBy = _context.AuditEvents
                     .Where(audit => audit.Action == "order.status.changed" &&
                                     audit.EntityType == "order" &&
@@ -157,21 +184,7 @@ public class OrderService(
                             .ToList()
                     })
                     .ToList()
-            })
-            .ToListAsync(cancellationToken);
-
-        return new AdminOrderHistoryResponse
-        {
-            Items = items,
-            Page = request.Page,
-            PageSize = AdminOrderHistoryPageSize,
-            TotalItems = totalItems,
-            TotalPages = totalPages,
-            HasPreviousPage = request.Page > 1,
-            HasNextPage = request.Page < totalPages
-        };
-    }
-
+            });
 
     public async Task<Order?> GetOrderByIdAsync(int id, CancellationToken cancellationToken = default)
     {

@@ -58,12 +58,37 @@ export type OrderDto = {
   PaidUtc?: string | null;
   paymentProvider?: string | null;
   PaymentProvider?: string | null;
+  /** Authoritative total included in the staff order-history response. */
+  total?: number | null;
+  Total?: number | null;
   completedUtc?: string | null;
   CompletedUtc?: string | null;
   lastStatusChangedBy?: string | null;
   LastStatusChangedBy?: string | null;
   lastStatusChangedUtc?: string | null;
   LastStatusChangedUtc?: string | null;
+};
+
+export type ManualPaymentMethod = "cash" | "other";
+
+export type InPersonPaymentResult = {
+  paymentId: string;
+  orderId: number;
+  provider: string;
+  status: "pending" | "paid" | "failed";
+  amount: number;
+  currency: string;
+  paidUtc: string | null;
+};
+
+export type ManualPaymentResult = {
+  paymentId: string;
+  orderId: number;
+  method: ManualPaymentMethod;
+  amount: number;
+  currency: string;
+  paidUtc: string;
+  wasReplay: boolean;
 };
 
 export type StaffAccountDto = {

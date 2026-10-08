@@ -19,6 +19,9 @@ public class Payment
     [Column("method")]
     public string? Method { get; set; }
 
+    [Column("isinperson")]
+    public bool IsInPerson { get; set; }
+
     [Required]
     [StringLength(24)]
     [Column("status")]

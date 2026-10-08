@@ -2,7 +2,9 @@ using System.Text.Json;
 using CoffeeShopApi.Data;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Models.Payments;
+using CoffeeShopApi.Security;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace CoffeeShopApi.Services.Payments;
 
@@ -12,20 +14,24 @@ namespace CoffeeShopApi.Services.Payments;
 /// never trusted. Provider callbacks are replay-safe and converge on a terminal local
 /// payment state under optimistic concurrency.
 /// </summary>
-public sealed class PaymentService
+public sealed partial class PaymentService
 {
     private readonly ApplicationDbContext _context;
     private readonly IConfiguration _configuration;
     private readonly OrderService _orderService;
     private readonly IReadOnlyDictionary<string, IPaymentGateway> _gateways;
+    private readonly IReadOnlyDictionary<string, IInPersonPaymentGateway> _inPersonGateways;
     private readonly ILogger<PaymentService> _logger;
+    private readonly AuditEventFactory _auditEvents;
 
     public PaymentService(
         ApplicationDbContext context,
         IConfiguration configuration,
         OrderService orderService,
         IEnumerable<IPaymentGateway> gateways,
-        ILogger<PaymentService> logger)
+        ILogger<PaymentService> logger,
+        AuditEventFactory? auditEvents = null,
+        IEnumerable<IInPersonPaymentGateway>? inPersonGateways = null)
     {
         _context = context;
         _configuration = configuration;
@@ -33,7 +39,11 @@ public sealed class PaymentService
         _gateways = gateways.ToDictionary(
             gateway => gateway.ProviderName,
             StringComparer.OrdinalIgnoreCase);
+        _inPersonGateways = (inPersonGateways ?? []).ToDictionary(
+            gateway => gateway.ProviderName,
+            StringComparer.OrdinalIgnoreCase);
         _logger = logger;
+        _auditEvents = auditEvents ?? new AuditEventFactory(context);
     }
 
     public string DefaultProviderName =>
@@ -41,6 +51,102 @@ public sealed class PaymentService
 
     public bool IsConfigured(string? providerName = null) =>
         TryGetGateway(providerName, out var gateway) && gateway.IsConfigured();
+
+    /// <summary>
+    /// Records staff-confirmed Cash/Other against a stored order. A stable per-order
+    /// manual key and the existing checkout uniqueness constraint protect retries.
+    /// </summary>
+    public async Task<ManualPaymentResult> RecordManualPaymentAsync(
+        int orderId,
+        string method,
+        StaffActor actor,
+        CancellationToken cancellationToken = default)
+    {
+        if (orderId <= 0) throw new ArgumentOutOfRangeException(nameof(orderId));
+        if (method is not ("cash" or "other"))
+            throw new ArgumentException("Method must be cash or other.", nameof(method));
+
+        await using var transaction = await BeginOrderPaymentTransactionAsync(orderId, cancellationToken);
+        var order = await _orderService.GetOrderByIdAsync(orderId, cancellationToken)
+            ?? throw new ManualPaymentOrderNotFoundException();
+        // A caller may already track an order read before acquiring the row lock.
+        await _context.Entry(order).ReloadAsync(cancellationToken);
+        var orderIdText = orderId.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        var manualKey = $"manual-order-{orderIdText}";
+        var existing = await _context.Payments.AsNoTracking().SingleOrDefaultAsync(
+            payment => payment.Provider == "manual" && payment.ProviderCheckoutId == manualKey,
+            cancellationToken);
+        if (existing != null)
+        {
+            if (order.PaidUtc != null && existing.Status == PaymentStatuses.Paid &&
+                existing.Method == method && existing.OrderId == orderId && existing.CompletedUtc != null)
+            {
+                return ManualResult(existing, wasReplay: true);
+            }
+            throw new ManualPaymentConflictException("This order already has a different payment record.");
+        }
+        if (order.PaidUtc != null)
+            throw new ManualPaymentConflictException("This order is already paid.");
+        if (await _context.Payments.AnyAsync(payment => payment.OrderId == orderId &&
+            payment.IsInPerson && payment.Status == PaymentStatuses.Pending, cancellationToken))
+            throw new ManualPaymentConflictException("This order has a card payment pending. Wait for its result before recording another payment.");
+
+        var prepared = PrepareCheckout(order);
+        var paidUtc = DateTime.UtcNow;
+        var payment = new Payment
+        {
+            Provider = "manual",
+            Method = method,
+            Status = PaymentStatuses.Paid,
+            Amount = prepared.LineItems.Sum(item => item.UnitPrice * item.Quantity),
+            Currency = "USD",
+            ProviderCheckoutId = manualKey,
+            IdempotencyKey = manualKey,
+            CustomerName = prepared.Payload.CustomerName,
+            CustomerPhone = prepared.Payload.CustomerPhone,
+            PayloadJson = JsonSerializer.Serialize(prepared.Payload),
+            OrderId = order.Id,
+            CreatedUtc = paidUtc,
+            CompletedUtc = paidUtc,
+            ConfirmedByStaffUtc = paidUtc
+        };
+        order.PaidUtc = paidUtc;
+        // The existing order badge uses this label; the receipt retains its manual origin.
+        order.PaymentProvider = method;
+        order.PaymentReference = payment.Id.ToString("N");
+        _context.Payments.Add(payment);
+        _auditEvents.Add(actor, "payment.manual.recorded", "order", orderIdText,
+            new { PaymentId = payment.Id, Method = method, payment.Amount, payment.Currency }, paidUtc);
+        await _context.SaveChangesAsync(cancellationToken);
+        // Return persisted values, including PostgreSQL's timestamp precision, on first call and replay.
+        await _context.Entry(payment).ReloadAsync(cancellationToken);
+        if (transaction != null) await transaction.CommitAsync(cancellationToken);
+        return ManualResult(payment, wasReplay: false);
+    }
+
+    private static ManualPaymentResult ManualResult(Payment payment, bool wasReplay) => new(
+        payment.Id, payment.OrderId!.Value, payment.Method!, payment.Amount, payment.Currency,
+        payment.CompletedUtc!.Value, wasReplay);
+
+    private async Task<IDbContextTransaction?> BeginOrderPaymentTransactionAsync(
+        int orderId, CancellationToken cancellationToken)
+    {
+        // Production uses PostgreSQL. EF InMemory has no transactional row locks;
+        // concurrent settlement and rollback are covered by PostgreSQL tests.
+        if (!_context.Database.IsRelational()) return null;
+        var transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            await _context.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT 1 FROM orders WHERE id = {orderId} FOR UPDATE", cancellationToken);
+            return transaction;
+        }
+        catch
+        {
+            await transaction.DisposeAsync();
+            throw;
+        }
+    }
 
     /// <summary>
     /// Returns the existing provider checkout for a repeated idempotency key, or the
@@ -71,6 +177,7 @@ public sealed class PaymentService
             .AsNoTracking()
             .FirstOrDefaultAsync(
                 payment => payment.Provider == gateway.ProviderName &&
+                           !payment.IsInPerson &&
                            payment.IdempotencyKey == idempotencyKey,
                 cancellationToken);
         if (existingPayment != null)
@@ -95,6 +202,7 @@ public sealed class PaymentService
             .AsNoTracking()
             .Where(payment =>
                 payment.Provider == gateway.ProviderName &&
+                !payment.IsInPerson &&
                 payment.OrderId == authorizedOrder.Id &&
                 payment.Status == PaymentStatuses.Pending)
             .OrderByDescending(payment => payment.CreatedUtc)
@@ -180,19 +288,32 @@ public sealed class PaymentService
         IReadOnlyDictionary<string, string> headers,
         CancellationToken cancellationToken = default)
     {
-        var gateway = GetGateway(providerName);
-        var paymentEvent = await gateway.ParseWebhookAsync(body, headers, cancellationToken);
+        var requestedProvider = string.IsNullOrWhiteSpace(providerName) ? DefaultProviderName : providerName.Trim();
+        // A provider implementing both boundaries must parse its shared webhook format.
+        GatewayPaymentEvent? paymentEvent;
+        string resolvedProvider;
+        if (_inPersonGateways.TryGetValue(requestedProvider, out var inPersonGateway))
+        {
+            resolvedProvider = inPersonGateway.ProviderName;
+            paymentEvent = await inPersonGateway.ParseWebhookAsync(body, headers, cancellationToken);
+        }
+        else
+        {
+            var gateway = GetGateway(requestedProvider);
+            resolvedProvider = gateway.ProviderName;
+            paymentEvent = await gateway.ParseWebhookAsync(body, headers, cancellationToken);
+        }
         if (paymentEvent == null)
         {
             return;
         }
 
-        var payment = await FindPaymentAsync(gateway.ProviderName, paymentEvent, cancellationToken);
+        var payment = await FindPaymentAsync(resolvedProvider, paymentEvent, cancellationToken);
         if (payment == null)
         {
             _logger.LogWarning(
                 "Ignoring {Provider} payment event because no local payment matched internal payment {PaymentId}.",
-                gateway.ProviderName,
+                resolvedProvider,
                 paymentEvent.PaymentId);
             if (paymentEvent.PaymentId.HasValue)
             {
@@ -202,6 +323,12 @@ public sealed class PaymentService
             return;
         }
 
+        await ApplyGatewayEventAsync(payment, paymentEvent, cancellationToken);
+    }
+
+    private async Task ApplyGatewayEventAsync(Payment payment, GatewayPaymentEvent paymentEvent,
+        CancellationToken cancellationToken)
+    {
         payment.ProviderPaymentId ??= paymentEvent.ProviderPaymentId;
         if (!string.IsNullOrWhiteSpace(paymentEvent.Method))
         {
@@ -223,6 +350,8 @@ public sealed class PaymentService
                     cancellationToken);
                 break;
             case GatewayPaymentStatus.Pending:
+                payment.ConcurrencyToken = Guid.NewGuid();
+                await SaveWebhookChangesAsync(payment, payment.Status, cancellationToken);
                 break;
         }
     }
@@ -276,13 +405,16 @@ public sealed class PaymentService
             throw new InvalidOperationException("Payment is not linked to an existing order.");
         }
 
+        await using var transaction = await BeginOrderPaymentTransactionAsync(existingOrderId, cancellationToken);
         var paidUtc = DateTime.UtcNow;
         var order = await _orderService.GetOrderByIdAsync(existingOrderId, cancellationToken)
             ?? throw new InvalidOperationException("Payment order no longer exists.");
+        await _context.Entry(order).ReloadAsync(cancellationToken);
 
         order.PaidUtc ??= paidUtc;
         order.PaymentProvider ??= payment.Provider;
-        order.PaymentReference ??= payment.ProviderPaymentId ?? payment.ProviderCheckoutId;
+        order.PaymentReference ??= payment.ProviderPaymentId ??
+            (payment.IsInPerson ? payment.Id.ToString("N") : payment.ProviderCheckoutId);
         payment.OrderId = order.Id;
         payment.Status = PaymentStatuses.Paid;
         payment.CompletedUtc = paidUtc;
@@ -292,6 +424,7 @@ public sealed class PaymentService
             payment,
             PaymentStatuses.Paid,
             cancellationToken);
+        if (transaction != null) await transaction.CommitAsync(cancellationToken);
     }
 
     /// <summary>
@@ -431,3 +564,7 @@ public sealed record PaymentCheckoutResult(
 public sealed class PaymentProviderUnavailableException(string message) : Exception(message);
 
 public sealed class CheckoutOrderUnavailableException : Exception;
+
+public sealed class ManualPaymentOrderNotFoundException : Exception;
+
+public sealed class ManualPaymentConflictException(string message) : Exception(message);

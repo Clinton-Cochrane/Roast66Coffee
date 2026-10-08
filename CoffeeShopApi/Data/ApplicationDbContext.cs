@@ -69,8 +69,15 @@ namespace CoffeeShopApi.Data
             modelBuilder.Entity<Payment>()
                 .HasIndex(payment => new { payment.Provider, payment.IdempotencyKey });
             modelBuilder.Entity<Payment>()
+                .HasIndex(payment => payment.OrderId);
+            modelBuilder.Entity<Payment>()
                 .HasIndex(payment => new { payment.Provider, payment.ProviderCheckoutId })
-                .IsUnique();
+                .IsUnique()
+                .HasFilter("providercheckoutid <> ''");
+            modelBuilder.Entity<Payment>()
+                .HasIndex(payment => payment.OrderId, "ix_payments_pending_in_person_order")
+                .IsUnique()
+                .HasFilter("isinperson = TRUE AND status = 'pending'");
             modelBuilder.Entity<Payment>()
                 .HasOne(payment => payment.Order)
                 .WithMany()

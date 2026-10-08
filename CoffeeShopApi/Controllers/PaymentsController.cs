@@ -1,7 +1,9 @@
 using CoffeeShopApi.Middleware;
 using CoffeeShopApi.Models;
 using CoffeeShopApi.Models.Payments;
+using CoffeeShopApi.Security;
 using CoffeeShopApi.Services.Payments;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -79,6 +81,83 @@ public class PaymentsController : ControllerBase
         {
             return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = ex.Message });
         }
+    }
+
+    /// <summary>Calling this staff-only operation confirms Cash/Other was received.</summary>
+    [Authorize(Roles = "Admin")]
+    [HttpPost("manual")]
+    public async Task<ActionResult<ManualPaymentResult>> RecordManualPayment(
+        [FromBody] ManualPaymentRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _paymentService.RecordManualPaymentAsync(
+                request.OrderId, request.Method, StaffActor.FromPrincipal(User), cancellationToken));
+        }
+        catch (ManualPaymentOrderNotFoundException)
+        {
+            return NotFound(new { message = "Order not found." });
+        }
+        catch (ManualPaymentConflictException exception)
+        {
+            return Conflict(new { message = exception.Message });
+        }
+        catch (ArgumentException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("in-person")]
+    public async Task<ActionResult<InPersonPaymentResult>> StartInPersonPayment(
+        [FromBody] InPersonPaymentRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await _paymentService.StartInPersonPaymentAsync(
+                request.OrderId, StaffActor.FromPrincipal(User), cancellationToken));
+        }
+        catch (InPersonPaymentOrderNotFoundException)
+        {
+            return NotFound(new { message = "Order not found." });
+        }
+        catch (InPersonPaymentConflictException exception)
+        {
+            return Conflict(new { message = exception.Message });
+        }
+        catch (PaymentWebhookRetryException)
+        {
+            HttpContext.Features.Set(new ExpectedServerResponseFeature());
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                message = "The card payment status is being updated. Retry to observe the same attempt."
+            });
+        }
+        catch (PaymentProviderUnavailableException exception)
+        {
+            HttpContext.Features.Set(new ExpectedServerResponseFeature());
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new { message = exception.Message });
+        }
+        catch (InvalidOperationException exception)
+        {
+            return BadRequest(new { message = exception.Message });
+        }
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("in-person/{paymentId:guid}")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<ActionResult<InPersonPaymentResult>> GetInPersonPayment(
+        Guid paymentId, CancellationToken cancellationToken)
+    {
+        var payment = await _paymentService.GetInPersonPaymentAsync(paymentId, cancellationToken);
+        return payment == null ? NotFound(new { message = "In-person payment not found." }) : Ok(payment);
     }
 
     [HttpPost("webhook")]

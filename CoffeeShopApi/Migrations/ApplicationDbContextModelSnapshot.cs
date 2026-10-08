@@ -517,6 +517,10 @@ namespace CoffeeShopApi.Migrations
                         .HasColumnType("text")
                         .HasColumnName("idempotencykey");
 
+                    b.Property<bool>("IsInPerson")
+                        .HasColumnType("boolean")
+                        .HasColumnName("isinperson");
+
                     b.Property<string>("Method")
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
@@ -563,7 +567,12 @@ namespace CoffeeShopApi.Migrations
                     b.HasIndex("Provider", "IdempotencyKey");
 
                     b.HasIndex("Provider", "ProviderCheckoutId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("providercheckoutid <> ''");
+
+                    b.HasIndex(new[] { "OrderId" }, "ix_payments_pending_in_person_order")
+                        .IsUnique()
+                        .HasFilter("isinperson = TRUE AND status = 'pending'");
 
                     b.ToTable("payments");
                 });

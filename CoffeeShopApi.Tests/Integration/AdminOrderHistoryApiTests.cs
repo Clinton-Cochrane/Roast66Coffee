@@ -41,10 +41,16 @@ public class AdminOrderHistoryApiTests : IClassFixture<WebAppFactory>
                 [
                     new OrderItem
                     {
-                        Quantity = 1,
+                        Quantity = 2,
+                        UnitPrice = 4.25m,
                         ItemName = "Superman",
                         ItemDescription = "Snapshot",
-                        AddOns = []
+                        AddOns = [new AddOn
+                        {
+                            ItemName = "Vanilla",
+                            UnitPrice = 0.75m,
+                            Quantity = 3
+                        }]
                     }
                 ]
             });
@@ -60,14 +66,70 @@ public class AdminOrderHistoryApiTests : IClassFixture<WebAppFactory>
         Assert.NotNull(admin);
         Assert.Equal(50, admin.PageSize);
         Assert.Equal(marker, Assert.Single(admin.Items).CustomerName);
+        Assert.Equal(10.75m, Assert.Single(admin.Items).Total);
+    }
+
+    [Theory]
+    [InlineData("/api/admin/orders")]
+    [InlineData("/api/admin/orders/66")]
+    public async Task AdminRoute_RequiresAdminAuthorization(string path)
+    {
+        var response = await _client.GetAsync(path);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]
-    public async Task AdminRoute_RequiresAdminAuthorization()
+    public async Task ExactOrderRoute_ReturnsTheSnapshotContractOutsideHistoryRetention()
     {
-        var response = await _client.GetAsync("/api/admin/orders");
+        var marker = $"Exact-{Guid.NewGuid():N}";
+        int orderId;
+        using (var scope = _factory.Services.CreateScope())
+        {
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var order = new Order
+            {
+                TrackingToken = Convert.ToBase64String(Guid.NewGuid().ToByteArray()).PadRight(43, 'x')[..43],
+                CustomerName = marker,
+                OrderDate = DateTime.UtcNow.AddDays(-4),
+                OrderStatus = OrderStatus.Completed,
+                CompletedUtc = DateTime.UtcNow.AddHours(-72),
+                OrderItems = [new OrderItem
+                {
+                    ItemName = "Saved latte", UnitPrice = 4.25m, Quantity = 2,
+                    AddOns = [new AddOn { ItemName = "Vanilla", UnitPrice = 0.75m, Quantity = 3 }]
+                }]
+            };
+            context.Orders.Add(order);
+            await context.SaveChangesAsync();
+            orderId = order.Id;
+        }
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", await GetAdminToken());
+        var page = await _client.GetFromJsonAsync<AdminOrderHistoryResponse>(
+            $"/api/admin/orders?search={marker}", JsonOptions);
+        Assert.Empty(page!.Items);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        var response = await _client.GetAsync($"/api/admin/orders/{orderId}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        var exact = json.Deserialize<AdminOrderListItemDto>(JsonOptions);
+        Assert.NotNull(exact);
+        Assert.Equal(orderId, exact.Id);
+        Assert.Equal(marker, exact.CustomerName);
+        Assert.Equal(10.75m, exact.Total);
+        Assert.Equal("Saved latte", Assert.Single(exact.OrderItems).ItemName);
+        Assert.Null(exact.PaidUtc);
+        Assert.False(json.TryGetProperty("trackingToken", out _));
+    }
+
+    [Fact]
+    public async Task ExactOrderRoute_ReturnsNotFoundForAMissingId()
+    {
+        _client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", await GetAdminToken());
+        var response = await _client.GetAsync($"/api/admin/orders/{int.MaxValue}");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
     [Fact]

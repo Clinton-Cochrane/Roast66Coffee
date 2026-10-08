@@ -1,14 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import axiosInstance from "../../axiosConfig";
 import { toast } from "react-toastify";
 import Card from "../common/Card";
 import Button from "../common/Button";
+import PaymentChooser from "./PaymentChooser";
 import { ORDER_STATUS, type OrderStatusValue } from "../../constants/orderStatus";
 import { tryGetOrderStatusFromDto } from "../../constants/orderStatusParse";
 import { useI18n } from "../../i18n/LanguageContext";
 import type {
   AdminOrderHistoryResponse,
+  InPersonPaymentResult,
+  ManualPaymentMethod,
+  ManualPaymentResult,
   NotificationLogEntry,
   OrderDto,
   OrderLineItemDto,
@@ -16,6 +20,20 @@ import type {
 import "../../styles/Admin.css";
 
 const POLL_INTERVAL_MS = 60000;
+const PAYMENT_POLL_INTERVAL_MS = 2000;
+
+type CardPaymentState = {
+  order: OrderDto;
+  status: "starting" | InPersonPaymentResult["status"];
+  result?: InPersonPaymentResult;
+};
+
+function validateCardPayment(result: InPersonPaymentResult, id: number, paymentId?: string) {
+  if (result.orderId !== id || !result.paymentId || (paymentId && result.paymentId !== paymentId) ||
+    !["pending", "paid", "failed"].includes(result.status) || (result.status === "paid" && !result.paidUtc)) {
+    throw new Error("Unexpected in-person payment response");
+  }
+}
 
 type OrderFilters = {
   status: string;
@@ -54,15 +72,40 @@ function paymentProviderLabel(order: OrderDto): string {
   return provider.charAt(0).toUpperCase() + provider.slice(1);
 }
 
+type ViewOrdersProps = {
+  /** Hosts providing a target ID also handle selecting and clearing it. */
+  targetOrderId?: number | null;
+  onTargetOrderChange?: (orderId: number | null) => void;
+  onOrderUpdated?: (order: OrderDto) => void;
+  requestedPaymentOrderId?: number | null;
+  onPaymentRequestConsumed?: () => void;
+  isActive?: boolean;
+};
+
 /**
  * Paginated staff queue. Draft filters do not hit the API until applied, polling
  * fetches only a lightweight new-order count, and explicit refresh retrieves the
  * page. Status updates include the last-seen status so concurrent staff actions
  * replay safely or return a conflict instead of skipping state-machine steps.
  */
-function ViewOrders() {
+function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange, onOrderUpdated,
+  requestedPaymentOrderId = null, onPaymentRequestConsumed, isActive = true }: ViewOrdersProps) {
   const { t } = useI18n();
   const [orders, setOrders] = useState<OrderDto[]>([]);
+  const [localTargetOrderId, setLocalTargetOrderId] = useState<number | null>(null);
+  const targetOrderId = externalTargetOrderId === undefined ? localTargetOrderId : externalTargetOrderId;
+  const [targetedOrder, setTargetedOrder] = useState<OrderDto | null>(null);
+  const [targetError, setTargetError] = useState<string | null>(null);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const [highlightedOrderId, setHighlightedOrderId] = useState<number | null>(null);
+  const requestSequenceRef = useRef(0);
+  const targetFocusPendingRef = useRef(false);
+  const targetCardRef = useRef<HTMLDivElement>(null);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  let displayedOrders = orders;
+  if (targetOrderId !== null) {
+    displayedOrders = targetedOrder && orderId(targetedOrder) === targetOrderId ? [targetedOrder] : [];
+  }
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState<AdminOrderHistoryResponse>(EMPTY_PAGE);
   const [draftFilters, setDraftFilters] = useState<OrderFilters>(EMPTY_FILTERS);
@@ -79,6 +122,103 @@ function ViewOrders() {
     Record<number, boolean>
   >({});
   const [advancingOrderIds, setAdvancingOrderIds] = useState<Record<number, boolean>>({});
+  const [paymentOrderId, setPaymentOrderId] = useState<number | null>(null);
+  const [pendingPaymentOrderId, setPendingPaymentOrderId] = useState<number | null>(null);
+  const [recordingPayment, setRecordingPayment] = useState(false);
+  const manualPaymentInFlightRef = useRef(false);
+  const cardPaymentInFlightRef = useRef(false);
+  const [cardPayment, setCardPayment] = useState<CardPaymentState | null>(null);
+  const [cardPaymentError, setCardPaymentError] = useState<string | null>(null);
+  const cardPaymentIsBusy = cardPayment?.status === "starting" || cardPayment?.status === "pending";
+  const paymentOrder = displayedOrders.find((order) => orderId(order) === paymentOrderId);
+  const paymentOrderIsPaid = Boolean(paymentOrder?.paidUtc ?? paymentOrder?.PaidUtc);
+  const closePaymentChooser = useCallback(() => setPaymentOrderId(null), []);
+
+  const applyPaymentReceipt = useCallback((order: OrderDto, paidUtc: string, provider: string, amount: number) => {
+    const id = orderId(order);
+    // Invalidate reads started before the authoritative receipt.
+    ++requestSequenceRef.current;
+    const markPaid = (current: OrderDto): OrderDto => orderId(current) === id
+      ? { ...current, paidUtc, paymentProvider: provider, total: amount } : current;
+    setOrders((current) => current.map(markPaid));
+    setTargetedOrder((current) => current ? markPaid(current) : current);
+    onOrderUpdated?.(markPaid(order));
+    setRefreshVersion((version) => version + 1);
+  }, [onOrderUpdated]);
+
+  const observeCardPayment = useCallback((order: OrderDto, result: InPersonPaymentResult) => {
+    setCardPayment({ order, status: result.status, result });
+    setCardPaymentError(result.status === "failed" ? t("adminOrders.cardPaymentFailed") : null);
+    cardPaymentInFlightRef.current = result.status === "pending";
+    if (result.status === "paid" && result.paidUtc) {
+      applyPaymentReceipt(order, result.paidUtc, result.provider, result.amount);
+      toast.success(t("adminOrders.paymentRecorded", { id: result.orderId }));
+    }
+  }, [applyPaymentReceipt, t]);
+
+  useEffect(() => {
+    if (cardPayment?.status !== "pending" || !cardPayment.result) return;
+    const { order, result } = cardPayment;
+    let cancelled = false;
+    let timeout: ReturnType<typeof setTimeout>;
+    const checkPayment = async () => {
+      try {
+        const { data } = await axiosInstance.get<InPersonPaymentResult>(`/payments/in-person/${result.paymentId}`);
+        if (cancelled) return;
+        validateCardPayment(data, orderId(order), result.paymentId);
+        if (data.status !== "pending") {
+          observeCardPayment(order, data);
+          return;
+        }
+        setCardPaymentError(null);
+      } catch {
+        if (cancelled) return;
+        // A failed observation says nothing about whether a charge succeeded.
+        setCardPaymentError(t("adminOrders.cardPaymentStatusUnavailable"));
+      }
+      timeout = setTimeout(() => { void checkPayment(); }, PAYMENT_POLL_INTERVAL_MS);
+    };
+    timeout = setTimeout(() => { void checkPayment(); }, PAYMENT_POLL_INTERVAL_MS);
+    return () => { cancelled = true; clearTimeout(timeout); };
+  }, [cardPayment, observeCardPayment, t]);
+
+  const viewOrder = useCallback((id: number) => {
+    closePaymentChooser();
+    targetFocusPendingRef.current = true;
+    setTargetedOrder(null);
+    setTargetError(null);
+    setHighlightedOrderId(null);
+    setLocalTargetOrderId(id);
+    onTargetOrderChange?.(id);
+    setRefreshVersion((version) => version + 1);
+  }, [closePaymentChooser, onTargetOrderChange]);
+
+  useEffect(() => {
+    if (requestedPaymentOrderId === null) {
+      setPendingPaymentOrderId(null);
+      return;
+    }
+    // Reset cached target data so even a repeated request waits for an exact read.
+    viewOrder(requestedPaymentOrderId);
+    setPendingPaymentOrderId(requestedPaymentOrderId);
+  }, [requestedPaymentOrderId, viewOrder]);
+
+  useEffect(() => {
+    if (!isActive || loadingOrders || pendingPaymentOrderId === null || pendingPaymentOrderId !== targetOrderId) return;
+    if (!targetError && (!targetedOrder || orderId(targetedOrder) !== pendingPaymentOrderId)) return;
+    setPendingPaymentOrderId(null);
+    onPaymentRequestConsumed?.();
+    if (!targetError && targetedOrder && !(targetedOrder.paidUtc ?? targetedOrder.PaidUtc)) {
+      setPaymentOrderId(pendingPaymentOrderId);
+    }
+  }, [isActive, loadingOrders, pendingPaymentOrderId, targetOrderId, targetError, targetedOrder, onPaymentRequestConsumed]);
+
+  useEffect(() => {
+    if (paymentOrderId !== null && (!paymentOrder || paymentOrderIsPaid)) {
+      closePaymentChooser();
+      if (paymentOrderIsPaid && isActive) headingRef.current?.focus();
+    }
+  }, [paymentOrderId, paymentOrder, paymentOrderIsPaid, closePaymentChooser, isActive]);
 
   const statusLabelKeys = useMemo(
     () =>
@@ -92,6 +232,32 @@ function ViewOrders() {
   );
 
   const fetchOrders = useCallback(() => {
+    const requestSequence = ++requestSequenceRef.current;
+    setLoadingOrders(true);
+    if (targetOrderId !== null) {
+      setTargetError(null);
+      setHighlightedOrderId(null);
+      return axiosInstance.get<OrderDto>(`/admin/orders/${targetOrderId}`)
+        .then((response) => {
+          if (requestSequence !== requestSequenceRef.current) return;
+          if (orderId(response.data) !== targetOrderId) throw new Error("Unexpected order ID");
+          setTargetedOrder(response.data);
+          onOrderUpdated?.(response.data);
+        })
+        .catch((err: unknown) => {
+          if (requestSequence !== requestSequenceRef.current) return;
+          const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+          setTargetedOrder(null);
+          setTargetError(t(status === 404 ? "adminOrders.targetOrderNotFound" : "adminOrders.targetOrderFetchFailed", {
+            id: targetOrderId,
+          }));
+          if (status === 401) toast.error(t("adminOrders.fetchOrders401"));
+        })
+        .finally(() => {
+          if (requestSequence === requestSequenceRef.current) setLoadingOrders(false);
+        });
+    }
+
     const params: Record<string, string | number> = {
       page,
       status: appliedFilters.status,
@@ -106,10 +272,10 @@ function ViewOrders() {
       params.toUtc = end.toISOString();
     }
 
-    setLoadingOrders(true);
     return axiosInstance
       .get<AdminOrderHistoryResponse>("/admin/orders", { params })
       .then((response) => {
+        if (requestSequence !== requestSequenceRef.current) return;
         const data = response.data;
         if (page > 1 && data.totalPages > 0 && page > data.totalPages) {
           setPage(data.totalPages);
@@ -122,13 +288,16 @@ function ViewOrders() {
         setHasLoadedOrders(true);
       })
       .catch((err: unknown) => {
+        if (requestSequence !== requestSequenceRef.current) return;
         const status = axios.isAxiosError(err) ? err.response?.status : undefined;
         toast.error(
           status === 401 ? t("adminOrders.fetchOrders401") : t("adminOrders.fetchOrdersFailed")
         );
       })
-      .finally(() => setLoadingOrders(false));
-  }, [appliedFilters, page, t]);
+      .finally(() => {
+        if (requestSequence === requestSequenceRef.current) setLoadingOrders(false);
+      });
+  }, [appliedFilters, page, t, targetOrderId, refreshVersion, onOrderUpdated]);
 
   /** Polls only the badge count; full order graphs load on explicit refresh. */
   const fetchNewOrdersCount = useCallback(() => {
@@ -142,8 +311,30 @@ function ViewOrders() {
   }, [lastRefreshedAt]);
 
   useEffect(() => {
-    fetchOrders();
+    targetFocusPendingRef.current = targetOrderId !== null;
+  }, [targetOrderId]);
+
+  useEffect(() => {
+    void fetchOrders();
+    return () => { ++requestSequenceRef.current; };
   }, [fetchOrders]);
+
+  useEffect(() => {
+    if (!targetFocusPendingRef.current || !isActive || loadingOrders || paymentOrderId !== null ||
+      targetOrderId === null || !targetedOrder || orderId(targetedOrder) !== targetOrderId) return;
+    const card = targetCardRef.current;
+    if (!card) return;
+    targetFocusPendingRef.current = false;
+    card.scrollIntoView?.({ block: "center", behavior: "auto" });
+    card.focus({ preventScroll: true });
+    setHighlightedOrderId(targetOrderId);
+  }, [isActive, loadingOrders, paymentOrderId, targetOrderId, targetedOrder]);
+
+  useEffect(() => {
+    if (highlightedOrderId === null) return;
+    const timeout = setTimeout(() => setHighlightedOrderId(null), 5000);
+    return () => clearTimeout(timeout);
+  }, [highlightedOrderId]);
 
   useEffect(() => {
     if (!lastRefreshedAt) return;
@@ -186,9 +377,68 @@ function ViewOrders() {
   };
 
   const clearFilters = () => {
+    closePaymentChooser();
+    targetFocusPendingRef.current = false;
+    setLocalTargetOrderId(null);
+    onTargetOrderChange?.(null);
+    setTargetedOrder(null);
+    setTargetError(null);
+    setHighlightedOrderId(null);
+    if (targetOrderId !== null) {
+      setOrders([]);
+      setHasLoadedOrders(false);
+      setPagination(EMPTY_PAGE);
+      headingRef.current?.focus();
+    }
     setDraftFilters(EMPTY_FILTERS);
     setAppliedFilters(EMPTY_FILTERS);
     setPage(1);
+  };
+
+  const recordManualPayment = async (id: number, method: ManualPaymentMethod) => {
+    // This guard survives dismissal/reopening and runs before React disables buttons.
+    if (manualPaymentInFlightRef.current || cardPaymentInFlightRef.current) return;
+    manualPaymentInFlightRef.current = true;
+    setRecordingPayment(true);
+    try {
+      const { data } = await axiosInstance.post<ManualPaymentResult>("/payments/manual", { orderId: id, method });
+      if (data.orderId !== id || data.method !== method || !data.paidUtc) {
+        throw new Error("Unexpected manual payment receipt");
+      }
+      if (paymentOrder) applyPaymentReceipt(paymentOrder, data.paidUtc, data.method, data.amount);
+      toast.success(t("adminOrders.paymentRecorded", { id }));
+    } catch (err: unknown) {
+      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
+      const messageKey = status === 401 ? "adminOrders.fetchOrders401"
+        : status === 403 ? "adminOrders.paymentRecordForbidden"
+        : status === 404 ? "adminOrders.paymentRecordNotFound"
+        : status === 409 ? "adminOrders.paymentRecordConflict"
+        : "adminOrders.paymentRecordFailed";
+      toast.error(t(messageKey));
+      if (status === 409) setRefreshVersion((version) => version + 1);
+    } finally {
+      manualPaymentInFlightRef.current = false;
+      setRecordingPayment(false);
+    }
+  };
+
+  const startCardPayment = async (order: OrderDto) => {
+    if (cardPaymentInFlightRef.current || manualPaymentInFlightRef.current) return;
+    cardPaymentInFlightRef.current = true;
+    setCardPayment({ order, status: "starting" });
+    setCardPaymentError(null);
+    const id = orderId(order);
+    try {
+      const { data } = await axiosInstance.post<InPersonPaymentResult>("/payments/in-person", { orderId: id });
+      validateCardPayment(data, id);
+      observeCardPayment(order, data);
+    } catch (error: unknown) {
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined;
+      setCardPayment({ order, status: "failed" });
+      setCardPaymentError(t(status === 503 ? "adminOrders.cardPaymentUnavailable" : "adminOrders.cardPaymentStartFailed"));
+      cardPaymentInFlightRef.current = false;
+      if (status === 409) setRefreshVersion((version) => version + 1);
+    }
   };
 
   /** Sends the observed state as an optimistic concurrency precondition. */
@@ -205,7 +455,7 @@ function ViewOrders() {
         } else {
           toast.success(t("adminOrders.orderStatusUpdated"));
         }
-        fetchOrders();
+        setRefreshVersion((version) => version + 1);
       })
       .catch((err: unknown) => {
         const data = axios.isAxiosError(err) ? err.response?.data : undefined;
@@ -219,7 +469,7 @@ function ViewOrders() {
                 : undefined;
         toast.error(message || t("adminOrders.failedUpdateStatus"));
         if (axios.isAxiosError(err) && err.response?.status === 409) {
-          fetchOrders();
+          setRefreshVersion((version) => version + 1);
         }
       })
       .finally(() =>
@@ -257,7 +507,7 @@ function ViewOrders() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 mb-6 flex-wrap">
-        <h1 className="text-3xl font-bold">{t("adminOrders.title")}</h1>
+        <h1 ref={headingRef} tabIndex={-1} className="text-3xl font-bold">{t("adminOrders.title")}</h1>
         <div className="relative inline-block">
           <Button onClick={() => void fetchOrders()} color="blue" disabled={loadingOrders}>
             {loadingOrders && hasLoadedOrders
@@ -275,83 +525,92 @@ function ViewOrders() {
         </div>
       </div>
 
-      <form
-        className="r66-admin-order-filters grid gap-3 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-2 lg:grid-cols-4"
-        onSubmit={applyFilters}
-      >
-        <label className="flex flex-col gap-1 font-semibold">
-          {t("adminOrders.statusFilterLabel")}
-          <select
-            className="rounded border border-gray-300 px-3 py-2 font-normal"
-            value={draftFilters.status}
-            onChange={(event) =>
-              setDraftFilters((current) => ({ ...current, status: event.target.value }))
-            }
-          >
-            <option value="all">{t("adminOrders.statusAll")}</option>
-            <option value="active">{t("adminOrders.statusActive")}</option>
-            <option value="received">{t("orderStatus.trackerReceivedLabel")}</option>
-            <option value="preparing">{t("orderStatus.trackerPreparingLabel")}</option>
-            <option value="readyForPickup">{t("orderStatus.trackerReadyLabel")}</option>
-            <option value="completed">{t("orderStatus.trackerCompletedLabel")}</option>
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 font-semibold">
-          {t("adminOrders.searchLabel")}
-          <input
-            className="rounded border border-gray-300 px-3 py-2 font-normal"
-            type="search"
-            value={draftFilters.search}
-            placeholder={t("adminOrders.searchPlaceholder")}
-            onChange={(event) =>
-              setDraftFilters((current) => ({ ...current, search: event.target.value }))
-            }
-          />
-        </label>
-        <label className="flex flex-col gap-1 font-semibold">
-          {t("adminOrders.fromDateLabel")}
-          <input
-            className="rounded border border-gray-300 px-3 py-2 font-normal"
-            type="date"
-            value={draftFilters.fromDate}
-            onChange={(event) =>
-              setDraftFilters((current) => ({ ...current, fromDate: event.target.value }))
-            }
-          />
-        </label>
-        <label className="flex flex-col gap-1 font-semibold">
-          {t("adminOrders.toDateLabel")}
-          <input
-            className="rounded border border-gray-300 px-3 py-2 font-normal"
-            type="date"
-            value={draftFilters.toDate}
-            onChange={(event) =>
-              setDraftFilters((current) => ({ ...current, toDate: event.target.value }))
-            }
-          />
-        </label>
-        <div className="flex items-center gap-3 md:col-span-2 lg:col-span-4">
-          <Button type="submit" color="blue" disabled={loadingOrders}>
-            {t("adminOrders.applyFilters")}
-          </Button>
-          <Button onClick={clearFilters} color="gray" disabled={loadingOrders}>
-            {t("adminOrders.clearFilters")}
-          </Button>
+      {targetOrderId !== null ? (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-gray-200 bg-white p-4">
+          <p>{t("adminOrders.showingTargetOrder", { id: targetOrderId })}</p>
+          <Button onClick={clearFilters} color="gray">{t("adminOrders.clearTarget")}</Button>
         </div>
-        <p className="text-sm text-gray-600 md:col-span-2 lg:col-span-4">
-          {t("adminOrders.retentionNote")}
-        </p>
-      </form>
+      ) : (
+        <form
+          className="r66-admin-order-filters grid gap-3 rounded-lg border border-gray-200 bg-white p-4 md:grid-cols-2 lg:grid-cols-4"
+          onSubmit={applyFilters}
+        >
+          <label className="flex flex-col gap-1 font-semibold">
+            {t("adminOrders.statusFilterLabel")}
+            <select
+              className="rounded border border-gray-300 px-3 py-2 font-normal"
+              value={draftFilters.status}
+              onChange={(event) =>
+                setDraftFilters((current) => ({ ...current, status: event.target.value }))
+              }
+            >
+              <option value="all">{t("adminOrders.statusAll")}</option>
+              <option value="active">{t("adminOrders.statusActive")}</option>
+              <option value="received">{t("orderStatus.trackerReceivedLabel")}</option>
+              <option value="preparing">{t("orderStatus.trackerPreparingLabel")}</option>
+              <option value="readyForPickup">{t("orderStatus.trackerReadyLabel")}</option>
+              <option value="completed">{t("orderStatus.trackerCompletedLabel")}</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 font-semibold">
+            {t("adminOrders.searchLabel")}
+            <input
+              className="rounded border border-gray-300 px-3 py-2 font-normal"
+              type="search"
+              value={draftFilters.search}
+              placeholder={t("adminOrders.searchPlaceholder")}
+              onChange={(event) =>
+                setDraftFilters((current) => ({ ...current, search: event.target.value }))
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-1 font-semibold">
+            {t("adminOrders.fromDateLabel")}
+            <input
+              className="rounded border border-gray-300 px-3 py-2 font-normal"
+              type="date"
+              value={draftFilters.fromDate}
+              onChange={(event) =>
+                setDraftFilters((current) => ({ ...current, fromDate: event.target.value }))
+              }
+            />
+          </label>
+          <label className="flex flex-col gap-1 font-semibold">
+            {t("adminOrders.toDateLabel")}
+            <input
+              className="rounded border border-gray-300 px-3 py-2 font-normal"
+              type="date"
+              value={draftFilters.toDate}
+              onChange={(event) =>
+                setDraftFilters((current) => ({ ...current, toDate: event.target.value }))
+              }
+            />
+          </label>
+          <div className="flex items-center gap-3 md:col-span-2 lg:col-span-4">
+            <Button type="submit" color="blue" disabled={loadingOrders}>
+              {t("adminOrders.applyFilters")}
+            </Button>
+            <Button onClick={clearFilters} color="gray" disabled={loadingOrders}>
+              {t("adminOrders.clearFilters")}
+            </Button>
+          </div>
+          <p className="text-sm text-gray-600 md:col-span-2 lg:col-span-4">
+            {t("adminOrders.retentionNote")}
+          </p>
+        </form>
+      )}
 
-      {loadingOrders && !hasLoadedOrders ? (
+      {targetOrderId !== null && targetError ? (
+        <p role="alert" className="text-red-700">{targetError}</p>
+      ) : (targetOrderId !== null && displayedOrders.length === 0) || (loadingOrders && !hasLoadedOrders) ? (
         <p className="text-gray-500" role="status">
-          {t("adminOrders.loadingOrders")}
+          {targetOrderId !== null ? t("adminOrders.loadingTargetOrder", { id: targetOrderId }) : t("adminOrders.loadingOrders")}
         </p>
-      ) : orders.length === 0 ? (
+      ) : displayedOrders.length === 0 ? (
         <p className="text-gray-500">{t("adminOrders.emptyFilteredState")}</p>
       ) : (
         <div className="space-y-4">
-          {orders.map((order) => {
+          {displayedOrders.map((order) => {
             const id = orderId(order);
             const status = orderStatusValue(order);
             const isComplete = status === ORDER_STATUS.Completed;
@@ -369,139 +628,154 @@ function ViewOrders() {
             const lastChangedUtc = order.lastStatusChangedUtc ?? order.LastStatusChangedUtc;
 
             return (
-              <Card
+              <div
                 key={id}
-                title={t("adminOrders.orderCardTitle", { id })}
-                className={`mb-2 ${isComplete ? "r66-admin-completed-order" : ""}`}
+                ref={targetOrderId === id ? targetCardRef : undefined}
+                role={targetOrderId === id ? "region" : undefined}
+                aria-label={targetOrderId === id ? t("adminOrders.orderCardTitle", { id }) : undefined}
+                tabIndex={targetOrderId === id ? -1 : undefined}
+                className={targetOrderId === id && highlightedOrderId === id ? "r66-admin-order-target" : undefined}
               >
-                <div className="flex items-center gap-2 mb-4 flex-wrap">
-                  <span
-                    className={`px-2 py-1 rounded text-sm font-medium ${
-                      isComplete ? "bg-green-200 text-green-800" : "bg-blue-100 text-blue-800"
-                    }`}
-                  >
-                    {getStatusLabel(status)}
-                  </span>
-                  {isPaid ? (
-                    <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800 text-sm font-semibold">
-                      {t("adminOrders.paidWithProvider", {
-                        provider: paymentProviderLabel(order),
-                      })}
-                    </span>
-                  ) : null}
-                  {isComplete ? (
-                    <span className="text-sm font-medium text-green-800">
-                      {t("adminOrders.completedNoAction")}
-                    </span>
-                  ) : canAdvance ? (
-                    <Button
-                      onClick={() => advanceStatus(id, status)}
-                      color="green"
-                      disabled={isAdvancing}
+                <Card
+                  title={t("adminOrders.orderCardTitle", { id })}
+                  className={`mb-2 ${isComplete ? "r66-admin-completed-order" : ""}`}
+                >
+                  <div className="flex items-center gap-2 mb-4 flex-wrap">
+                    <span
+                      className={`px-2 py-1 rounded text-sm font-medium ${
+                        isComplete ? "bg-green-200 text-green-800" : "bg-blue-100 text-blue-800"
+                      }`}
                     >
-                      {advanceLabel}
+                      {getStatusLabel(status)}
+                    </span>
+                    {isPaid ? (
+                      <span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800 text-sm font-semibold">
+                        {t("adminOrders.paidWithProvider", {
+                          provider: paymentProviderLabel(order),
+                        })}
+                      </span>
+                    ) : (
+                      <Button color="blue" onClick={(event) => {
+                        event.currentTarget.focus();
+                        setPaymentOrderId(id);
+                      }}>
+                        {t("adminOrders.takePayment")}
+                      </Button>
+                    )}
+                    {isComplete ? (
+                      <span className="text-sm font-medium text-green-800">
+                        {t("adminOrders.completedNoAction")}
+                      </span>
+                    ) : canAdvance ? (
+                      <Button
+                        onClick={() => advanceStatus(id, status)}
+                        color="green"
+                        disabled={isAdvancing}
+                      >
+                        {advanceLabel}
+                      </Button>
+                    ) : null}
+                    <Button onClick={() => fetchOrderNotifications(id)} color="gray">
+                      {loadingNotifications ? t("adminOrders.loading") : t("adminOrders.refreshNotifications")}
                     </Button>
-                  ) : null}
-                  <Button onClick={() => fetchOrderNotifications(id)} color="gray">
-                    {loadingNotifications ? t("adminOrders.loading") : t("adminOrders.refreshNotifications")}
-                  </Button>
-                </div>
-                <div className={isComplete ? "r66-admin-completed-copy" : undefined}>
-                  {lastChangedBy && lastChangedUtc ? (
-                    <p className="mb-3 text-sm text-gray-600">
-                      {t("adminOrders.lastChangedBy", {
-                        name: lastChangedBy,
-                        time: new Date(lastChangedUtc).toLocaleTimeString([], {
-                          hour: "numeric",
-                          minute: "2-digit",
-                        }),
-                      })}
-                    </p>
-                  ) : null}
-                  <p className="mb-1">
-                    <strong>{t("adminOrders.customerLabel")}</strong>{" "}
-                    {order.customerName ?? order.CustomerName}
-                  </p>
-                  {(order.customerPhone ?? order.CustomerPhone) ? (
+                  </div>
+                  <div className={isComplete ? "r66-admin-completed-copy" : undefined}>
+                    {lastChangedBy && lastChangedUtc ? (
+                      <p className="mb-3 text-sm text-gray-600">
+                        {t("adminOrders.lastChangedBy", {
+                          name: lastChangedBy,
+                          time: new Date(lastChangedUtc).toLocaleTimeString([], {
+                            hour: "numeric",
+                            minute: "2-digit",
+                          }),
+                        })}
+                      </p>
+                    ) : null}
                     <p className="mb-1">
-                      <strong>{t("adminOrders.phoneLabel")}</strong>{" "}
-                      {order.customerPhone ?? order.CustomerPhone}
+                      <strong>{t("adminOrders.customerLabel")}</strong>{" "}
+                      {order.customerName ?? order.CustomerName}
                     </p>
-                  ) : null}
-                  <p className="mb-4">
-                    <strong>{t("adminOrders.dateLabel")}</strong>{" "}
-                    {new Date(order.orderDate ?? order.OrderDate ?? 0).toLocaleString()}
-                  </p>
+                    {(order.customerPhone ?? order.CustomerPhone) ? (
+                      <p className="mb-1">
+                        <strong>{t("adminOrders.phoneLabel")}</strong>{" "}
+                        {order.customerPhone ?? order.CustomerPhone}
+                      </p>
+                    ) : null}
+                    <p className="mb-4">
+                      <strong>{t("adminOrders.dateLabel")}</strong>{" "}
+                      {new Date(order.orderDate ?? order.OrderDate ?? 0).toLocaleString()}
+                    </p>
 
-                  <ul className="space-y-2">
-                    {lineItems.map((item, idx) => {
-                      const addOns = item.addOns ?? item.AddOns ?? [];
+                    <ul className="space-y-2">
+                      {lineItems.map((item, idx) => {
+                        const addOns = item.addOns ?? item.AddOns ?? [];
 
-                      return (
-                        <li key={item.id ?? idx} className="flex flex-col border-b pb-2">
-                          {item.itemName || item.ItemName || item.menuItem?.name || item.MenuItem?.name ? (
-                            <>
-                              <span>
-                                <strong>{t("adminOrders.itemLabel")}</strong>{" "}
-                                {item.itemName ?? item.ItemName ?? item.menuItem?.name ?? item.MenuItem?.name}
-                              </span>
-                              <span>
-                                {" "}
-                                <strong>{t("adminOrders.qtyLabel")}</strong> {item.quantity}
-                              </span>
-                              {addOns.length > 0 ? (
+                        return (
+                          <li key={item.id ?? idx} className="flex flex-col border-b pb-2">
+                            {item.itemName || item.ItemName || item.menuItem?.name || item.MenuItem?.name ? (
+                              <>
                                 <span>
-                                  <strong>{t("adminOrders.shotsLabel")}</strong>{" "}
-                                  {addOns
-                                    .map((addOn) => {
-                                      const name =
-                                        addOn.itemName ??
-                                        addOn.ItemName ??
-                                        addOn.menuItem?.name ??
-                                        addOn.MenuItem?.name;
-                                      return name ? `${name} × ${addOn.quantity}` : null;
-                                    })
-                                    .filter(Boolean)
-                                    .join(", ")}
+                                  <strong>{t("adminOrders.itemLabel")}</strong>{" "}
+                                  {item.itemName ?? item.ItemName ?? item.menuItem?.name ?? item.MenuItem?.name}
                                 </span>
-                              ) : null}
-                              {item.notes ? (
                                 <span>
                                   {" "}
-                                  <strong>{t("adminOrders.notesLabel")}</strong> {item.notes}
+                                  <strong>{t("adminOrders.qtyLabel")}</strong> {item.quantity}
                                 </span>
-                              ) : null}
-                            </>
-                          ) : (
-                            <span className="text-red-500">{t("adminOrders.itemUnavailable")}</span>
-                          )}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                  <div className="mt-4 pt-3 border-t border-gray-200">
-                    <p className="font-semibold mb-2">{t("adminOrders.notificationDelivery")}</p>
-                    {notifications.length === 0 ? (
-                      <p className="text-sm">{t("adminOrders.noNotificationsYet")}</p>
-                    ) : (
-                      <ul className="text-sm space-y-1">
-                        {notifications.slice(0, 4).map((entry) => (
-                          <li key={entry.id}>
-                            {entry.recipientRole}: {entry.templateKey} -{" "}
-                            <span className="font-medium">{entry.status}</span>
+                                {addOns.length > 0 ? (
+                                  <span>
+                                    <strong>{t("adminOrders.shotsLabel")}</strong>{" "}
+                                    {addOns
+                                      .map((addOn) => {
+                                        const name =
+                                          addOn.itemName ??
+                                          addOn.ItemName ??
+                                          addOn.menuItem?.name ??
+                                          addOn.MenuItem?.name;
+                                        return name ? `${name} × ${addOn.quantity}` : null;
+                                      })
+                                      .filter(Boolean)
+                                      .join(", ")}
+                                  </span>
+                                ) : null}
+                                {item.notes ? (
+                                  <span>
+                                    {" "}
+                                    <strong>{t("adminOrders.notesLabel")}</strong> {item.notes}
+                                  </span>
+                                ) : null}
+                              </>
+                            ) : (
+                              <span className="text-red-500">{t("adminOrders.itemUnavailable")}</span>
+                            )}
                           </li>
-                        ))}
-                      </ul>
-                    )}
+                        );
+                      })}
+                    </ul>
+                    <div className="mt-4 pt-3 border-t border-gray-200">
+                      <p className="font-semibold mb-2">{t("adminOrders.notificationDelivery")}</p>
+                      {notifications.length === 0 ? (
+                        <p className="text-sm">{t("adminOrders.noNotificationsYet")}</p>
+                      ) : (
+                        <ul className="text-sm space-y-1">
+                          {notifications.slice(0, 4).map((entry) => (
+                            <li key={entry.id}>
+                              {entry.recipientRole}: {entry.templateKey} -{" "}
+                              <span className="font-medium">{entry.status}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              </div>
             );
           })}
         </div>
       )}
 
-      {hasLoadedOrders && pagination.totalItems > 0 ? (
+      {targetOrderId === null && hasLoadedOrders && pagination.totalItems > 0 ? (
         <nav
           className="flex items-center justify-between gap-3 border-t border-gray-200 pt-4 flex-wrap"
           aria-label={t("adminOrders.paginationAria")}
@@ -530,6 +804,21 @@ function ViewOrders() {
             </Button>
           </div>
         </nav>
+      ) : null}
+      {paymentOrder && !paymentOrderIsPaid ? (
+        <PaymentChooser
+          key={orderId(paymentOrder)}
+          orderId={orderId(paymentOrder)}
+          total={paymentOrder.total ?? paymentOrder.Total}
+          onClose={closePaymentChooser}
+          onViewOrder={viewOrder}
+          onRecordPayment={(method) => { void recordManualPayment(orderId(paymentOrder), method); }}
+          onStartCardPayment={() => { void startCardPayment(paymentOrder); }}
+          cardPaymentStatus={cardPayment && orderId(cardPayment.order) === orderId(paymentOrder) ? cardPayment.status : undefined}
+          cardPaymentError={cardPayment && orderId(cardPayment.order) === orderId(paymentOrder) ? cardPaymentError : null}
+          isCardPaymentBusy={cardPaymentIsBusy}
+          isRecording={recordingPayment}
+        />
       ) : null}
     </div>
   );

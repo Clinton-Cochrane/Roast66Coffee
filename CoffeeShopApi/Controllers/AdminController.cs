@@ -242,6 +242,16 @@ namespace CoffeeShopApi.Controllers
         }
 
         [Authorize(Roles = "Admin")]
+        [HttpGet("orders/{id:int}")]
+        public async Task<ActionResult<AdminOrderListItemDto>> GetOrderById(
+            int id,
+            CancellationToken cancellationToken)
+        {
+            var order = await _orderService.GetAdminOrderByIdAsync(id, cancellationToken);
+            return order == null ? NotFound() : Ok(order);
+        }
+
+        [Authorize(Roles = "Admin")]
         [HttpGet("orders/new-count")]
         public async Task<ActionResult<object>> GetNewOrdersCount([FromQuery] DateTime since)
         {

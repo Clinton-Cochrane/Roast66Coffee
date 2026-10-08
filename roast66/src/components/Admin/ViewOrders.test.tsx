@@ -1,17 +1,20 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import ViewOrders from "./ViewOrders";
 import { LanguageProvider } from "../../i18n/LanguageContext";
+import { ORDER_STATUS } from "../../constants/orderStatus";
 import type { OrderDto } from "../../types/api";
 
 const mockGet = vi.fn();
 const mockPut = vi.fn();
+const mockPost = vi.fn();
 
 vi.mock("../../axiosConfig", () => ({
   default: {
     get: (...args: unknown[]) => mockGet(...args),
     put: (...args: unknown[]) => mockPut(...args),
+    post: (...args: unknown[]) => mockPost(...args),
   },
 }));
 
@@ -27,6 +30,7 @@ const completedOrder: OrderDto = {
   customerName: "Mia",
   orderDate: "2026-08-26T10:00:00Z",
   orderStatus: 3,
+  total: 7.25,
   orderItems: [
     {
       id: 1,
@@ -50,10 +54,16 @@ const pageResponse = (items: OrderDto[], page = 1, totalItems = items.length) =>
   hasNextPage: page * 50 < totalItems,
 });
 
+const fulfillmentStatuses = Object.entries(ORDER_STATUS).map(([name, orderStatus]) => ({
+  name,
+  orderStatus,
+}));
+
 describe("ViewOrders", () => {
   beforeEach(() => {
     mockGet.mockReset();
     mockPut.mockReset();
+    mockPost.mockReset();
     mockGet.mockResolvedValue({ data: pageResponse([completedOrder]) });
     mockPut.mockResolvedValue({ data: { newStatus: "Preparing", changed: true } });
   });
@@ -140,6 +150,154 @@ describe("ViewOrders", () => {
     );
 
     expect(await screen.findByText("Paid · Stripe")).toBeInTheDocument();
+  });
+
+  it.each(fulfillmentStatuses)(
+    "opens the chooser for an unpaid $name order without starting a payment",
+    async ({ orderStatus }) => {
+      mockGet.mockResolvedValue({
+        data: pageResponse([{ ...completedOrder, orderStatus, paidUtc: null }]),
+      });
+
+      render(
+        <LanguageProvider>
+          <ViewOrders />
+        </LanguageProvider>
+      );
+
+      const takePayment = await screen.findByRole("button", { name: "Take Payment" });
+      expect(takePayment).toBeEnabled();
+      fireEvent.click(takePayment);
+
+      const chooser = screen.getByRole("dialog", { name: "Take Payment" });
+      expect(within(chooser).getByText("Order #66")).toBeInTheDocument();
+      expect(within(chooser).getByText("$7.25")).toBeInTheDocument();
+      expect(screen.queryByText(/^Paid ·/)).not.toBeInTheDocument();
+      fireEvent.click(within(chooser).getByRole("button", { name: "Cash" }));
+      expect(chooser).toBeInTheDocument();
+      expect(mockPost).not.toHaveBeenCalled();
+      expect(mockPut).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each(fulfillmentStatuses)(
+    "shows the recorded provider and no Take Payment for a paid $name order",
+    async ({ orderStatus }) => {
+      mockGet.mockResolvedValue({
+        data: pageResponse([{
+          ...completedOrder,
+          orderStatus,
+          paidUtc: "2026-08-26T10:05:00Z",
+          paymentProvider: "stripe",
+        }]),
+      });
+
+      render(
+        <LanguageProvider>
+          <ViewOrders />
+        </LanguageProvider>
+      );
+
+      expect(await screen.findByText("Paid · Stripe")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Take Payment" })).not.toBeInTheDocument();
+    }
+  );
+
+  it("preserves paid visibility for PascalCase payment fields", async () => {
+    mockGet.mockResolvedValue({
+      data: pageResponse([{
+        ...completedOrder,
+        PaidUtc: "2026-08-26T10:05:00Z",
+        PaymentProvider: "square",
+      }]),
+    });
+
+    render(
+      <LanguageProvider>
+        <ViewOrders />
+      </LanguageProvider>
+    );
+
+    expect(await screen.findByText("Paid · Square")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Take Payment" })).not.toBeInTheDocument();
+  });
+
+  it("shows each selected order's server total rather than calculating from menu prices", async () => {
+    mockGet.mockResolvedValue({
+      data: pageResponse([completedOrder, {
+        ...completedOrder, id: 67, total: undefined, Total: 12.5,
+        orderItems: [{ quantity: 3, menuItem: { name: "Changed menu price", price: 99 } }],
+      }]),
+    });
+    render(<LanguageProvider><ViewOrders /></LanguageProvider>);
+
+    const triggers = await screen.findAllByRole("button", { name: "Take Payment" });
+    fireEvent.click(triggers[0]);
+    expect(within(screen.getByRole("dialog")).getByText("$7.25")).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(triggers[0]).toHaveFocus();
+
+    fireEvent.click(triggers[1]);
+    const chooser = screen.getByRole("dialog");
+    expect(within(chooser).getByText("Order #67")).toBeInTheDocument();
+    expect(within(chooser).getByText("$12.50")).toBeInTheDocument();
+    expect(mockGet.mock.calls.filter(([url]) => url === "/admin/orders")).toHaveLength(1);
+    expect(mockPost).not.toHaveBeenCalled();
+    expect(mockPut).not.toHaveBeenCalled();
+  });
+
+  it.each(["paid", "removed"])("dismisses the chooser when its order is %s on refresh", async (change) => {
+    render(<LanguageProvider><ViewOrders /></LanguageProvider>);
+    const trigger = await screen.findByRole("button", { name: "Take Payment" });
+    let resolveRefresh!: (value: { data: ReturnType<typeof pageResponse> }) => void;
+    mockGet.mockImplementationOnce(() => new Promise((resolve) => { resolveRefresh = resolve; }));
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    fireEvent.click(trigger);
+    const chooser = screen.getByRole("dialog");
+
+    resolveRefresh({ data: pageResponse(change === "paid" ? [{
+      ...completedOrder, paidUtc: "2026-08-26T10:05:00Z", paymentProvider: "stripe",
+    }] : []) });
+    await waitFor(() => expect(chooser).not.toBeInTheDocument());
+    expect(document.body.style.overflow).toBe("");
+
+    mockGet.mockResolvedValue({ data: pageResponse([completedOrder]) });
+    fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
+    await screen.findByRole("button", { name: "Take Payment" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mockPost).not.toHaveBeenCalled();
+    expect(mockPut).not.toHaveBeenCalled();
+  });
+
+  it.each([false, true])("advances fulfillment without changing payment visibility (paid: %s)", async (isPaid) => {
+    const order = {
+      ...completedOrder,
+      orderStatus: ORDER_STATUS.ReadyForPickup,
+      paidUtc: isPaid ? "2026-08-26T10:05:00Z" : null,
+      paymentProvider: "stripe",
+    };
+    mockGet.mockResolvedValue({ data: pageResponse([order]) });
+    mockPut.mockResolvedValue({ data: { newStatus: "Completed", changed: true } });
+
+    render(
+      <LanguageProvider>
+        <ViewOrders />
+      </LanguageProvider>
+    );
+
+    const advance = await screen.findByRole("button", { name: "Mark complete" });
+    expect(advance).toBeEnabled();
+    mockGet.mockResolvedValue({ data: pageResponse([{ ...order, orderStatus: ORDER_STATUS.Completed }]) });
+    fireEvent.click(advance);
+
+    expect(mockPut).toHaveBeenCalledWith("/admin/updateOrderStatus/66/status", {
+      expectedStatus: ORDER_STATUS.ReadyForPickup,
+    });
+    await screen.findByText("Completed — no further action");
+    expect(screen.queryAllByRole("button", { name: "Take Payment" })).toHaveLength(isPaid ? 0 : 1);
+    expect(screen.queryAllByText("Paid · Stripe")).toHaveLength(isPaid ? 1 : 0);
+    expect(screen.queryByRole("button", { name: "Mark complete" })).not.toBeInTheDocument();
+    expect(mockPost).not.toHaveBeenCalled();
   });
 
   it("does not expose a manual order deletion control", async () => {
