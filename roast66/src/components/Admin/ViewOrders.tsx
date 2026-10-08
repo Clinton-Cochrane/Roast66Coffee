@@ -703,7 +703,13 @@ function ViewOrders({ targetOrderId: externalTargetOrderId, onTargetOrderChange,
                     ) : null}
                     <p className="mb-4">
                       <strong>{t("adminOrders.dateLabel")}</strong>{" "}
-                      {new Date(order.orderDate ?? order.OrderDate ?? 0).toLocaleString()}
+                      {new Date(order.orderDate ?? order.OrderDate ?? 0).toLocaleString(undefined, {
+                        year: "numeric",
+                        month: "numeric",
+                        day: "numeric",
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
                     </p>
 
                     <ul className="space-y-2">
