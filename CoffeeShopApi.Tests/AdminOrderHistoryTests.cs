@@ -11,6 +11,34 @@ public class AdminOrderHistoryTests
     private static readonly DateTime NowUtc = new(2026, 8, 31, 20, 0, 0, DateTimeKind.Utc);
 
     [Fact]
+    public async Task ExactOrderLookup_ReturnsOnlyTheRequestedIdOutsideHistoryRetention()
+    {
+        await using var context = CreateContext();
+        var target = CreateOrder(66, OrderStatus.Completed, NowUtc.AddDays(-4), NowUtc.AddHours(-72));
+        target.OrderItems[0].UnitPrice = 3.25m;
+        target.OrderItems[0].Quantity = 2;
+        target.OrderItems[0].AddOns![0].UnitPrice = 0.75m;
+        target.OrderItems[0].AddOns![0].Quantity = 3;
+        context.Orders.AddRange(target, CreateOrder(666, OrderStatus.Received, NowUtc, customerName: "Order 66"));
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        var service = CreateService(context);
+
+        var history = await service.GetOrderHistoryAsync(new AdminOrderHistoryRequest(), NowUtc);
+        Assert.Equal(666, Assert.Single(history.Items).Id);
+
+        var result = await service.GetAdminOrderByIdAsync(66);
+        Assert.NotNull(result);
+        Assert.Equal(66, result.Id);
+        Assert.Equal(OrderStatus.Completed, result.OrderStatus);
+        Assert.Equal(8.75m, result.Total);
+        Assert.Equal("Coffee", Assert.Single(result.OrderItems).ItemName);
+        Assert.Null(result.PaidUtc);
+        Assert.Null(await service.GetAdminOrderByIdAsync(67));
+        Assert.Empty(context.ChangeTracker.Entries());
+    }
+
+    [Fact]
     public async Task HistoryTotal_UsesSavedPricesAndEachAddOnQuantityWithoutTrackingOrChangingOrders()
     {
         await using var context = CreateContext();

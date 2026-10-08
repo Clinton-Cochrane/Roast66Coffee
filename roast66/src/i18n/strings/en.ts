@@ -324,6 +324,11 @@ export const en = {
     toDateLabel: "Ordered through",
     applyFilters: "Apply filters",
     clearFilters: "Clear filters",
+    clearTarget: "Clear target",
+    showingTargetOrder: "Showing Order #{{id}}",
+    loadingTargetOrder: "Loading order #{{id}}...",
+    targetOrderNotFound: "Order #{{id}} was not found.",
+    targetOrderFetchFailed: "Could not load Order #{{id}}. Try Refresh or clear the target.",
     retentionNote:
       "Pages contain 50 orders. Completed orders leave this operational view 48 hours after completion.",
     loadingOrders: "Loading orders...",

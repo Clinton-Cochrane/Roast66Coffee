@@ -335,6 +335,11 @@ export const esMx: Messages = {
     toDateLabel: "Pedidos hasta",
     applyFilters: "Aplicar filtros",
     clearFilters: "Borrar filtros",
+    clearTarget: "Quitar pedido seleccionado",
+    showingTargetOrder: "Mostrando pedido #{{id}}",
+    loadingTargetOrder: "Cargando pedido #{{id}}...",
+    targetOrderNotFound: "No se encontró el pedido #{{id}}.",
+    targetOrderFetchFailed: "No se pudo cargar el pedido #{{id}}. Intenta actualizar o quitar la selección.",
     retentionNote:
       "Las páginas contienen 50 pedidos. Los pedidos completados salen de esta vista operativa 48 horas después de completarse.",
     loadingOrders: "Cargando pedidos...",

@@ -5,6 +5,11 @@
   text-decoration-thickness: 1px;
 }
 
+.r66-admin-order-target {
+  border-radius: 0.85rem;
+  box-shadow: 0 0 0 3px #c77e42;
+}
+
 .r66-payment-backdrop {
   position: fixed;
   inset: 0;

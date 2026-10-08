@@ -1,6 +1,6 @@
 import React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import CashGate from "../components/Admin/CashGate";
 import OrderPage from "./OrderPage";
@@ -212,6 +212,55 @@ describe("cashier order entry and public route regression", () => {
     fireEvent.click(screen.getByRole("button", { name: "Refresh" }));
     await waitFor(() => expect(orderListRequests()).toHaveLength(3));
     expect(orderListRequests()[2][1]).toEqual({ params: { page: 2, status: "all" } });
+  });
+
+  it("View Order selects Orders, focuses the exact card, and clearing restores default filters and page", async () => {
+    const defaultGet = http.get.getMockImplementation()!;
+    http.get.mockImplementation(async (url: string, config?: { params?: { page?: number } }) => {
+      if (url === "/admin/orders/42") return { data: { ...order, total: 2.5 } };
+      if (url === "/admin/orders") {
+        const page = config?.params?.page ?? 1;
+        return { data: {
+          items: [{ ...order, total: 2.5 }], page, pageSize: 50, totalItems: 51, totalPages: 2,
+          hasPreviousPage: page > 1, hasNextPage: page < 2,
+        } };
+      }
+      return defaultGet(url, config);
+    });
+    renderFlow();
+    await buildOrder();
+    fireEvent.click(screen.getByRole("tab", { name: "Orders" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Apply filters" })).toBeEnabled());
+    fireEvent.change(screen.getByLabelText("Search orders"), { target: { value: "Ada" } });
+    fireEvent.click(screen.getByRole("button", { name: "Apply filters" }));
+    await waitFor(() => expect(orderListRequests()).toHaveLength(2));
+    await waitFor(() => expect(screen.getByRole("button", { name: "Next" })).toBeEnabled());
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByText("Page 2 of 2 · 51 orders");
+    fireEvent.click(screen.getByRole("button", { name: "Take Payment" }));
+
+    // Both panels stay mounted; exercise returning from a hidden Orders panel.
+    fireEvent.click(screen.getByRole("tab", { name: "New Order" }));
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Take Payment" }))
+      .getByRole("button", { name: "View Order" }));
+    const card = await screen.findByRole("region", { name: "Order #42" });
+    expect(screen.getByRole("tab", { name: "Orders" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("tabpanel", { name: "Orders" })).toBeVisible();
+    expect(card).toHaveFocus();
+    expect(card).toHaveClass("r66-admin-order-target");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(document.body.style.overflow).toBe("");
+    expect(http.get).toHaveBeenCalledWith("/admin/orders/42");
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear target" }));
+    await screen.findByText("Page 1 of 2 · 51 orders");
+    expect(screen.getByLabelText("Order status")).toHaveValue("all");
+    expect(screen.getByLabelText("Search orders")).toHaveValue("");
+    expect(orderListRequests().at(-1)?.[1]).toEqual({ params: { page: 1, status: "all" } });
+    expect(screen.queryByRole("region", { name: "Order #42" })).not.toBeInTheDocument();
+    expect(http.post).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("tab", { name: "New Order" }));
+    expect(screen.getByRole("textbox", { name: "Name" })).toHaveValue("Ada");
   });
 
   it("shows a successful replay as cashier confirmation with a duplicate notice", async () => {

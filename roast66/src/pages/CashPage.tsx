@@ -15,6 +15,7 @@ function CashPage() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<CashTab>("newOrder");
+  const [targetOrderId, setTargetOrderId] = useState<number | null>(null);
   const [completedOrder, setCompletedOrder] = useState<{
     order: OrderDto;
     wasReplay: boolean;
@@ -37,6 +38,11 @@ function CashPage() {
 
   const handleOrderCompleted = useCallback((order: OrderDto, wasReplay: boolean) => {
     setCompletedOrder({ order, wasReplay });
+  }, []);
+
+  const handleTargetOrderChange = useCallback((orderId: number | null) => {
+    setTargetOrderId(orderId);
+    if (orderId !== null) setActiveTab("orders");
   }, []);
 
   const selectTab = (tab: CashTab) => {
@@ -160,7 +166,11 @@ function CashPage() {
             hidden={activeTab !== "orders"}
             className="p-3 sm:p-6"
           >
-            <ViewOrders />
+            <ViewOrders
+              targetOrderId={targetOrderId}
+              onTargetOrderChange={handleTargetOrderChange}
+              isActive={activeTab === "orders"}
+            />
           </div>
         </div>
       </div>

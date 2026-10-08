@@ -47,6 +47,22 @@ describe("PaymentChooser", () => {
     expect(screen.queryByText("Total unavailable")).not.toBeInTheDocument();
   });
 
+  it("enables View Order and passes the exact selected order ID to its callback", () => {
+    const onViewOrder = vi.fn();
+    const onClose = vi.fn();
+    render(<LanguageProvider>
+      <PaymentChooser orderId={66} total={7.25} onClose={onClose} onViewOrder={onViewOrder} />
+    </LanguageProvider>);
+    const viewOrder = screen.getByRole("button", { name: "View Order" });
+    expect(viewOrder).toBeEnabled();
+    fireEvent.click(viewOrder);
+    expect(onViewOrder).toHaveBeenCalledWith(66);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Cash" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Card" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Other" })).toBeDisabled();
+  });
+
   it.each(["escape", "outside", "close icon"])("dismisses via %s", (method) => {
     const onClose = vi.fn();
     render(<LanguageProvider><PaymentChooser orderId={66} total={7.25} onClose={onClose} /></LanguageProvider>);

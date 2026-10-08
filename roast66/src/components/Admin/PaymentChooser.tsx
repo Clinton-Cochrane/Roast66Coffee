@@ -9,9 +9,10 @@ type PaymentChooserProps = {
   orderId: number;
   total: number | null | undefined;
   onClose: () => void;
+  onViewOrder?: (orderId: number) => void;
 };
 
-function PaymentChooser({ orderId, total, onClose }: PaymentChooserProps) {
+function PaymentChooser({ orderId, total, onClose, onViewOrder }: PaymentChooserProps) {
   const { locale, t } = useI18n();
   const titleId = useId();
   const dialogRef = useRef<HTMLElement>(null);
@@ -92,7 +93,9 @@ function PaymentChooser({ orderId, total, onClose }: PaymentChooserProps) {
             {hasTotal ? currencyFormatter.format(total) : t("adminOrders.totalUnavailable")}
           </span>
         </div>
-        <Button color="gray" disabled className="w-full mb-4">{t("adminOrders.viewOrder")}</Button>
+        <Button color="gray" disabled={!onViewOrder} onClick={() => onViewOrder?.(orderId)} className="w-full mb-4">
+          {t("adminOrders.viewOrder")}
+        </Button>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <Button disabled>{t("adminOrders.cashPayment")}</Button>
           <Button disabled>{t("adminOrders.cardPayment")}</Button>

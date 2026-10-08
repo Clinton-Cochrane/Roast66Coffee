@@ -130,6 +130,12 @@ public class AdminOrderHistoryPostgresTests
                 Assert.Single(Assert.Single(order.OrderItems).AddOns).ItemName));
         // Count, paged orders, their line items, and their add-ons each use one reader command.
         Assert.Equal(4, counter.ReaderCommandCount);
+
+        var exact = await service.GetAdminOrderByIdAsync(result.Items[0].Id);
+        Assert.NotNull(exact);
+        Assert.Equal(result.Items[0].Id, exact.Id);
+        Assert.Equal(10.75m, exact.Total);
+        Assert.Equal("Superman", Assert.Single(exact.OrderItems).ItemName);
     }
 
     private sealed class ReaderCommandCounter : DbCommandInterceptor
