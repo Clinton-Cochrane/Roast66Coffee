@@ -10,6 +10,46 @@ allowed crawling but did not advertise a sitemap. These observations establish
 delivery problems; they do not establish Google's indexing status. Gemini's
 answer and a `site:` query are not substitutes for Search Console inspection.
 
+## Hosting prerequisite: keep public HTML available during API idle time
+
+The application is decoupled: a React/Vite frontend and a separate .NET API.
+Both repository Blueprints specify a Render static frontend. The live response
+currently includes an Nginx origin header, consistent with the separate Docker
+frontend, but that header does not establish its Render service type or compute
+plan. Confirm the actual domain-to-service mapping in the correct Render
+workspace before changing hosting.
+
+Render documents that Free web services sleep after 15 minutes without inbound
+traffic and take about one minute to resume. More directly relevant to SEO,
+Render automatically returns a disallow-all `robots.txt` while a Free web
+service is asleep; a robots request does not wake it. Build-time HTML cannot
+override that platform response. A successful robots response while awake
+does not prove that the domain stays crawlable while idle.
+
+Use a Render Static Site for the generated frontend so its HTML, assets,
+robots.txt, and sitemap are served from the CDN independently of API requests.
+The API's compute plan is a separate decision for ordering responsiveness.
+Upgrading the workspace plan alone does not remove Free compute limitations.
+See [Render's Free service limits](https://render.com/docs/free) and
+[Static Sites](https://render.com/docs/static-sites).
+
+Before any domain cutover:
+
+1. Confirm the live frontend service type, compute plan, deployment branch,
+   custom domains, and API origin in the user-selected workspace.
+2. If it is a sleeping web service, prepare the static frontend using the
+   reviewed release commit, the Blueprint build command, `roast66/dist`, the
+   public-route rewrites, and the correct API URL and security headers.
+3. Verify the static site's temporary URL with JavaScript disabled and enabled,
+   including menu API access, CORS, public HTML, sitemap, and private noindex.
+4. Move the custom domains to the verified static site, preserve the observed
+   apex-to-www redirect, and repeat the live checks below. Keep the previous
+   service available for rollback until the cutover is verified.
+
+Do not treat either the current Blueprints or the passing Nginx smoke tests as
+proof that production already uses a static CDN. Do not close the indexing goal
+until live hosting and Google's actual indexing have been verified.
+
 ## Build and hosting behavior
 
 `npm run build` builds the browser app, renders the existing public React page
