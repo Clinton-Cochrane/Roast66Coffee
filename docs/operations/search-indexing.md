@@ -16,9 +16,9 @@ The application is decoupled: a React/Vite frontend and a separate .NET API.
 Both repository Blueprints specify a Render static frontend. Live inspection in
 the user-confirmed **My Workspace** instead found two legacy Free Docker web
 services: `Roast66Coffee-frontend` (`srv-ctdvec2lqhvc73daf1d0`) and
-`Roast66Coffee-backend` (`srv-ctdrt0lumphs7397tahg`). Both track `main`. Public DNS
-maps `www.roast66coffee.com` to `roast66coffee-frontend.onrender.com`. This
-confirms that the public frontend is exposed to Free web-service idle behavior;
+`Roast66Coffee-backend` (`srv-ctdrt0lumphs7397tahg`). Both track `main`. Before the cutover, public DNS
+mapped `www.roast66coffee.com` to `roast66coffee-frontend.onrender.com`. This
+confirmed that the public frontend was exposed to Free web-service idle behavior;
 it does not establish Google's last observed crawl response.
 
 Render documents that Free web services sleep after 15 minutes without inbound
@@ -52,16 +52,16 @@ Do not treat either the current Blueprints or the passing Nginx smoke tests as
 proof that production already uses a static CDN. Do not close the indexing goal
 until live hosting and Google's actual indexing have been verified.
 
-### Prepared static replacement
+### Live static frontend
 
 A separate static site, `roast66coffee-static` (`srv-dbd3vssipgvc73e2fic0`), was
-created in My Workspace and deployed on October 22, 2026. It has no custom
-domains and automatic deploys are off. The existing frontend and DNS remain
-unchanged. The backend's allowed-origin configuration was subsequently expanded
-as recorded below. Its temporary URL is
+created in My Workspace and deployed on October 22, 2026. Both production
+domains now belong to this static site, and automatic deploys are off. The old
+frontend service remains available for rollback. The backend's allowed-origin
+configuration was expanded as recorded below. Its Render URL is
 <https://roast66coffee-static.onrender.com>, and its
 [Render settings](https://dashboard.render.com/static/srv-dbd3vssipgvc73e2fic0/settings)
-are the target for the eventual domain move.
+show the active domain associations.
 
 The source is `bug/334-crawlable-public-pages`, build command
 `cd roast66 && npm ci --include=dev && npm run build`, publish path `roast66/dist`,
@@ -82,29 +82,41 @@ and matching CORS headers for both the www and preview origins. Browser checks
 confirmed 51 rendered item headings on the preview and successful selection of
 a drink into the order builder with quantity one. The browser's Spanish UI
 preference was preserved, while SEO metadata remained English. No real order
-was submitted. Repeat menu and ordering checks after custom-domain cutover.
+was submitted. After cutover, the production menu also rendered all 51 items,
+and selecting RUSTEZ opened the order builder with one item and quantity one.
+No production order was submitted.
 
-Custom-domain editing is not exposed by the connected Render tool. Authenticated
-Dashboard access was established through Chrome during the migration session.
-The old frontend has both domains verified and redirects the apex to www. Its
-domain menu offers DNS details and removal, without a direct move action.
-Keep the old association intact until DNS management access is confirmed, then
-finish the domain move in the Dashboard. Preserve `www` as canonical: add
-`www.roast66coffee.com` to the
-static service so Render also redirects the apex to it. Resolve the existing
-association with the old frontend using the Dashboard's current controls;
-do not delete the old service. Change the DNS `www` CNAME from
+On October 22, authenticated Chrome sessions were used for the Render domain
+move and Zoho DNS update because the connector does not expose custom-domain
+editing. Only the website's `www` CNAME was changed, from
 `roast66coffee-frontend.onrender.com` to `roast66coffee-static.onrender.com`.
-The observed apex A record is `216.24.57.1`; verify the new service's displayed
-DNS instructions rather than guessing a replacement. DNS currently uses
-`zns-53.com`/`zns-53.net` nameservers.
+The apex A record remains `216.24.57.1`, matching Render's displayed instructions.
+Zoho mail records were preserved. Removing the old service's `www` association
+also removed its paired apex association. Adding `www.roast66coffee.com` to the
+static site recreated the apex-to-www redirect. Both domains show Verified and
+Certificate Issued in Render. Google Public DNS returned the new CNAME.
 
-Only mark the domain cutover verified after TLS, redirects, all public pages,
-private direct links, live API access, and the sitemap work at the real domain.
-The signed-in Google account was checked against the Domain property and the
-https www/apex URL-prefix properties. Search Console denied access to all three.
-An existing owner must grant access, or ownership must be verified using an
-appropriate account. No sitemap submission or Google indexing has been confirmed.
+Production HTTPS checks returned 200 for all four public pages with rendered
+headings, matching www canonicals, and index/follow directives. `robots.txt`
+advertises the XML sitemap. All six private entry documents returned noindex.
+The apex redirects to the canonical www homepage. Browser checks confirmed
+live API menu access and the order-builder flow described above.
+
+Google Search Console ownership of the `roast66coffee.com` Domain property was
+verified for the signed-in account using Google's exact TXT token, added as a
+second apex TXT value alongside the existing SPF record. Keep that verification
+record in DNS. The submitted `https://www.roast66coffee.com/sitemap.xml` reports
+**Success**, last read October 22, 2026, with **4 discovered pages**.
+
+Homepage URL Inspection reported **Discovered – currently not indexed**, with
+no last crawl or Google-selected canonical. The live test on October 22, 2026
+at 11:37 Pacific reported **URL is available to Google** and **Page can be
+indexed**: crawl allowed, successful page fetch, indexing allowed, and the
+correct `https://www.roast66coffee.com/` user-declared canonical. Google's tested
+HTML contained the business heading, service cities, and canonical metadata.
+The homepage indexing request was accepted into Google's priority crawl queue.
+This confirms delivery and request acceptance, not actual indexing. Recheck the
+Google Index result after Google crawls the queued URL.
 
 ## Build and hosting behavior
 
