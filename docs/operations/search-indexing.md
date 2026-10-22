@@ -56,8 +56,9 @@ until live hosting and Google's actual indexing have been verified.
 
 A separate static site, `roast66coffee-static` (`srv-dbd3vssipgvc73e2fic0`), was
 created in My Workspace and deployed on October 22, 2026. It has no custom
-domains and automatic deploys are off. The existing frontend and backend were
-not changed. Its temporary URL is
+domains and automatic deploys are off. The existing frontend and DNS remain
+unchanged. The backend's allowed-origin configuration was subsequently expanded
+as recorded below. Its temporary URL is
 <https://roast66coffee-static.onrender.com>, and its
 [Render settings](https://dashboard.render.com/static/srv-dbd3vssipgvc73e2fic0/settings)
 are the target for the eventual domain move.
@@ -69,19 +70,27 @@ Node version `24.20.0`, API URL `https://roast66coffee.onrender.com/api`, and
 reviewed and merged, move the static site's source to the reviewed release
 branch/commit using the intended manual release workflow.
 
-Public HTTP checks on the first static deployment verified all four public
-documents, matching canonical tags, robots.txt, and an XML sitemap. The API
-permits the production origin `https://www.roast66coffee.com` but does not permit
-the temporary static origin. That is an expected preview limitation; it does
-not prove end-to-end ordering works on the preview. Recheck actual API access
-in the browser after custom-domain cutover. If full preview API access is
-required first, explicitly add the preview origin to the backend's existing
-AllowedOrigins without replacing other origins.
+Public HTTP checks verified all four public documents, matching canonical tags,
+robots.txt, an XML sitemap, and noindex entry documents for the six private
+routes. The static deployment running commit `a437ba3d` is live.
 
-Custom-domain editing is not exposed by the connected Render tool, and no
-authenticated Dashboard browser or Render CLI/API credential is available.
-Finish the domain association in the Dashboard or establish an authenticated
-management path. Preserve `www` as canonical: add `www.roast66coffee.com` to the
+On October 22, the API's `AllowedOrigins` was updated to append
+`https://roast66coffee-static.onrender.com`, preserving its existing old-frontend,
+apex, and www origins. Configuration deploy `dep-dbd54067bikc73f4mcdg` became live
+on the unchanged backend commit `5772849a`. HTTP checks returned 51 menu items
+and matching CORS headers for both the www and preview origins. Browser checks
+confirmed 51 rendered item headings on the preview and successful selection of
+a drink into the order builder with quantity one. The browser's Spanish UI
+preference was preserved, while SEO metadata remained English. No real order
+was submitted. Repeat menu and ordering checks after custom-domain cutover.
+
+Custom-domain editing is not exposed by the connected Render tool. Authenticated
+Dashboard access was established through Chrome during the migration session.
+The old frontend has both domains verified and redirects the apex to www. Its
+domain menu offers DNS details and removal, without a direct move action.
+Keep the old association intact until DNS management access is confirmed, then
+finish the domain move in the Dashboard. Preserve `www` as canonical: add
+`www.roast66coffee.com` to the
 static service so Render also redirects the apex to it. Resolve the existing
 association with the old frontend using the Dashboard's current controls;
 do not delete the old service. Change the DNS `www` CNAME from
@@ -92,7 +101,10 @@ DNS instructions rather than guessing a replacement. DNS currently uses
 
 Only mark the domain cutover verified after TLS, redirects, all public pages,
 private direct links, live API access, and the sitemap work at the real domain.
-No Search Console submission or Google indexing has been confirmed yet.
+The signed-in Google account was checked against the Domain property and the
+https www/apex URL-prefix properties. Search Console denied access to all three.
+An existing owner must grant access, or ownership must be verified using an
+appropriate account. No sitemap submission or Google indexing has been confirmed.
 
 ## Build and hosting behavior
 
