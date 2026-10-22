@@ -16,8 +16,8 @@ The application is decoupled: a React/Vite frontend and a separate .NET API.
 Both repository Blueprints specify a Render static frontend. Live inspection in
 the user-confirmed **My Workspace** instead found two legacy Free Docker web
 services: `Roast66Coffee-frontend` (`srv-ctdvec2lqhvc73daf1d0`) and
-`Roast66Coffee-backend` (`srv-ctdrt0lumphs7397tahg`). Both track `main`. Before the cutover, public DNS
-mapped `www.roast66coffee.com` to `roast66coffee-frontend.onrender.com`. This
+`Roast66Coffee-backend` (`srv-ctdrt0lumphs7397tahg`). Both track `main`. Before the
+cutover, public DNS mapped `www.roast66coffee.com` to `roast66coffee-frontend.onrender.com`. This
 confirmed that the public frontend was exposed to Free web-service idle behavior;
 it does not establish Google's last observed crawl response.
 
@@ -63,12 +63,14 @@ configuration was expanded as recorded below. Its Render URL is
 [Render settings](https://dashboard.render.com/static/srv-dbd3vssipgvc73e2fic0/settings)
 show the active domain associations.
 
-The source is `bug/334-crawlable-public-pages`, build command
+The site was initially deployed from `bug/334-crawlable-public-pages`. After
+PR #335 was merged as `c8ea9177`, its source branch was changed to `main`, with
+automatic deployments still off. The verified deployment remains `a437ba3d`;
+changing the source did not require a duplicate deployment. The build command is
 `cd roast66 && npm ci --include=dev && npm run build`, publish path `roast66/dist`,
 Node version `24.20.0`, API URL `https://roast66coffee.onrender.com/api`, and
-`VITE_USE_STATIC_MENU=false`. Online payments remain disabled. After PR #335 is
-reviewed and merged, move the static site's source to the reviewed release
-branch/commit using the intended manual release workflow.
+`VITE_USE_STATIC_MENU=false`. Online payments remain disabled. Continue using
+the intended manual release workflow for future deployments from `main`.
 
 Public HTTP checks verified all four public documents, matching canonical tags,
 robots.txt, an XML sitemap, and noindex entry documents for the six private
@@ -97,7 +99,9 @@ static site recreated the apex-to-www redirect. Both domains show Verified and
 Certificate Issued in Render. Google Public DNS returned the new CNAME.
 
 Production HTTPS checks returned 200 for all four public pages with rendered
-headings, matching www canonicals, and index/follow directives. `robots.txt`
+headings, matching www canonicals, and index/follow directives, without public
+X-Robots-Tag exclusions. A fresh JavaScript-disabled browser displayed each
+public heading and navigation. `robots.txt`
 advertises the XML sitemap. All six private entry documents returned noindex.
 The apex redirects to the canonical www homepage. Browser checks confirmed
 live API menu access and the order-builder flow described above.
@@ -114,9 +118,13 @@ at 11:37 Pacific reported **URL is available to Google** and **Page can be
 indexed**: crawl allowed, successful page fetch, indexing allowed, and the
 correct `https://www.roast66coffee.com/` user-declared canonical. Google's tested
 HTML contained the business heading, service cities, and canonical metadata.
-The homepage indexing request was accepted into Google's priority crawl queue.
-This confirms delivery and request acceptance, not actual indexing. Recheck the
-Google Index result after Google crawls the queued URL.
+Google also accepted indexing requests for `/about`, `/menu`, and `/order`.
+Each inspection reported **Discovered – currently not indexed**, with no last
+crawl. The menu live test also reported that the URL is available to Google
+and can be indexed. All four indexing requests were accepted into Google's
+priority crawl queue. This confirms delivery and request acceptance, not actual
+indexing. Recheck Google Index results and Google's selected canonicals after
+Google crawls the queued URLs.
 
 ## Build and hosting behavior
 
