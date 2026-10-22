@@ -10,6 +10,28 @@ const output = (path) => path === "/" ? "index.html" : `${path.slice(1)}.html`;
 const titles = new Set();
 const descriptions = new Set();
 
+test("branded favicon links point to a square PNG and a real ICO fallback", async () => {
+  const { document } = new JSDOM(await readFile("dist/index.html", "utf8")).window;
+  const pngIcon = document.querySelector('link[rel="icon"][type="image/png"]');
+  assert.equal(pngIcon?.getAttribute("href"), "/favicon-96.png");
+  assert.equal(pngIcon.getAttribute("sizes"), "96x96");
+  const png = await readFile("dist/favicon-96.png");
+  assert.equal(png.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  assert.equal(png.readUInt32BE(16), 96);
+  assert.equal(png.readUInt32BE(20), 96);
+
+  const icoIcon = document.querySelector('link[rel="icon"][type="image/x-icon"]');
+  assert.equal(icoIcon?.getAttribute("href"), "/favicon.ico");
+  const ico = await readFile("dist/favicon.ico");
+  assert.equal(ico.readUInt32LE(0), 0x00010000, "ICO must not be a renamed PNG");
+  const sizes = Array.from({ length: ico.readUInt16LE(4) }, (_, i) => {
+    const offset = 6 + i * 16;
+    assert.equal(ico[offset], ico[offset + 1], "each ICO frame must be square");
+    return ico[offset] || 256;
+  });
+  assert.ok(sizes.includes(16) && sizes.includes(32) && sizes.includes(48));
+});
+
 for (const path of paths) {
   test(`${path} is useful and indexable before JavaScript runs`, async () => {
     const html = await readFile(resolve("dist", output(path)), "utf8");
