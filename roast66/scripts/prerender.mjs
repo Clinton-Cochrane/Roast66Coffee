@@ -1,5 +1,5 @@
-import { readFile, writeFile, rm } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readFile, writeFile, rm, mkdir } from "node:fs/promises";
+import { resolve, dirname } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build } from "vite";
 
@@ -15,7 +15,7 @@ await build({
 });
 
 try {
-  const { renderPage, publicPaths, siteOrigin } = await import(
+  const { renderPage, publicPaths, appPaths, siteOrigin } = await import(
     pathToFileURL(resolve(serverOutput, "prerender.js")).href
   );
   const template = await readFile("dist/index.html", "utf8");
@@ -48,8 +48,10 @@ try {
       .replace("<!--app-html-->", () => body)
       .replace("</head>", () => styles + "</head>");
   }
-  for (const path of publicPaths) {
+  // Clean .html entry documents also work on a CDN without SPA rewrites.
+  for (const path of [...publicPaths, ...appPaths]) {
     const file = path === "/" ? "index.html" : `${path.slice(1)}.html`;
+    await mkdir(dirname(resolve("dist", file)), { recursive: true });
     await writeFile(resolve("dist", file), documentFor(path));
   }
   // Staff pages, order tracking and unknown paths must not inherit Home's SEO.

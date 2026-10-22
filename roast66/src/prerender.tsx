@@ -19,6 +19,7 @@ const pages = {
 };
 
 export const publicPaths = Object.keys(publicPages);
+export const appPaths = ["/admin", "/admin-login", "/cash", "/order-status", "/order/confirmation", "/order/duplicate"];
 export const siteOrigin = SITE_ORIGIN;
 
 export function renderPage(pathname: string) {

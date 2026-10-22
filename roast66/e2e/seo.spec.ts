@@ -31,13 +31,19 @@ test("client navigation updates the prerendered metadata without duplicates", as
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://www.roast66coffee.com/order");
 });
 
-test("Nginx serves noindex for app routes and 404 for missing crawl files", async ({ request }) => {
-  for (const path of ["/admin", "/admin-login", "/cash", "/order-status", "/order/confirmation", "/order/duplicate", "/unknown-page"]) {
+test("direct app routes are noindex and missing crawl files are 404", async ({ request }) => {
+  for (const path of ["/admin", "/admin-login", "/cash", "/order-status", "/order/confirmation", "/order/duplicate"]) {
     const response = await request.get(path);
     expect(response.status()).toBe(200);
     const html = await response.text();
     expect(html).toContain('name="robots" content="noindex, nofollow"');
     expect(html).not.toContain('rel="canonical"');
+  }
+  const unknown = await request.get("/unknown-page");
+  // Nginx can serve the noindex app fallback; an unconfigured CDN returns 404.
+  if (unknown.status() !== 404) {
+    expect(unknown.status()).toBe(200);
+    expect(await unknown.text()).toContain('name="robots" content="noindex, nofollow"');
   }
   for (const path of ["/missing.js", "/missing.xml"]) {
     expect((await request.get(path)).status()).toBe(404);

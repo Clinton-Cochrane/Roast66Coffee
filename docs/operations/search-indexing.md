@@ -13,11 +13,13 @@ answer and a `site:` query are not substitutes for Search Console inspection.
 ## Hosting prerequisite: keep public HTML available during API idle time
 
 The application is decoupled: a React/Vite frontend and a separate .NET API.
-Both repository Blueprints specify a Render static frontend. The live response
-currently includes an Nginx origin header, consistent with the separate Docker
-frontend, but that header does not establish its Render service type or compute
-plan. Confirm the actual domain-to-service mapping in the correct Render
-workspace before changing hosting.
+Both repository Blueprints specify a Render static frontend. Live inspection in
+the user-confirmed **My Workspace** instead found two legacy Free Docker web
+services: `Roast66Coffee-frontend` (`srv-ctdvec2lqhvc73daf1d0`) and
+`Roast66Coffee-backend` (`srv-ctdrt0lumphs7397tahg`). Both track `main`. Public DNS
+maps `www.roast66coffee.com` to `roast66coffee-frontend.onrender.com`. This
+confirms that the public frontend is exposed to Free web-service idle behavior;
+it does not establish Google's last observed crawl response.
 
 Render documents that Free web services sleep after 15 minutes without inbound
 traffic and take about one minute to resume. More directly relevant to SEO,
@@ -50,11 +52,56 @@ Do not treat either the current Blueprints or the passing Nginx smoke tests as
 proof that production already uses a static CDN. Do not close the indexing goal
 until live hosting and Google's actual indexing have been verified.
 
+### Prepared static replacement
+
+A separate static site, `roast66coffee-static` (`srv-dbd3vssipgvc73e2fic0`), was
+created in My Workspace and deployed on October 22, 2026. It has no custom
+domains and automatic deploys are off. The existing frontend and backend were
+not changed. Its temporary URL is
+<https://roast66coffee-static.onrender.com>, and its
+[Render settings](https://dashboard.render.com/static/srv-dbd3vssipgvc73e2fic0/settings)
+are the target for the eventual domain move.
+
+The source is `bug/334-crawlable-public-pages`, build command
+`cd roast66 && npm ci --include=dev && npm run build`, publish path `roast66/dist`,
+Node version `24.20.0`, API URL `https://roast66coffee.onrender.com/api`, and
+`VITE_USE_STATIC_MENU=false`. Online payments remain disabled. After PR #335 is
+reviewed and merged, move the static site's source to the reviewed release
+branch/commit using the intended manual release workflow.
+
+Public HTTP checks on the first static deployment verified all four public
+documents, matching canonical tags, robots.txt, and an XML sitemap. The API
+permits the production origin `https://www.roast66coffee.com` but does not permit
+the temporary static origin. That is an expected preview limitation; it does
+not prove end-to-end ordering works on the preview. Recheck actual API access
+in the browser after custom-domain cutover. If full preview API access is
+required first, explicitly add the preview origin to the backend's existing
+AllowedOrigins without replacing other origins.
+
+Custom-domain editing is not exposed by the connected Render tool, and no
+authenticated Dashboard browser or Render CLI/API credential is available.
+Finish the domain association in the Dashboard or establish an authenticated
+management path. Preserve `www` as canonical: add `www.roast66coffee.com` to the
+static service so Render also redirects the apex to it. Resolve the existing
+association with the old frontend using the Dashboard's current controls;
+do not delete the old service. Change the DNS `www` CNAME from
+`roast66coffee-frontend.onrender.com` to `roast66coffee-static.onrender.com`.
+The observed apex A record is `216.24.57.1`; verify the new service's displayed
+DNS instructions rather than guessing a replacement. DNS currently uses
+`zns-53.com`/`zns-53.net` nameservers.
+
+Only mark the domain cutover verified after TLS, redirects, all public pages,
+private direct links, live API access, and the sitemap work at the real domain.
+No Search Console submission or Google indexing has been confirmed yet.
+
 ## Build and hosting behavior
 
 `npm run build` builds the browser app, renders the existing public React page
 components in Node, and writes `index.html`, `about.html`, `menu.html`, and
-`order.html`. The Node bundle stays outside `dist` and is removed afterward.
+`order.html`. It also writes noindex entry documents for every staff, tracking,
+and order-result route, including nested routes. Render can serve these clean
+URLs directly without a catch-all rewrite. The Node bundle stays outside `dist`
+and is removed afterward.
 The browser replaces the static markup using the existing `createRoot` flow,
 so language preferences, live menu data, and ordering retain their behavior.
 The build makes no API requests and embeds no live prices or order data.
@@ -76,8 +123,10 @@ live API menu into a static snapshot or guarantee individual menu-item indexing.
 Nginx serves it for staff, order tracking, confirmation, and unknown routes.
 Missing scripts, styles, images, and crawl files return 404. Render static-site
 Blueprints rewrite public routes to their respective documents and use
-`app.html` as the final fallback. Apply those rules if the live deployment uses
-a Render static site. A Docker frontend uses `public/nginx.conf` automatically.
+`app.html` as the final fallback. Those rules provide a noindex fallback for
+unknown routes; a static site without them returns 404 for unknown routes.
+The explicit entry documents preserve all known routes in either case.
+A Docker frontend uses `public/nginx.conf` automatically.
 Vite preview is useful for public pages but does not reproduce Nginx's private
 route fallback; use Nginx for the browser SEO checks.
 

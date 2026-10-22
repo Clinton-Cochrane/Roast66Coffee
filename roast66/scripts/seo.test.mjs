@@ -60,6 +60,16 @@ test("the SPA fallback is noindex and does not advertise the homepage canonical"
   assert.ok(document.querySelector('script[type="module"][src^="/assets/"]'));
 });
 
+for (const path of ["/admin", "/admin-login", "/cash", "/order-status", "/order/confirmation", "/order/duplicate"]) {
+  test(`${path} has a noindex entry document for direct CDN visits`, async () => {
+    const { document } = new JSDOM(await readFile(resolve("dist", output(path)), "utf8")).window;
+    assert.equal(document.querySelector('meta[name="robots"]').content, "noindex, nofollow");
+    assert.equal(document.querySelector('link[rel="canonical"]'), null);
+    assert.equal(document.querySelector('script[type="application/ld+json"]'), null);
+    assert.ok(document.querySelector('script[type="module"][src^="/assets/"]'));
+  });
+}
+
 test("robots discovers an XML sitemap containing exactly the public canonical URLs", async () => {
   const robots = await readFile("dist/robots.txt", "utf8");
   assert.ok(robots.includes(`Sitemap: ${origin}/sitemap.xml`));
