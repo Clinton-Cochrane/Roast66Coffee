@@ -22,9 +22,9 @@ test("the built menu renders data from the candidate API", async ({ page }) => {
     })
   );
 
-  await expect(page.getByRole("heading", { name: "Our Menu" })).toBeVisible();
-  await expect(page.getByText(expectedMenuItem, { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Drinks" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Our Menu", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: expectedMenuItem, exact: true, level: 3 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Drinks", level: 2 })).toBeVisible();
 
   // Exercise generated CSS, which class-name assertions in jsdom cannot verify.
   const menuHeader = page.locator("header").filter({

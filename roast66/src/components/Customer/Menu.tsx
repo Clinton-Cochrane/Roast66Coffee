@@ -150,7 +150,7 @@ function Menu() {
                       : "border-[#4a3326] bg-[#fffaf4] shadow-[0_10px_24px_rgba(74,51,38,0.1)]"
                   }`}
                 >
-                  <h3
+                  <h2
                     id={`${id}-heading`}
                     className={`mb-4 border-b pb-2 text-2xl font-semibold text-[#4a3326] ${
                       id === "specials" ? "border-[#c77e42]" : "border-[#4a3326]"
@@ -162,7 +162,7 @@ function Menu() {
                       ) : null}
                       {t(titleKey)}
                     </span>
-                  </h3>
+                  </h2>
 
                   <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {items.map((item) => (
@@ -171,9 +171,9 @@ function Menu() {
                         tone={id === "specials" ? "special" : "drink"}
                         className="flex min-h-[19rem] h-full flex-col !shadow-none hover:!shadow-none"
                       >
-                        <h4 className="mb-1 min-h-7 line-clamp-2 text-xl font-semibold text-[#4a3326]">
+                        <h3 className="mb-1 min-h-7 line-clamp-2 text-xl font-semibold text-[#4a3326]">
                           {item.name}
-                        </h4>
+                        </h3>
                         <PromotionPrice item={item} className="text-[#a94727] font-semibold" />
                         <div className="min-h-[4.5rem]">
                           <p className="line-clamp-2 text-[#5b4940]">{item.description}</p>
@@ -207,12 +207,12 @@ function Menu() {
                 aria-labelledby="flavors-heading"
                 className="mb-10 mt-10 scroll-mt-20 md:mx-4 xl:mx-8"
               >
-                <h3
+                <h2
                   id="flavors-heading"
                   className="mb-4 border-b-2 border-[#99bfdd] pb-2 text-2xl font-semibold text-[#4a3326]"
                 >
                   {t(flavorSection.titleKey)}
-                </h3>
+                </h2>
                 <p className="mb-4 text-[0.98rem] leading-[1.6] text-[#6f5b4b]">
                   {t("menu.flavorsHelp")}
                 </p>
@@ -223,7 +223,7 @@ function Menu() {
                       className="flex min-w-0 items-start justify-between gap-3 border-b-2 border-[#99bfdd] px-2 py-3"
                     >
                       <div className="min-w-0">
-                        <h4 className="font-semibold text-[#4a3326]">{item.name}</h4>
+                        <h3 className="font-semibold text-[#4a3326]">{item.name}</h3>
                         <p className="mt-1 text-sm leading-snug text-[#898989]">
                           {item.description}
                         </p>
