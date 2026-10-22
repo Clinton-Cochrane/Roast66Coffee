@@ -1,6 +1,7 @@
 import React from "react";
 import { existsSync } from "node:fs";
-import { URL } from "node:url";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { LanguageProvider } from "../../i18n/LanguageContext";
@@ -31,7 +32,11 @@ describe("HomeMarketingLocation", () => {
     expect(imagePaths).toHaveLength(7);
 
     for (const imagePath of imagePaths) {
-      const file = new URL(`../../../public${imagePath}`, import.meta.url);
+      const file = resolve(
+        dirname(fileURLToPath(import.meta.url)),
+        "../../../public",
+        imagePath.slice(1)
+      );
       expect(existsSync(file), `Missing trailer photo: ${imagePath}`).toBe(true);
     }
   });
