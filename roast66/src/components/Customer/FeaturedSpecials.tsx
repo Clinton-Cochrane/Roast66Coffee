@@ -40,7 +40,8 @@ const FALLBACK_SPECIALS: MenuItemDto[] = [
 
 function FeaturedSpecials() {
   const { t } = useI18n();
-  const [specials, setSpecials] = useState<MenuItemDto[]>(FALLBACK_SPECIALS);
+  // Sample fallback prices must never become part of the searchable document.
+  const [specials, setSpecials] = useState<MenuItemDto[]>(import.meta.env.SSR ? [] : FALLBACK_SPECIALS);
 
   useEffect(() => {
     let active = true;

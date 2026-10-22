@@ -10,6 +10,7 @@ suffix="${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}-$$"
 network_name="roast66-release-$suffix"
 database_name="roast66-release-db-$suffix"
 api_name="roast66-release-api-$suffix"
+web_name="roast66-release-web-$suffix"
 candidate_image="roast66-api-candidate:$suffix"
 base_image="roast66-api-base:$suffix"
 api_port="${SMOKE_API_PORT:-18080}"
@@ -17,8 +18,6 @@ web_port="${SMOKE_WEB_PORT:-4173}"
 menu_item="CI Smoke Latte"
 menu_response=$(mktemp)
 api_log=$(mktemp)
-preview_log=$(mktemp)
-preview_pid=""
 
 cleanup() {
   local status=$?
@@ -26,17 +25,13 @@ cleanup() {
   if [ "$status" -ne 0 ]; then
     echo "Release smoke failed. Candidate API log:" >&2
     docker logs "$api_name" >&2 2>/dev/null
-    echo "Built frontend preview log:" >&2
-    sed -n '1,200p' "$preview_log" >&2 2>/dev/null
+    echo "Built frontend Nginx log:" >&2
+    docker logs "$web_name" >&2 2>/dev/null
   fi
-  if [ -n "$preview_pid" ]; then
-    kill "$preview_pid" >/dev/null 2>&1
-    wait "$preview_pid" >/dev/null 2>&1
-  fi
-  docker rm -f "$api_name" "$database_name" >/dev/null 2>&1
+  docker rm -f "$web_name" "$api_name" "$database_name" >/dev/null 2>&1
   docker network rm "$network_name" >/dev/null 2>&1
   docker image rm "$candidate_image" "$base_image" >/dev/null 2>&1
-  rm -f "$menu_response" "$api_log" "$preview_log"
+  rm -f "$menu_response" "$api_log"
   exit "$status"
 }
 trap cleanup EXIT
@@ -179,9 +174,12 @@ fi
 VITE_API_URL="http://127.0.0.1:$api_port/api" \
 VITE_USE_STATIC_MENU=false \
   npm --prefix "$candidate_context/roast66" run build
-npm --prefix "$candidate_context/roast66" run preview -- \
-  --host 127.0.0.1 --port "$web_port" >"$preview_log" 2>&1 &
-preview_pid=$!
+docker run --rm -d \
+  --name "$web_name" \
+  -p "127.0.0.1:$web_port:80" \
+  -v "$candidate_context/roast66/dist:/usr/share/nginx/html:ro" \
+  -v "$candidate_context/roast66/public/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+  nginx:alpine >/dev/null
 
 for _ in $(seq 1 30); do
   if curl --fail --silent --show-error \
@@ -199,7 +197,7 @@ echo "Verifying the built menu in Chromium"
   PLAYWRIGHT_HTML_OPEN=never \
   SMOKE_WEB_URL="http://127.0.0.1:$web_port" \
   SMOKE_MENU_ITEM="$menu_item" \
-    npx playwright test e2e/menu-smoke.spec.ts \
+    npx playwright test e2e/menu-smoke.spec.ts e2e/seo.spec.ts \
       --config=playwright.config.ts --project=chromium
 )
 

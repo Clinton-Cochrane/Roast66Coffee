@@ -15,6 +15,7 @@ const categoryIds = ["specials", "drinks", "flavors"] as const;
 type CategoryId = (typeof categoryIds)[number];
 
 function getCategoryFromHash(): CategoryId {
+  if (typeof window === "undefined") return "specials";
   const category = window.location.hash.slice(1);
   return categoryIds.includes(category as CategoryId) ? (category as CategoryId) : "specials";
 }
@@ -87,9 +88,9 @@ function Menu() {
     <div className="min-h-screen p-4">
       <div className="mx-auto w-full max-w-[1600px]">
         <header className="rounded-2xl border border-[#d8c5b3] bg-[#fff9f2]/85 px-5 pb-12 pt-9 shadow-[0_12px_28px_rgba(74,51,38,0.1)] md:px-8 md:pt-11">
-          <h2 className="text-3xl md:text-4xl font-bold mb-2 text-center text-[#4a3326] tracking-[0.01em]">
+          <h1 className="text-3xl md:text-4xl font-bold mb-2 text-center text-[#4a3326] tracking-[0.01em]">
             {t("menu.pageTitle")}
-          </h2>
+          </h1>
           <p className="mb-7 text-center text-[0.98rem] leading-[1.6] text-[#6f5b4b]">
             {t("menu.pageSubtitle")}
           </p>

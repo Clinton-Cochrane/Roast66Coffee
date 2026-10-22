@@ -84,7 +84,7 @@ export const en = {
       "Our owner has always had a passion for cars and coffee. Combining these two loves, she created Roast 66 Coffee as a dream come true. Our coffee trailer roams the streets, serving up delicious beverages and bringing joy to coffee lovers everywhere. Come and experience the magic of cars and coffee with us.",
     locationTitle: "Our Location",
     locationBody:
-      "Our stops change with the road. Follow Roast 66 on Instagram for upcoming pop-ups and the latest location.",
+      "Our mobile coffee trailer serves the Brentwood, Oakley, and Antioch area of California. Our stops change with the road. Follow Roast 66 on Instagram for upcoming pop-ups and the latest location.",
     storyImageAlt: "The owner of Roast 66 Coffee working inside the mobile coffee trailer",
     storyImagePending: "Owner and trailer story photo coming soon",
     followInstagram: "Find our next pop-up on Instagram",

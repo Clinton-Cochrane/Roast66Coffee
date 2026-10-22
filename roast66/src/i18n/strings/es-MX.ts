@@ -85,7 +85,7 @@ export const esMx: Messages = {
       "Nuestra dueña siempre ha tenido pasión por los autos y el café. Al combinar estos dos amores, creó Roast 66 Coffee como un sueño hecho realidad. Nuestro remolque de café recorre las calles, sirviendo bebidas deliciosas y llevando alegría a amantes del café en todas partes.",
     locationTitle: "Nuestra ubicación",
     locationBody:
-      "Nuestras paradas cambian con el camino. Sigue a Roast 66 en Instagram para conocer los próximos eventos y nuestra ubicación más reciente.",
+      "Nuestro remolque móvil de café sirve al área de Brentwood, Oakley y Antioch en California. Nuestras paradas cambian con el camino. Sigue a Roast 66 en Instagram para conocer los próximos eventos y nuestra ubicación más reciente.",
     storyImageAlt: "La dueña de Roast 66 Coffee trabajando dentro del remolque móvil de café",
     storyImagePending: "Próximamente: foto de la dueña y la historia del remolque",
     followInstagram: "Encuentra nuestro próximo evento en Instagram",
