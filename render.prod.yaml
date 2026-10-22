@@ -102,6 +102,28 @@ projects:
             autoDeployTrigger: "off"
             buildCommand: cd roast66 && npm ci && npm run build
             staticPublishPath: roast66/dist
+            routes:
+              - type: rewrite
+                source: /about
+                destination: /about.html
+              - type: rewrite
+                source: /about/
+                destination: /about.html
+              - type: rewrite
+                source: /menu
+                destination: /menu.html
+              - type: rewrite
+                source: /menu/
+                destination: /menu.html
+              - type: rewrite
+                source: /order
+                destination: /order.html
+              - type: rewrite
+                source: /order/
+                destination: /order.html
+              - type: rewrite
+                source: /*
+                destination: /app.html
             headers:
               - path: /*
                 name: Content-Security-Policy

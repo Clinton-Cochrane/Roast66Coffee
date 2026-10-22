@@ -1,42 +1,7 @@
 import { useEffect } from "react";
-import { matchPath, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { en } from "../i18n/strings/en";
-
-const publicPages = {
-  "/": {
-    title: "Roast 66 Coffee | Mobile Coffee Trailer",
-    description:
-      "Roast 66 Coffee is a mobile coffee trailer serving handcrafted drinks in the Brentwood, Oakley, and Antioch area of California. Follow us for our next stop.",
-  },
-  "/about": {
-    title: "Our Story | Roast 66 Coffee",
-    description:
-      "Meet Roast 66 Coffee, an owner-run mobile coffee trailer built from a love of cars, coffee, and community. Learn our story and connect with us for your next event.",
-  },
-  "/menu": {
-    title: "Coffee & Drink Menu | Roast 66 Coffee",
-    description:
-      "Explore the current Roast 66 Coffee menu, including handcrafted coffee, specialty drinks, and flavors for your next visit to our mobile coffee trailer.",
-  },
-  "/order": {
-    title: "Order Online | Roast 66 Coffee",
-    description:
-      "Order online from Roast 66 Coffee. Choose your drinks, customize your coffee, and place your order with our mobile coffee trailer.",
-  },
-};
-
-const organization = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "Roast 66 Coffee",
-  description: publicPages["/"].description,
-  sameAs: ["https://www.instagram.com/roast66coffee/"],
-  areaServed: [
-    { "@type": "City", name: "Brentwood, California" },
-    { "@type": "City", name: "Oakley, California" },
-    { "@type": "City", name: "Antioch, California" },
-  ],
-};
+import { getPublicPage, organization, SITE_ORIGIN } from "../seo";
 
 function setMeta(attribute: "name" | "property", key: string, content: string) {
   let element = document.head.querySelector<HTMLMetaElement>(`meta[${attribute}="${key}"]`);
@@ -52,7 +17,8 @@ export default function RouteMetadata() {
   const { pathname } = useLocation();
 
   useEffect(() => {
-    const page = Object.entries(publicPages).find(([path]) => matchPath(path, pathname))?.[1];
+    const match = getPublicPage(pathname);
+    const page = match?.[1];
     const title = page?.title ?? en.meta.pageTitle;
     const description = page?.description ?? en.meta.description;
 
@@ -66,13 +32,29 @@ export default function RouteMetadata() {
     setMeta("property", "og:type", "website");
     setMeta("property", "og:site_name", organization.name);
 
-    if (matchPath("/", pathname)) {
-      const script = document.createElement("script");
+    const existingCanonical = document.head.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (match) {
+      const canonical = existingCanonical ?? document.createElement("link");
+      canonical.rel = "canonical";
+      canonical.href = `${SITE_ORIGIN}${match[0]}`;
+      if (!existingCanonical) document.head.appendChild(canonical);
+      setMeta("property", "og:url", canonical.href);
+    } else {
+      existingCanonical?.remove();
+      document.head.querySelector('meta[property="og:url"]')?.remove();
+    }
+
+    // Reuse the build-time script so the initial client render cannot duplicate it.
+    const existingSchema = document.head.querySelector<HTMLScriptElement>("#organization-schema");
+    if (match?.[0] === "/") {
+      const script = existingSchema ?? document.createElement("script");
+      script.id = "organization-schema";
       script.type = "application/ld+json";
       script.textContent = JSON.stringify(organization);
-      document.head.appendChild(script);
+      if (!existingSchema) document.head.appendChild(script);
       return () => script.remove();
     }
+    existingSchema?.remove();
   }, [pathname]);
 
   return null;

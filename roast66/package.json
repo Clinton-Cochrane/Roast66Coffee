@@ -20,9 +20,10 @@
   "scripts": {
     "dev": "vite",
     "dev:static": "vite --mode static",
-    "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build",
+    "build": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.node.json && vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
     "test": "vitest run",
+    "test:seo": "node --test scripts/seo.test.mjs",
     "test:watch": "vitest",
     "lint": "eslint ."
   },

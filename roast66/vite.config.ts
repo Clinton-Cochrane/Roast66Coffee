@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     outDir: "dist",
+    manifest: true,
   },
   test: {
     include: ["src/**/*.{test,spec}.{ts,tsx}"],

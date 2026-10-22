@@ -112,6 +112,9 @@ function expectPublicMetadata(page: typeof publicPages[number]) {
   expect(meta('meta[property="og:description"]')).toBe(page.description);
   expect(meta('meta[property="og:type"]')).toBe("website");
   expect(meta('meta[property="og:site_name"]')).toBe("Roast 66 Coffee");
+  const canonical = `https://www.roast66coffee.com${page.path}`;
+  expect(document.head.querySelector('link[rel="canonical"]')?.getAttribute("href")).toBe(canonical);
+  expect(meta('meta[property="og:url"]')).toBe(canonical);
 }
 
 function renderApp(path = "/") {
@@ -120,17 +123,29 @@ function renderApp(path = "/") {
 }
 
 describe("route metadata", () => {
+  it("reuses the generated homepage schema and canonical on startup", async () => {
+    document.head.insertAdjacentHTML("beforeend", '<link rel="canonical" href="https://www.roast66coffee.com/"><script id="organization-schema" type="application/ld+json">{}</script>');
+    renderApp();
+    await waitFor(() => expectPublicMetadata(publicPages[0]));
+    expect(document.head.querySelectorAll('link[rel="canonical"]')).toHaveLength(1);
+    expect(document.head.querySelectorAll('script[type="application/ld+json"]')).toHaveLength(1);
+    fireEvent.click(screen.getByRole("link", { name: "/about" }));
+    await waitFor(() => expectPublicMetadata(publicPages[1]));
+    expect(document.head.querySelector('script[type="application/ld+json"]')).toBeNull();
+  });
+
   it.each(publicPages)("sets distinct English metadata for $path", async (page) => {
     renderApp(page.path);
     await waitFor(() => expectPublicMetadata(page));
     expect(document.head.querySelectorAll('meta[name="description"]')).toHaveLength(1);
-    expect(document.head.querySelector('link[rel="canonical"], meta[property="og:url"], meta[property="og:image"], link[hreflang]')).toBeNull();
+    expect(document.head.querySelectorAll('link[rel="canonical"]')).toHaveLength(1);
   });
 
   it.each(["/admin", "/admin-login", "/cash", "/order-status", "/order/confirmation", "/order/duplicate"])("marks %s noindex, nofollow", async (path) => {
     renderApp(path);
     await waitFor(() => expect(meta('meta[name="robots"]')).toBe("noindex, nofollow"));
     expect(document.head.querySelector('script[type="application/ld+json"]')).toBeNull();
+    expect(document.head.querySelector('link[rel="canonical"], meta[property="og:url"]')).toBeNull();
   });
 
   it("keeps the admin-login redirect noindex", async () => {
@@ -150,6 +165,7 @@ describe("route metadata", () => {
     fireEvent.click(screen.getByRole("link", { name: "/admin" }));
     await waitFor(() => expect(meta('meta[name="robots"]')).toBe("noindex, nofollow"));
     expect(document.title).toBe("Roast 66 Coffee");
+    expect(document.head.querySelector('link[rel="canonical"], meta[property="og:url"]')).toBeNull();
     fireEvent.click(screen.getByRole("link", { name: "/" }));
     await waitFor(() => expectPublicMetadata(publicPages[0]));
     expect(document.head.querySelectorAll('script[type="application/ld+json"]')).toHaveLength(1);
@@ -165,6 +181,8 @@ describe("route metadata", () => {
       "@context": "https://schema.org",
       "@type": "Organization",
       name: "Roast 66 Coffee",
+      "@id": "https://www.roast66coffee.com/#organization",
+      url: "https://www.roast66coffee.com/",
       description: publicPages[0].description,
       sameAs: ["https://www.instagram.com/roast66coffee/"],
       areaServed: [

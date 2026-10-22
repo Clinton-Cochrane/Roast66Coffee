@@ -81,6 +81,7 @@ jobs:
           npm test
           npm run lint
           npm run build
+          npm run test:seo
           npm audit --audit-level=high
 
   release-contracts:
