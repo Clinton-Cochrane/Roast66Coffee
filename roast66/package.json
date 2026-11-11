@@ -41,7 +41,7 @@
     "eslint": "^9.39.4",
     "eslint-plugin-react": "^7.37.2",
     "globals": "^17.14.0",
-    "jsdom": "^25.0.1",
+    "jsdom": "^31.0.0",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.4",
     "typescript": "~5.7.2",
